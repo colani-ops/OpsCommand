@@ -1,0 +1,6 @@
+@OpsCommand.Api_HostAddress = http://localhost:5175
+
+GET {{OpsCommand.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
