@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using OpsCommand.Api.Domain.Entities;
-
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace OpsCommand.Api.Infrastructure.Data
 {
-	public class ApplicationDbContext : DbContext
+	public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 	{
 
 		public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
@@ -14,7 +14,7 @@ namespace OpsCommand.Api.Infrastructure.Data
 		{
 		}
 
-		public DbSet<UserRole> UserRoles { get; set; }
+		//public DbSet<UserRole> UserRoles { get; set; } //Using built-in AspNetRoles!
 		public DbSet<Squad> Squads { get; set; }
 		public DbSet<Mission> Missions { get; set; }
 		//public DbSet<Equipment> Equipment { get; set; }
@@ -37,7 +37,5 @@ namespace OpsCommand.Api.Infrastructure.Data
             modelBuilder.Entity<UserEquipment>()
                 .HasKey(ue => new { ue.UserId, ue.EquipmentId });
         }
-
-
     }
 }
