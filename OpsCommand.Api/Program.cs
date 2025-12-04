@@ -11,6 +11,9 @@ using OpsCommand.Api.Services.Auth;
 using OpsCommand.Api.Services.Auth.OpsCommand.Api.Services.Auth;
 using System.Text;
 
+using OpsCommand.Api.Repositories.Users;
+using OpsCommand.Api.Services.Users;
+
 var builder = WebApplication.CreateBuilder(args);
 
 //Bind JwtSettings
@@ -57,6 +60,11 @@ builder.Services
     });
 
 builder.Services.AddScoped<ITokenService, TokenService>();
+
+
+
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 
 var app = builder.Build();
