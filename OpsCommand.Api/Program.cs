@@ -13,6 +13,8 @@ using System.Text;
 
 using OpsCommand.Api.Repositories.Users;
 using OpsCommand.Api.Services.Users;
+using OpsCommand.Api.Repositories.Squads;
+using OpsCommand.Api.Services.Squads;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -65,6 +67,9 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
+
+builder.Services.AddScoped<ISquadRepository, SquadRepository>();
+builder.Services.AddScoped<ISquadService, SquadService>();
 
 
 var app = builder.Build();

@@ -23,27 +23,39 @@ namespace OpsCommand.Api.Controllers
             _userService = userService;
         }
 
-            //GET: /api/users
-            [HttpGet]
-            public async Task<IActionResult> GetAll() {
-                var users = await _userService.GetAllAsync();
+        //GET: /api/users
+        [HttpGet]
+        public async Task<IActionResult> GetAll() {
+            var users = await _userService.GetAllAsync();
 
-                return Ok(users);
-            }
-
-
-            //GET /api/users/{id}
-            [HttpGet("{id}")]
-            public async Task<IActionResult> GetById (string id)
-            {
-                var user = await _userService.GetByIdAsync(id);
-                if (user == null)
-                    return NotFound();
-
-                return Ok(user);
-            }
+            return Ok(users);
+        }
 
 
+        //GET /api/users/{id}
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetById (string id)
+        {
+            var user = await _userService.GetByIdAsync(id);
+
+            if (user == null)
+               return NotFound();
+
+         return Ok(user);
+        }
+
+        //CREATE /api/users/new
+
+        //EDIT /api/users/edit
+
+
+        //DELETE /api/users/{id}
+        [HttpDelete("{id}")]
+        public async void DeleteById(string id) 
+        {
+
+        }
+                
 
     }
 }
