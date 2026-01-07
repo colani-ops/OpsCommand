@@ -6,7 +6,12 @@ using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using OpsCommand.Api.Models.Users;
 using OpsCommand.Api.Services.Users;
+
+using System.Security.Claims;
+using Microsoft.AspNetCore.Identity;
+using OpsCommand.Api.Domain.Entities;
 
 namespace OpsCommand.Api.Controllers
 {
@@ -18,9 +23,12 @@ namespace OpsCommand.Api.Controllers
 
         private readonly IUserService _userService;
 
-        public UserController(IUserService userService)
+        private readonly UserManager<ApplicationUser> _userManager;
+
+        public UserController(IUserService userService, UserManager<ApplicationUser> userManager)
         {
             _userService = userService;
+            _userManager = userManager;
         }
 
         //GET: /api/users
@@ -46,16 +54,64 @@ namespace OpsCommand.Api.Controllers
 
         //CREATE /api/users/new
 
-        //EDIT /api/users/edit
+        //PUT /api/users/{id}/admin
+        [HttpPut("{id}/admin")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
+        public async Task<IActionResult> AdminUpdateUser(string id, [FromBody] AdminUpdateUserDto dto)
+        {
+            var updatedUser = await _userService.AdminUpdateUserAsync(id, dto);
+
+            if (updatedUser == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(updatedUser);
+        }
 
 
         //DELETE /api/users/{id}
         [HttpDelete("{id}")]
-        public async void DeleteById(string id) 
+        [Authorize(Roles = "Admin,SuperAdmin")]
+        public async Task<IActionResult> DeleteById(string id) 
         {
 
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (currentUserId == id)
+            {
+                return BadRequest("You cannot disable your own account.");
+            }
+
+            var callerIsSuperAdmin = User.IsInRole("SuperAdmin");
+
+            var target = await _userManager.FindByIdAsync(id);
+            if (target == null)
+                return NotFound();
+
+            var targetIsSuperAdmin = await _userManager.IsInRoleAsync(target, "SuperAdmin");
+
+
+            if (targetIsSuperAdmin && !callerIsSuperAdmin)
+            {
+                return Forbid("You cannot disable an administrator");
+            }
+
+            var done = await _userService.DisableUserAsync(id);
+            if (!done) return NotFound();
+            return NoContent();
         }
-                
+
+        //POST /api/users/{id}/restore
+        [HttpPost("{id}/restore")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
+        public async Task<IActionResult> RestoreById(string id)
+        {
+            var done = await _userService.RestoreAsync(id);
+            if (!done) return NotFound();
+            return NoContent();
+        }
+
 
     }
 }

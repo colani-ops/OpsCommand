@@ -1,10 +1,10 @@
-﻿using System;
+﻿using OpsCommand.Api.Domain.Entities;
+using OpsCommand.Api.Models.Users;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
-using OpsCommand.Api.Domain.Entities;
 
 namespace OpsCommand.Api.Repositories.Users
 {

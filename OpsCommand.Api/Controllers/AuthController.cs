@@ -74,6 +74,14 @@ namespace OpsCommand.Api.Controllers
             if (!passwordValid)
                 return Unauthorized("Invalid credentials.");
 
+
+            //CHECK IF USER IS DISABLED
+            if (await _userManager.IsLockedOutAsync(user))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    new { message = "User disabled, contact Administrator." });
+            }
+
             var token = await _tokenService.GenerateTokenAsync(user);
             var roles = await _userManager.GetRolesAsync(user);
 

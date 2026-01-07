@@ -15,8 +15,9 @@ namespace OpsCommand.Api.Services.Users
     {
         private readonly IUserRepository _userRepository;
         private readonly UserManager<ApplicationUser> _userManager;
-        
-        public UserService(IUserRepository userRepository, UserManager<ApplicationUser> userManager) {
+
+        public UserService(IUserRepository userRepository, UserManager<ApplicationUser> userManager)
+        {
             _userRepository = userRepository;
             _userManager = userManager;
         }
@@ -28,7 +29,7 @@ namespace OpsCommand.Api.Services.Users
             var users = await _userRepository.GetAllAsync();
 
             var result = new List<UserResponseDto>();
-            
+
             foreach (var user in users)
             {
                 var roles = await _userManager.GetRolesAsync(user);
@@ -68,5 +69,64 @@ namespace OpsCommand.Api.Services.Users
 
 
 
+        public async Task<UserResponseDto?> AdminUpdateUserAsync(string userId, AdminUpdateUserDto dto)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return null;
+
+            //Change Role
+            //Add a check - no removing superAdmin, no 'promotion' to superAdmin
+            var currentRoles = await _userManager.GetRolesAsync(user);
+
+            await _userManager.RemoveFromRolesAsync(user, currentRoles);
+            await _userManager.AddToRoleAsync(user, dto.Role);
+            //Remove all roles from user
+            //Add new role - subject to change?
+
+            //Change Squad
+            user.AssignedSquadId = dto.AssignedSquadId;
+
+            var newRoles = await _userManager.GetRolesAsync(user);
+
+            //Soft delete - isActive
+            //Goes here
+
+
+
+            return new UserResponseDto
+            {
+                Id = user.Id,
+                Email = user.Email ?? string.Empty,
+                UserName = user.UserName,
+                AssignedSquadId = user.AssignedSquadId,
+                Roles = newRoles,
+                //isActive = user.isActive,
+            };
+        }
+
+
+
+        public async Task<bool> DisableUserAsync(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+                return false;
+
+            await _userManager.SetLockoutEnabledAsync(user, true);
+            await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
+            return true;
+        }
+
+        public async Task<bool> RestoreAsync(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+                return false;
+
+            await _userManager.SetLockoutEndDateAsync(user, null);
+            await _userManager.SetLockoutEnabledAsync(user, false);
+            return true;
+        }
     }
 }

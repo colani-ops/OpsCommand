@@ -1,11 +1,11 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Identity;
+using OpsCommand.Api.Domain.Entities;
+using OpsCommand.Api.Models.Users;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
-using Microsoft.AspNetCore.Identity;
-using OpsCommand.Api.Domain.Entities;
 
 namespace OpsCommand.Api.Repositories.Users
 
@@ -31,6 +31,5 @@ namespace OpsCommand.Api.Repositories.Users
         {
             return await _userManager.FindByIdAsync(id);
         }
-
     }
 }

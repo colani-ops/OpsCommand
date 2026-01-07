@@ -12,5 +12,9 @@ namespace OpsCommand.Api.Services.Users
     {
         Task<IEnumerable<UserResponseDto>> GetAllAsync();
         Task<UserResponseDto?> GetByIdAsync(string id);
+        Task<UserResponseDto?> AdminUpdateUserAsync(string userId, AdminUpdateUserDto dto);
+
+        Task<bool> DisableUserAsync(string id);
+        Task<bool> RestoreAsync(string id);
     }
 }
