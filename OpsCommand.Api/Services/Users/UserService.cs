@@ -128,5 +128,60 @@ namespace OpsCommand.Api.Services.Users
             await _userManager.SetLockoutEnabledAsync(user, false);
             return true;
         }
+
+
+
+        public async Task<UserResponseDto?> UpdateMeAsync (string userId, UpdateMeDto dto) {
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return null;
+
+            //Apply changes
+            if (!string.IsNullOrWhiteSpace(dto.UserName))
+            {
+                await _userManager.SetUserNameAsync(user, dto.UserName);
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Email))
+            {
+                await _userManager.SetEmailAsync(user, dto.Email);
+            }
+
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
+            {
+                return null; //Kasnije možda error?
+            }
+
+            var roles = await _userManager.GetRolesAsync(user);
+
+            return new UserResponseDto
+            {
+                Id = user.Id,
+                UserName = user.UserName,
+                Email = user.Email,
+                Roles = roles,
+                AssignedSquadId = user.AssignedSquadId
+            };
+        }
+
+        public async Task<bool> ChangeMyPasswordAsync(string userId, ChangePasswordDto dto)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if(user == null)
+            {
+                return false;
+            }
+
+            if (await _userManager.IsLockedOutAsync(user))
+            {
+                return false;
+            }
+
+            var result = await _userManager.ChangePasswordAsync(user, dto.CurrentPassword, dto.NewPassword);
+
+            return result.Succeeded;
+        }
     }
 }

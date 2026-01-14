@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Security.Claims;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,7 +18,6 @@ namespace OpsCommand.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Admin, SuperAdmin")]
     public class UserController : ControllerBase
     {
 
@@ -113,5 +113,65 @@ namespace OpsCommand.Api.Controllers
         }
 
 
+
+        //GET /api/user/me
+        [HttpGet("me")]
+        [Authorize]
+        public async Task<IActionResult> GetMe()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
+
+            var user = await _userService.GetByIdAsync(userId);
+
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(user);
+        }
+
+
+
+        //PUT /api/user/me
+        [HttpPut("me")]
+        [Authorize]
+        public async Task<IActionResult> UpdateMe([FromBody] UpdateMeDto dto)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            var updatedUser = await _userService.UpdateMeAsync(userId, dto);
+
+            if (updatedUser == null)
+                return NotFound();
+
+            return Ok(updatedUser);
+        }
+
+        //PUT /api/user/me/password
+        [HttpPut("me/password")]
+        [Authorize]
+        public async Task<IActionResult> ChangeMyPassword([FromBody] ChangePasswordDto dto)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
+
+            var ok = await _userService.ChangeMyPasswordAsync(userId, dto);
+            if (!ok)
+            {
+                return BadRequest(new { message = "Password change failed. Check current password or password rules." });
+            }
+            return NoContent();
+        }
     }
 }

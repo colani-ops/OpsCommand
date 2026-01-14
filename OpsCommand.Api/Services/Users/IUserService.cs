@@ -16,5 +16,8 @@ namespace OpsCommand.Api.Services.Users
 
         Task<bool> DisableUserAsync(string id);
         Task<bool> RestoreAsync(string id);
+
+        Task<UserResponseDto?> UpdateMeAsync(string userId, UpdateMeDto dto);
+        Task<bool> ChangeMyPasswordAsync(string userId, ChangePasswordDto dto);
     }
 }
