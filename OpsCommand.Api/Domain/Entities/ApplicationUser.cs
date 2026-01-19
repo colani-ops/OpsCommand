@@ -10,7 +10,9 @@ namespace OpsCommand.Api.Domain.Entities
 {
     public class ApplicationUser : IdentityUser
     {
-        // public int UserRoleId { get; set; } // FK UserRole
+        //public int UserRoleId { get; set; } // FK UserRole
         public int? AssignedSquadId { get; set; } // FK Squad (nullable)
+
+        //DisabledAt ??
     }
 }

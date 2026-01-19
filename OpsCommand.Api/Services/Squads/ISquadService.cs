@@ -11,7 +11,7 @@ namespace OpsCommand.Api.Services.Squads
     public interface ISquadService
     {
         Task<IEnumerable<SquadResponseDto>> GetAllAsync();
-        Task<SquadResponseDto> GetByIdAsync(int id);
+        Task<SquadResponseDto?> GetByIdAsync(int id);
 
         Task<SquadResponseDto> CreateAsync(SquadCreateDto dto);
 

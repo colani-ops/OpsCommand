@@ -17,7 +17,7 @@ namespace OpsCommand.Api.Models.Squads
         //public bool IsDeployed { get; set; } = false;
 
         public DateTime CreatedAt { get; set; }
-        public DateTime DeletedAt { get; set; }
+        public DateTime? DeletedAt { get; set; }
         public int MissionsServed { get; set; }
         public int MissionsWon { get; set; }
     }

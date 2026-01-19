@@ -13,12 +13,10 @@ namespace OpsCommand.Api.Domain.Entities
         public string Name { get; set; } = default!;
         public string? Type { get; set; }
         public string? CommanderId { get; set; } //UserId - connect to applicationUser
-        public bool IsActive { get; set; } = true;
         
         //public bool IsDeployed { get; set; } = false;
-
         public DateTime CreatedAt { get; set; }
-        public DateTime DeletedAt { get; set; }
+        public DateTime? DeletedAt { get; set; }
         public int MissionsServed { get; set; }
         public int MissionsWon { get; set; }
     }

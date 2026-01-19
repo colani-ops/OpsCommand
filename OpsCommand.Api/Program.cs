@@ -15,6 +15,9 @@ using OpsCommand.Api.Repositories.Users;
 using OpsCommand.Api.Services.Users;
 using OpsCommand.Api.Repositories.Squads;
 using OpsCommand.Api.Services.Squads;
+using OpsCommand.Api.Repositories.Missions;
+using OpsCommand.Api.Services.Missions;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -70,6 +73,9 @@ builder.Services.AddScoped<IUserService, UserService>();
 
 builder.Services.AddScoped<ISquadRepository, SquadRepository>();
 builder.Services.AddScoped<ISquadService, SquadService>();
+
+builder.Services.AddScoped<IMissionRepository, MissionRepository>();
+builder.Services.AddScoped<IMissionService, MissionService>();
 
 
 var app = builder.Build();
