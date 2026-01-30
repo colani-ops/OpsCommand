@@ -8,9 +8,9 @@ namespace OpsCommand.Api.Models.Squads
 {
     public class SquadUpdateDto
     {
-        public string Name { get; set; } = default!;
-        public string Type { get; set; } = default!;
+        public string? Name { get; set; }
+        public string? Type { get; set; }
         public string? CommanderId { get; set; }
-        public bool IsActive { get; set; } = true;
+        public bool ClearCommander { get; set; } = false;
     }
 }

@@ -1,12 +1,9 @@
 ﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.Identity.Client;
 using OpsCommand.Api.Domain.Entities;
-using OpsCommand.Api.Infrastructure.Data;
 using OpsCommand.Api.Models.Squads;
 using OpsCommand.Api.Repositories.Squads;
 using System;
 using System.Collections.Generic;
-using System.Formats.Asn1;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -25,12 +22,12 @@ namespace OpsCommand.Api.Services.Squads
             _userManager = userManager;
         }
 
-        private static readonly string[] AllowedTypes = new[]
-            {
+        private static readonly string[] AllowedTypes =
+            [
                 "Assault",
                 "Tactical",
                 "Recon"
-            };
+            ];
 
 
 
@@ -88,9 +85,10 @@ namespace OpsCommand.Api.Services.Squads
 
         public async Task<SquadResponseDto> CreateAsync(SquadCreateDto dto)
         {
-            if (dto.CommanderId != null)
-            {
-                var commander = await _userManager.FindByIdAsync(dto.CommanderId);
+            if (!string.IsNullOrWhiteSpace(dto.CommanderId))
+
+                {
+                    var commander = await _userManager.FindByIdAsync(dto.CommanderId);
                 if (commander == null)
                 {
                     throw new ArgumentException("Commander user not found.");
@@ -141,13 +139,24 @@ namespace OpsCommand.Api.Services.Squads
 
         public async Task<SquadResponseDto?> UpdateAsync(int id, SquadUpdateDto dto)
         {
-            if (dto.CommanderId != null)
+            if (!string.IsNullOrWhiteSpace(dto.CommanderId))
             {
                 var commander = await _userManager.FindByIdAsync(dto.CommanderId);
+
                 if (commander == null)
                 {
                     throw new ArgumentException("Commander user not found.");
                 }
+
+                var isCommander = await _userManager.IsInRoleAsync(commander, "Commander");
+
+                if (!isCommander)
+                {
+                    throw new ArgumentException("User is not eligible to be a commander.");
+                }
+
+                if (await _userManager.IsLockedOutAsync(commander))
+                    throw new ArgumentException("Commander is inactive");
             }
 
             var squad = await _squadRepository.GetByIdAsync(id);
@@ -155,13 +164,26 @@ namespace OpsCommand.Api.Services.Squads
             if (squad == null)
                 return null;
 
-            squad.Name = dto.Name;
-            squad.Type = dto.Type;
-            squad.CommanderId = dto.CommanderId;
+            if (dto.ClearCommander && !string.IsNullOrWhiteSpace(dto.CommanderId))
+                throw new ArgumentException("Cannot set CommanderId and ClearCommander=true at the same time.");
 
-            if (!AllowedTypes.Contains(dto.Type))
+            if (dto.ClearCommander)
             {
-                throw new ArgumentException("Invalid squad type. ALlowed : Assault, Tactical, Recon");
+                squad.CommanderId = null;
+            }
+
+            else if (!string.IsNullOrWhiteSpace(dto.CommanderId))
+                squad.CommanderId = dto.CommanderId;
+
+            if (!string.IsNullOrWhiteSpace(dto.Name)) 
+                squad.Name = dto.Name;
+
+            if (!string.IsNullOrWhiteSpace(dto.Type))
+            {
+                if (!AllowedTypes.Contains(dto.Type))
+                    throw new ArgumentException("Invalid squad type. ALlowed : Assault, Tactical, Recon");
+                
+                squad.Type = dto.Type;
             }
 
             await _squadRepository.UpdateAsync(squad);

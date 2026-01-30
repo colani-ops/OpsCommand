@@ -23,13 +23,16 @@ namespace OpsCommand.Api.Repositories.Squads
         public async Task<IEnumerable<Squad>> GetAllAsync()
         {
 
-            return await _context.Squads.ToListAsync();
+            return await _context.Squads
+                .Where(s => s.DeletedAt == null)
+                .ToListAsync();
 
         }
 
         public async Task<Squad> GetByIdAsync(int id)
         {
-            return await _context.Squads.FindAsync(id);
+            return await _context.Squads
+                .FirstOrDefaultAsync(s => s.Id == id && s.DeletedAt == null);
         }
 
 
@@ -48,7 +51,8 @@ namespace OpsCommand.Api.Repositories.Squads
 
         public async Task DeleteAsync(Squad squad)
         {
-            _context.Squads.Remove(squad); //Za sada hard delete - kasnije soft delete!
+            squad.DeletedAt = DateTime.UtcNow;
+            _context.Squads.Update(squad);
             await _context.SaveChangesAsync();
         }
     }

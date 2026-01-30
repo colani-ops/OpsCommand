@@ -50,6 +50,21 @@ namespace OpsCommand.Api.Controllers
 
 
 
+        //GET api/mission/my
+        [HttpGet("my")]
+        [Authorize] //All users
+        public async Task<IActionResult> GetMyMissions()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+                return Unauthorized();
+
+            var missions = await _missionService.GetMyMissionsAsync(userId);
+            return Ok(missions);
+        }
+
+
+
         //POST api/mission
         [HttpPost]
         [Authorize(Roles = "Admin, SuperAdmin")]
@@ -78,23 +93,58 @@ namespace OpsCommand.Api.Controllers
             }
         }
 
-
-
-            //PUT api/mission/{id}
-            [HttpPut("{id}")]
-            [Authorize(Roles = "Admin, SuperAdmin")]
-            public async Task<IActionResult> Update(int id, [FromBody] MissionUpdateDto dto)
+        //PUT api/mission/{id}
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Admin, SuperAdmin")]
+        public async Task<IActionResult> Update(int id, [FromBody] MissionUpdateDto dto)
+        {
+            var updatedMission = await _missionService.UpdateAsync(id, dto);
+            if (updatedMission == null)
             {
-                var updatedMission = await _missionService.UpdateAsync(id, dto);
-                if (updatedMission == null)
-                {
-                    return NotFound();
-                }
-                return Ok(updatedMission);
+                return NotFound();
             }
+            return Ok(updatedMission);
+        }
 
-            //DELETE api/mission/{id}
-            [HttpDelete("{id}")]
+        [HttpPatch("{id}/commander")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
+        public async Task<IActionResult> AssignCommander(int id, [FromBody] AssignCommanderDto dto)
+        {
+            try
+            {
+                var updated = await _missionService.AssignCommanderAsync(id, dto.CommanderId);
+                if (updated == null) return NotFound();
+                return Ok(updated);
+            }
+                catch (ArgumentException ex)
+                {
+                return BadRequest(ex.Message);
+                }
+        }
+
+
+
+        // DELETE api/mission/{id}/commander
+        [HttpDelete("{id}/commander")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
+        public async Task<IActionResult> UnassignCommander(int id)
+        {
+            try
+            {
+                var updated = await _missionService.UnassignCommanderAsync(id);
+                if (updated == null) return NotFound();
+                return Ok(updated);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+
+
+        //DELETE api/mission/{id}
+        [HttpDelete("{id}")]
             [Authorize(Roles = "Admin, SuperAdmin")]
             public async Task<IActionResult> Delete(int id)
             {

@@ -11,6 +11,7 @@ namespace OpsCommand.Api.Repositories.Missions
     {
         Task<List<Mission>> GetAllAsync();
         Task<Mission?> GetByIdAsync(int id);
+        Task<List<Mission>> GetBySquadIdAsync(int squadId);
 
         Task AddAsync(Mission mission);
         Task UpdateAsync(Mission mission);

@@ -72,27 +72,28 @@ namespace OpsCommand.Api.Services.Users
         public async Task<UserResponseDto?> AdminUpdateUserAsync(string userId, AdminUpdateUserDto dto)
         {
             var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
-                return null;
+            if (user == null) return null;
 
-            //Change Role
-            //Add a check - no removing superAdmin, no 'promotion' to superAdmin
+            //Role change (provjeri rezultate)
             var currentRoles = await _userManager.GetRolesAsync(user);
 
-            await _userManager.RemoveFromRolesAsync(user, currentRoles);
-            await _userManager.AddToRoleAsync(user, dto.Role);
-            //Remove all roles from user
-            //Add new role - subject to change?
+            var removeRes = await _userManager.RemoveFromRolesAsync(user, currentRoles);
+            if (!removeRes.Succeeded)
+                throw new ArgumentException(string.Join("; ", removeRes.Errors.Select(e => e.Description)));
 
-            //Change Squad
+            var addRes = await _userManager.AddToRoleAsync(user, dto.Role);
+            if (!addRes.Succeeded)
+                throw new ArgumentException(string.Join("; ", addRes.Errors.Select(e => e.Description)));
+
+            //Squad change (promjena na user entity)
             user.AssignedSquadId = dto.AssignedSquadId;
 
-            var newRoles = await _userManager.GetRolesAsync(user);
+            //spremi user u bazu
+            var updateRes = await _userManager.UpdateAsync(user);
+            if (!updateRes.Succeeded)
+                throw new ArgumentException(string.Join("; ", updateRes.Errors.Select(e => e.Description)));
 
-            //Soft delete - isActive
-            //Goes here
-
-
+            var roles = await _userManager.GetRolesAsync(user);
 
             return new UserResponseDto
             {
@@ -100,10 +101,10 @@ namespace OpsCommand.Api.Services.Users
                 Email = user.Email ?? string.Empty,
                 UserName = user.UserName,
                 AssignedSquadId = user.AssignedSquadId,
-                Roles = newRoles,
-                //isActive = user.isActive,
+                Roles = roles
             };
         }
+
 
 
 

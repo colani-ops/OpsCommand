@@ -37,6 +37,16 @@ namespace OpsCommand.Api.Repositories.Missions
         }
 
 
+        public async Task<List<Mission>> GetBySquadIdAsync(int squadId)
+        {
+            return await _context.Missions
+                .Where(m => _context.MissionSquads
+                    .Any(ms => ms.MissionId == m.Id && ms.SquadId == squadId))
+                .ToListAsync();
+        }
+
+
+
 
         public async Task AddAsync(Mission mission)
         {

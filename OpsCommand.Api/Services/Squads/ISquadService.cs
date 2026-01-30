@@ -15,7 +15,7 @@ namespace OpsCommand.Api.Services.Squads
 
         Task<SquadResponseDto> CreateAsync(SquadCreateDto dto);
 
-        Task<SquadResponseDto> UpdateAsync(int id, SquadUpdateDto dto);
+        Task<SquadResponseDto?> UpdateAsync(int id, SquadUpdateDto dto);
 
         Task<bool> DeleteAsync(int id);
     }

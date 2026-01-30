@@ -51,6 +51,7 @@ namespace OpsCommand.Api.Controllers
 
 
         //POST api/squad
+        [HttpPost]
         [Authorize(Roles = "Admin, SuperAdmin")]
         public async Task<IActionResult> Create([FromBody] SquadCreateDto dto)
         {

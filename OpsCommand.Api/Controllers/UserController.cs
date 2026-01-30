@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Mvc;
 using OpsCommand.Api.Models.Users;
 using OpsCommand.Api.Services.Users;
 
-using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using OpsCommand.Api.Domain.Entities;
 

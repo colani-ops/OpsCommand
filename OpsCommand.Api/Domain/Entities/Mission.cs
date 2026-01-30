@@ -15,9 +15,11 @@ namespace OpsCommand.Api.Domain.Entities
             public string Name { get; set; } = string.Empty;
             public string Status { get; set; } = string.Empty; 
             //Change to enum later?
-            //Planned, inProgress, Completed, Dancelled
+            //Planned, Active, Completed, Cancelled
 
-            public string? CommanderId { get; set; } = string.Empty; //UserId
+            public string? CommanderId { get; set; } //UserId
+            public int? SquadId { get; set; }
+
             public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
             public DateTime? DeletedAt { get; set; }
             public string CreatedByUserId { get; set; } = string.Empty;
