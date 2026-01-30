@@ -1,26 +1,70 @@
 # OpsCommand
 
+Backend API for a tactical operations management system.
+Built with ASP.NET Core, Entity Framework Core and Identity.
 
-Todo : 
- Ensure /me endpoints are accessible to any authenticated user (controller-level authorize setup)
- Return Identity errors in API responses (username taken, invalid email, password rules)
- Add rule checks: one user can be assigned to only one squad; commanderId requires Commander/Admin/SuperAdmin role
- Add check: Admin cannot promote to Admin/SuperAdmin (only SuperAdmin can)
+## Status
+Active development – core domain logic implemented, equipment vertical slice pending.
 
-Squads
- Add commander role validation when setting CommanderId
- Add Squad type restriction (Assault/Tactical/Recon) as enum + validation
- Prevent deleting squad if active missions exist (later)
+---
 
-Missions (first)
- Mission CRUD + status transitions
- Join mission - squads (MissionSquad)
+## Implemented Features
 
- Business rules:
- Squad cannot be in more than one ACTIVE mission
- Commander cannot have more than one ACTIVE mission
+### Authentication & Authorization
+- ASP.NET Core Identity
+- Role-based access control:
+  - SuperAdmin
+  - Admin
+  - Commander
+  - Member
+  - Recruit
 
-Equipment (second)
- Equipment CRUD
- SquadEquipment CRUD (quantity)
- UserEquipment (later)
+---
+
+### Squads
+- Squad CRUD (soft delete)
+- Allowed squad types:
+  - Assault
+  - Tactical
+  - Recon
+- Commander assignment with validation:
+  - User must exist
+  - User must have Commander role
+  - User must not be locked out
+- One squad - one commander
+- Soft delete via `DeletedAt`
+
+---
+
+### Missions
+- Mission CRUD (soft delete)
+- Mission status flow:
+  - Prepared -> Planned -> Active -> Completed / Cancelled (Updated in real time on the frontend, later)
+- Business rules enforced:
+  - Mission cannot become Active without a commander
+  - Commander cannot be changed while mission is Active
+  - Completed / Cancelled missions are immutable
+- Assign commander endpoint for missions
+- GetMyMissions logic:
+  - Commander -> missions where user is commander
+  - Other users -> missions via assigned squad
+
+---
+
+## TODO / Next Steps
+
+### Equipment (next vertical slice)
+- Equipment CRUD
+- SquadEquipment (many-to-many with quantity)
+- Business rules:
+  - Equipment availability constraints
+  - Mission-related equipment locking (later)
+
+### Enhancements
+- Enforce: one user → one squad (hard constraint)
+- Prevent deleting squad if active missions exist
+- Improve API error responses (Identity errors)
+- Add enums for mission status & squad type
+- Frontend integration
+
+---
