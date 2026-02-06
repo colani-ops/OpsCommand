@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using OpsCommand.Api.Domain.Entities;
 using OpsCommand.Api.Models.Auth;
-using OpsCommand.Api.Models.Auth.OpsCommand.Api.Models.Auth;
 using OpsCommand.Api.Services.Auth;
 
 namespace OpsCommand.Api.Controllers

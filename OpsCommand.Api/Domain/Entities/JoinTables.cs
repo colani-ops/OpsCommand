@@ -19,9 +19,14 @@ namespace OpsCommand.Api.Domain.Entities
     public class SquadEquipment
     {
         public int SquadId { get; set; }
+        public Squad Squad { get; set; } = null!;
+
         public int EquipmentId { get; set; }
+        public Equipment Equipment { get; set; } = null!;
+
         public int Quantity { get; set; }
     }
+
 
     public class UserEquipment
     {

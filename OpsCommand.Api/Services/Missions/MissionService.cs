@@ -256,6 +256,7 @@ namespace OpsCommand.Api.Services.Missions
                 throw new ArgumentException("Cannot unassign commander while mission is Active.");
 
             mission.CommanderId = null;
+            mission.SquadId = null;
             mission.Status = "Prepared"; // vraćamo u pool
 
             await _missionRepository.UpdateAsync(mission);

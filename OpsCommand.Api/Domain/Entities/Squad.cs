@@ -19,5 +19,8 @@ namespace OpsCommand.Api.Domain.Entities
         public DateTime? DeletedAt { get; set; }
         public int MissionsServed { get; set; }
         public int MissionsWon { get; set; }
+
+        public ICollection<SquadEquipment> SquadEquipments { get; set; } = new List<SquadEquipment>();
+
     }
 }

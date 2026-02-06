@@ -7,16 +7,16 @@ using OpsCommand.Api.Config;
 using OpsCommand.Api.Domain.Entities;
 using OpsCommand.Api.Infrastructure.Data;
 using OpsCommand.Api.Infrastructure.Seed;
-using OpsCommand.Api.Services.Auth;
-using OpsCommand.Api.Services.Auth.OpsCommand.Api.Services.Auth;
-using System.Text;
-
-using OpsCommand.Api.Repositories.Users;
-using OpsCommand.Api.Services.Users;
-using OpsCommand.Api.Repositories.Squads;
-using OpsCommand.Api.Services.Squads;
+using OpsCommand.Api.Repositories.Equipments;
 using OpsCommand.Api.Repositories.Missions;
+using OpsCommand.Api.Repositories.Squads;
+using OpsCommand.Api.Repositories.Users;
+using OpsCommand.Api.Services.Auth;
+using OpsCommand.Api.Services.Equipments;
 using OpsCommand.Api.Services.Missions;
+using OpsCommand.Api.Services.Squads;
+using OpsCommand.Api.Services.Users;
+using System.Text;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -77,6 +77,23 @@ builder.Services.AddScoped<ISquadService, SquadService>();
 builder.Services.AddScoped<IMissionRepository, MissionRepository>();
 builder.Services.AddScoped<IMissionService, MissionService>();
 
+builder.Services.AddScoped<IEquipmentRepository, EquipmentRepository>();
+builder.Services.AddScoped<IEquipmentService, EquipmentService>();
+
+
+//CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("DevCors", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
+
 
 var app = builder.Build();
 
@@ -87,7 +104,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+app.UseCors("DevCors");
 
 app.UseAuthentication();
 
