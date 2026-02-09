@@ -35,8 +35,6 @@ namespace OpsCommand.Api.Repositories.Squads
                 .FirstOrDefaultAsync(s => s.Id == id && s.DeletedAt == null);
         }
 
-
-
         public async Task AddAsync(Squad squad)
         {
             await _context.Squads.AddAsync(squad);
@@ -55,5 +53,15 @@ namespace OpsCommand.Api.Repositories.Squads
             _context.Squads.Update(squad);
             await _context.SaveChangesAsync();
         }
+
+        public async Task<Squad?> GetActiveSquadByCommanderIdAsync(string commanderId, int? excludeSquadId = null)
+        {
+            return await _context.Squads
+                .Where(s => s.DeletedAt == null)
+                .Where(s => s.CommanderId == commanderId)
+                .Where(s => excludeSquadId == null || s.Id != excludeSquadId.Value)
+                .FirstOrDefaultAsync();
+        }
+
     }
 }

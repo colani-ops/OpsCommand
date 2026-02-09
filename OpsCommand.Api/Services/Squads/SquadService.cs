@@ -55,7 +55,6 @@ namespace OpsCommand.Api.Services.Squads
             return result;
         }
 
-
         public async Task<SquadResponseDto?> GetByIdAsync(int id)
         {
             var squad = await _squadRepository.GetByIdAsync(id);
@@ -81,31 +80,30 @@ namespace OpsCommand.Api.Services.Squads
             return result;
         }
 
-
-
         public async Task<SquadResponseDto> CreateAsync(SquadCreateDto dto)
         {
             if (!string.IsNullOrWhiteSpace(dto.CommanderId))
+            {
+                var commander = await _userManager.FindByIdAsync(dto.CommanderId);
 
-                {
-                    var commander = await _userManager.FindByIdAsync(dto.CommanderId);
                 if (commander == null)
-                {
-                    throw new ArgumentException("Commander user not found.");
-                }
-
-                if (await _userManager.IsLockedOutAsync(commander))
-                    throw new ArgumentException("Commander is inactive");
-
+                    throw new ArgumentException("Commander user not found.");                
 
                 var isCommander = await _userManager.IsInRoleAsync(commander, "Commander");
 
-                if (!isCommander )
-                {
+                if (!isCommander)
                     throw new ArgumentException("User is not eligible to be a commander.");
-                }
+
+                var existing = await _squadRepository.GetActiveSquadByCommanderIdAsync(dto.CommanderId);
+
+                if (existing != null)
+                    throw new ArgumentException($"Commander is already assigned to squad '{existing.Name}' (Id {existing.Id}).");
+                
+
+                if (await _userManager.IsLockedOutAsync(commander))
+                    throw new ArgumentException("Commander is inactive");
             }
-            
+
             if (!AllowedTypes.Contains(dto.Type))
             {
                 throw new ArgumentException("Invalid squad type. ALlowed : Assault, Tactical, Recon");
@@ -136,54 +134,52 @@ namespace OpsCommand.Api.Services.Squads
             };
         }
 
-
         public async Task<SquadResponseDto?> UpdateAsync(int id, SquadUpdateDto dto)
         {
-            if (!string.IsNullOrWhiteSpace(dto.CommanderId))
-            {
-                var commander = await _userManager.FindByIdAsync(dto.CommanderId);
-
-                if (commander == null)
-                {
-                    throw new ArgumentException("Commander user not found.");
-                }
-
-                var isCommander = await _userManager.IsInRoleAsync(commander, "Commander");
-
-                if (!isCommander)
-                {
-                    throw new ArgumentException("User is not eligible to be a commander.");
-                }
-
-                if (await _userManager.IsLockedOutAsync(commander))
-                    throw new ArgumentException("Commander is inactive");
-            }
-
             var squad = await _squadRepository.GetByIdAsync(id);
+            if (squad == null) return null;
 
-            if (squad == null)
-                return null;
-
-            if (dto.ClearCommander && !string.IsNullOrWhiteSpace(dto.CommanderId))
-                throw new ArgumentException("Cannot set CommanderId and ClearCommander=true at the same time.");
-
-            if (dto.ClearCommander)
-            {
-                squad.CommanderId = null;
-            }
-
-            else if (!string.IsNullOrWhiteSpace(dto.CommanderId))
-                squad.CommanderId = dto.CommanderId;
-
-            if (!string.IsNullOrWhiteSpace(dto.Name)) 
+            //Name / Type / IsActive
+            if (!string.IsNullOrWhiteSpace(dto.Name))
                 squad.Name = dto.Name;
 
             if (!string.IsNullOrWhiteSpace(dto.Type))
             {
                 if (!AllowedTypes.Contains(dto.Type))
-                    throw new ArgumentException("Invalid squad type. ALlowed : Assault, Tactical, Recon");
-                
+                    throw new ArgumentException("Invalid squad type. Allowed: Assault, Tactical, Recon");
+
                 squad.Type = dto.Type;
+            }
+
+            //CommanderId (PUT semantics: null = clear)
+            var commanderId = string.IsNullOrWhiteSpace(dto.CommanderId) ? null : dto.CommanderId;
+
+            if (commanderId == null)
+            {
+                squad.CommanderId = null;
+            }
+            else
+            {
+                // 1) commander user must exist
+                var commanderUser = await _userManager.FindByIdAsync(commanderId);
+                if (commanderUser == null)
+                    throw new ArgumentException("Commander user not found.");
+
+                // 2) must have Commander role
+                var isCommander = await _userManager.IsInRoleAsync(commanderUser, "Commander");
+                if (!isCommander)
+                    throw new ArgumentException("User is not eligible to be a commander.");
+
+                // 3) must be active (not locked out)
+                if (await _userManager.IsLockedOutAsync(commanderUser))
+                    throw new ArgumentException("Commander is inactive.");
+
+                // 4) must not already be assigned as commander to another squad
+                var existing = await _squadRepository.GetActiveSquadByCommanderIdAsync(commanderId, excludeSquadId: id);
+                if (existing != null)
+                    throw new ArgumentException($"Commander is already assigned to squad '{existing.Name}' (Id {existing.Id}).");
+
+                squad.CommanderId = commanderId;
             }
 
             await _squadRepository.UpdateAsync(squad);

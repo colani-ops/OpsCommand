@@ -11,22 +11,21 @@ export default function NavBar() {
   const canSeeEquipment = hasRole("Member", "Commander", "Admin", "SuperAdmin");
 
   // Recruit: samo Profile (i Home)
-  // Admin/SuperAdmin: sve (kasnije dodamo "Admin" tab)
+  // Admin/SuperAdmin: sve (kasnije "Admin" tab)
 
   return (
     <div
       style={{
-        position: "sticky",
-        top: 0,
-        background: "#111",
-        borderBottom: "1px solid #333",
-        padding: "12px 16px",
-        display: "flex",
-        alignItems: "center",
-        gap: 14,
-        zIndex: 10,
+        position: "sticky", 
+        top: 0, 
+        background: "#111", 
+        borderBottom: "1px solid #333", 
+        zIndex: 10
       }}
     >
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "12px 16px", display: "flex", alignItems: "center", gap: 14 }}>
+
+      
       <Link to="/" style={{ color: "white", textDecoration: "none", fontWeight: 700 }}>
         OpsCommand
       </Link>
@@ -56,6 +55,7 @@ export default function NavBar() {
           Logout
         </button>
       </div>
+    </div>
     </div>
   );
 }

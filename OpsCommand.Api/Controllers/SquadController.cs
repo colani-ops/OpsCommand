@@ -55,10 +55,15 @@ namespace OpsCommand.Api.Controllers
         [Authorize(Roles = "Admin, SuperAdmin")]
         public async Task<IActionResult> Create([FromBody] SquadCreateDto dto)
         {
-            var createdSquad = await _squadService.CreateAsync(dto);
-
-            return CreatedAtAction(nameof(GetById),
-                new { id = createdSquad.Id }, createdSquad);
+            try
+            {
+                var createdSquad = await _squadService.CreateAsync(dto);
+                return CreatedAtAction(nameof(GetById), new { id = createdSquad.Id }, createdSquad);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         //PUT api/squad/{id}
@@ -66,12 +71,16 @@ namespace OpsCommand.Api.Controllers
         [Authorize(Roles = "Admin, SuperAdmin")]
         public async Task<IActionResult> Update(int id, [FromBody] SquadUpdateDto dto)
         {
-            var updatedSquad = await _squadService.UpdateAsync(id, dto);
-            if (updatedSquad == null)
+            try
             {
-                return NotFound();
+                var updatedSquad = await _squadService.UpdateAsync(id, dto);
+                if (updatedSquad == null) return NotFound();
+                return Ok(updatedSquad);
             }
-            return Ok(updatedSquad);
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
 

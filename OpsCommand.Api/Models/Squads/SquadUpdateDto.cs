@@ -11,6 +11,5 @@ namespace OpsCommand.Api.Models.Squads
         public string? Name { get; set; }
         public string? Type { get; set; }
         public string? CommanderId { get; set; }
-        public bool ClearCommander { get; set; } = false;
     }
 }
