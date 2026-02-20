@@ -32,6 +32,14 @@ namespace OpsCommand.Api.Repositories.Equipments
                 .FirstOrDefaultAsync(e => e.Id == id && e.DeletedAt == null);
         }
 
+        public async Task<Equipment?> GetByNameAsync(string name, bool includeDeleted = false)
+        {
+            var q = _context.Equipments.AsQueryable();
+            if (!includeDeleted) q = q.Where(e => e.DeletedAt == null);
+
+            return await q.FirstOrDefaultAsync(e => e.Name == name);
+        }
+
         public async Task AddAsync(Equipment equipment)
         {
             _context.Equipments.Add(equipment);

@@ -55,8 +55,8 @@ export default function SquadsPage() {
 
     const onlyCommanders = usersData.filter((u) => u.roles?.includes("Commander"));
     setCommanders(onlyCommanders);
-  } catch (e: any) {
-    setErr(e.message ?? "Failed to load squads");
+  } catch (e: unknown) {
+    setErr(getErrorMessage(e) ?? "Failed to load squads");
   } finally {
     setLoading(false);
   }
@@ -72,21 +72,30 @@ export default function SquadsPage() {
     [items, editingId]
   );
 
-  const squadNameById = useMemo(() => {
-  const map = new Map<number, string>();
-  for (const s of items) map.set(s.id, s.name);
+  const squadNameById = useMemo(() => { 
+    const map = new Map<number, string>(); 
+      for (const s of items) map.set(s.id, s.name); 
+      return map; 
+  }, [items]);
+
+  const assignedSquadIdByCommanderId = useMemo(() => {
+  const map = new Map<string, number>();
+  for (const s of items) {
+    if (s.commanderId) map.set(s.commanderId, s.id);
+  }
   return map;
 }, [items]);
 
   function commanderLabel(u: UserDto) {
-    const base = `${u.userName} (${u.email})`;
-    if (u.assignedSquadId) {
-      const squadName =
-        squadNameById.get(u.assignedSquadId) ?? `Squad #${u.assignedSquadId}`;
-      return `${base} — Assigned: ${squadName}`;
-    }
-    return `${base} — Free`;
+  const base = `${u.userName} (${u.email})`;
+
+  const assignedSquadId = assignedSquadIdByCommanderId.get(u.id);
+  if (assignedSquadId != null) {
+    const squadName = squadNameById.get(assignedSquadId) ?? `Squad #${assignedSquadId}`;
+    return `${base} — Assigned: ${squadName}`;
   }
+  return `${base} — Free`;
+}
 
   const commanderNameById = useMemo(() => {
   const map = new Map<string, string>();
@@ -97,6 +106,13 @@ export default function SquadsPage() {
   function commanderDisplay(commanderId: string | null) {
     if (!commanderId) return "—";
     return commanderNameById.get(commanderId) ?? commanderId; // fallback na GUID ako nije učitan
+  }
+
+
+  function getErrorMessage(e: unknown): string {
+    if (e instanceof Error) return e.message;
+    if (typeof e === "string") return e;
+    return "Unexpected error";
   }
 
 
@@ -132,8 +148,8 @@ export default function SquadsPage() {
       setCreateForm({ name: "", type: "Assault", commanderId: "" });
       setShowCreate(false);
       await load();
-    } catch (e: any) {
-      setErr(e.message ?? "Create failed");
+    } catch (e: unknown) {
+      setErr(getErrorMessage(e) ?? "Failed to load squads");
     }
   }
 
@@ -152,8 +168,8 @@ export default function SquadsPage() {
       await updateSquad(editingId, payload);
       cancelEdit();
       await load();
-    } catch (e: any) {
-      setErr(e.message ?? "Update failed");
+    } catch (e: unknown) {
+      setErr(getErrorMessage(e) ?? "Failed to load squads");
     }
   }
 
@@ -166,8 +182,8 @@ export default function SquadsPage() {
       // if we were editing this one, exit edit mode
       if (editingId === id) cancelEdit();
       await load();
-    } catch (e: any) {
-      setErr(e.message ?? "Delete failed");
+    } catch (e: unknown) {
+      setErr(getErrorMessage(e) ?? "Failed to load squads");
     }
   }
 
@@ -193,7 +209,7 @@ export default function SquadsPage() {
       {err && <div style={{ color: "crimson", marginTop: 10 }}>{err}</div>}
       {loading && <div style={{ marginTop: 10 }}>Loading...</div>}
 
-      {/* CREATE FORM (Admin only) */}
+      {/* CREATE FORM */}
       {canManage && showCreate && (
         <form
           onSubmit={submitCreate}
@@ -235,7 +251,7 @@ export default function SquadsPage() {
           >
           <option value="">— Commander —</option>
             {commanders.map((c) => (
-            <option key={c.id} value={c.id} disabled={c.assignedSquadId !== null}>
+            <option key={c.id} value={c.id} disabled={assignedSquadIdByCommanderId.has(c.id)}>
               {commanderLabel(c)}
             </option>
             ))}
@@ -324,22 +340,23 @@ export default function SquadsPage() {
                         <select
                           value={editForm?.commanderId ?? ""}
                           onChange={(e) =>
-                            setEditForm((f) => (f ? { ...f, commanderId: e.target.value } : f))
-                          }
-                          style={{ padding: 10, borderRadius: 8 }}
-                          >
+                          setEditForm((f) => (f ? { ...f, commanderId: e.target.value } : f))
+                        }
+                        style={{ padding: 10, borderRadius: 8 }}
+                        >
                         <option value="">— None —</option>
-                          {commanders.map((c) => {
-                            const assignedToOtherSquad =
-                              c.assignedSquadId !== null && c.assignedSquadId !== editingId;
 
-                            return (
-                              <option key={c.id} value={c.id} disabled={assignedToOtherSquad}>
-                                {commanderLabel(c)}
-                              </option>
-                            );
-                          })}
-                        </select>
+                          {commanders.map((c) => {
+                            const assignedTo = assignedSquadIdByCommanderId.get(c.id);
+                            const assignedToOtherSquad = assignedTo != null && assignedTo !== s.id;
+
+                             return (
+                                <option key={c.id} value={c.id} disabled={assignedToOtherSquad}>
+                                  {commanderLabel(c)}
+                                </option>
+                              );
+                            })}
+                          </select>
                   </div>
                     </>
                   )}

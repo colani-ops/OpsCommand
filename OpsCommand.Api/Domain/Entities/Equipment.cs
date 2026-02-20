@@ -15,6 +15,8 @@ namespace OpsCommand.Api.Domain.Entities
         //(filtriranje u UI)
         public string? Category { get; set; }
 
+        public int Quantity { get; set; }
+
         public DateTime? DeletedAt { get; set; }
 
         //Navigation

@@ -14,6 +14,7 @@ namespace OpsCommand.Api.Repositories.Equipments
         Task<Equipment?> GetByIdAsync(int id);
         Task AddAsync(Equipment equipment);
         Task UpdateAsync(Equipment equipment);
+        Task<Equipment?> GetByNameAsync(string name, bool includeDeleted = false);
     }
 }
 

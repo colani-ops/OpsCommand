@@ -23,11 +23,12 @@ namespace OpsCommand.Api.Services.Equipments
         {
             var items = await _repository.GetAllAsync();
 
-            return items.Select(e => new EquipmentResponse
+            return items.Select(equipment => new EquipmentResponse
             {
-                Id = e.Id,
-                Name = e.Name,
-                Category = e.Category
+                Id = equipment.Id,
+                Name = equipment.Name,
+                Category = equipment.Category,
+                Quantity = equipment.Quantity
             }).ToList();
         }
 
@@ -40,16 +41,50 @@ namespace OpsCommand.Api.Services.Equipments
             {
                 Id = equipment.Id,
                 Name = equipment.Name,
-                Category = equipment.Category
+                Category = equipment.Category,
+                Quantity = equipment.Quantity
             };
         }
 
+        private static readonly HashSet<string> AllowedCategories =
+            new(StringComparer.OrdinalIgnoreCase) { "Primary", "Secondary", "Melee", "Utility" };
+
         public async Task CreateAsync(CreateEquipmentRequest request)
         {
+            var name = request.Name.Trim();
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Name is required.");
+
+            if (!string.IsNullOrWhiteSpace(request.Category) && !AllowedCategories.Contains(request.Category))
+                throw new ArgumentException("Invalid category. Allowed: Primary, Secondary, Melee, Utility.");
+
+            if (request.Quantity < 0)
+                throw new ArgumentException("Quantity cannot be negative.");
+
+            // find including deleted for restore
+            var existing = await _repository.GetByNameAsync(name, includeDeleted: true);
+
+            if (existing != null)
+            {
+                // restore if needed
+                if (existing.DeletedAt != null)
+                    existing.DeletedAt = null;
+
+                // keep name stable; update category if provided
+                existing.Category = request.Category;
+
+                // "add stock" semantics
+                existing.Quantity += request.Quantity;
+
+                await _repository.UpdateAsync(existing);
+                return;
+            }
+
             var equipment = new Equipment
             {
-                Name = request.Name,
-                Category = request.Category
+                Name = name,
+                Category = request.Category,
+                Quantity = request.Quantity
             };
 
             await _repository.AddAsync(equipment);
@@ -60,8 +95,14 @@ namespace OpsCommand.Api.Services.Equipments
             var equipment = await _repository.GetByIdAsync(id)
                 ?? throw new KeyNotFoundException("Equipment not found");
 
-            equipment.Name = request.Name;
+            if (!string.IsNullOrWhiteSpace(request.Category) && !AllowedCategories.Contains(request.Category))
+                throw new ArgumentException("Invalid category. Allowed: Primary, Secondary, Melee, Utility.");
+
+            if (request.Quantity < 0)
+                throw new ArgumentException("Quantity cannot be negative.");
+
             equipment.Category = request.Category;
+            equipment.Quantity = request.Quantity;
 
             await _repository.UpdateAsync(equipment);
         }

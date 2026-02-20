@@ -117,6 +117,44 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+//User Seeding
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await db.Database.MigrateAsync();
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+    await RoleSeeder.SeedRoles(roleManager);
+
+    // Seed SuperAdmin user ako ne postoji
+    var email = "superadmin@debug.com";
+    var user = await userManager.FindByEmailAsync(email);
+
+    if (user == null)
+    {
+        user = new ApplicationUser
+        {
+            UserName = "SuperAdmin",
+            Email = email,
+            EmailConfirmed = true
+        };
+
+        var result = await userManager.CreateAsync(user, "Superadmin123!");
+        if (!result.Succeeded)
+            throw new Exception(string.Join(", ", result.Errors.Select(e => e.Description)));
+    }
+
+    // Osiguraj role
+    if (!await userManager.IsInRoleAsync(user, "SuperAdmin"))
+        await userManager.AddToRoleAsync(user, "SuperAdmin");
+}
+
+
 //Role Seeding
 using (var scope = app.Services.CreateScope())
 {

@@ -139,7 +139,7 @@ namespace OpsCommand.Api.Services.Squads
             var squad = await _squadRepository.GetByIdAsync(id);
             if (squad == null) return null;
 
-            //Name / Type / IsActive
+            //Name / Type
             if (!string.IsNullOrWhiteSpace(dto.Name))
                 squad.Name = dto.Name;
 
