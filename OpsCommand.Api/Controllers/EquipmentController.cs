@@ -23,31 +23,32 @@ namespace OpsCommand.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] bool includeDeleted = false)
         {
-            return Ok(await _service.GetAllAsync());
+            // opcionalno: includeDeleted dopusti samo Adminu/SuperAdminu
+            return Ok(await _service.GetAllAsync(includeDeleted));
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(int id)
+        public async Task<IActionResult> GetById(int id, [FromQuery] bool includeDeleted = false)
         {
-            return Ok(await _service.GetByIdAsync(id));
+            return Ok(await _service.GetByIdAsync(id, includeDeleted));
         }
 
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPost]
-        public async Task<IActionResult> Create(CreateEquipmentRequest request)
+        public async Task<IActionResult> Create([FromBody] CreateEquipmentRequest request)
         {
-            await _service.CreateAsync(request);
-            return Ok();
+            var createdOrUpdated = await _service.CreateAsync(request);
+            return Ok(createdOrUpdated);
         }
 
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, UpdateEquipmentRequest request)
+        public async Task<IActionResult> Update(int id, [FromBody] UpdateEquipmentRequest request)
         {
-            await _service.UpdateAsync(id, request);
-            return NoContent();
+            var updated = await _service.UpdateAsync(id, request);
+            return Ok(updated);
         }
 
         [Authorize(Roles = "Admin,SuperAdmin")]
@@ -59,4 +60,3 @@ namespace OpsCommand.Api.Controllers
         }
     }
 }
-

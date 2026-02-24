@@ -10,11 +10,12 @@ namespace OpsCommand.Api.Repositories.Equipments
 {
     public interface IEquipmentRepository
     {
-        Task<List<Equipment>> GetAllAsync();
-        Task<Equipment?> GetByIdAsync(int id);
+        Task<List<Equipment>> GetAllAsync(bool includeDeleted = false);
+        Task<Equipment?> GetByIdAsync(int id, bool includeDeleted = false);
+        Task<Equipment?> GetByNameAsync(string name, bool includeDeleted = false);
+
         Task AddAsync(Equipment equipment);
         Task UpdateAsync(Equipment equipment);
-        Task<Equipment?> GetByNameAsync(string name, bool includeDeleted = false);
     }
 }
 

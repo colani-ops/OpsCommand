@@ -8,9 +8,8 @@ namespace OpsCommand.Api.Models.Equipment
 {
     public class UpdateEquipmentRequest
     {
-        public string Name { get; set; } = null!;
         public string? Category { get; set; }
-        public int Quantity { get; set; }
+        public int? Quantity { get; set; } // set semantics
     }
 }
 

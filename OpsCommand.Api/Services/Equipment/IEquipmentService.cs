@@ -10,10 +10,12 @@ namespace OpsCommand.Api.Services.Equipments
 {
     public interface IEquipmentService
     {
-        Task<List<EquipmentResponse>> GetAllAsync();
-        Task<EquipmentResponse> GetByIdAsync(int id);
-        Task CreateAsync(CreateEquipmentRequest request);
-        Task UpdateAsync(int id, UpdateEquipmentRequest request);
+        Task<List<EquipmentResponse>> GetAllAsync(bool includeDeleted = false);
+        Task<EquipmentResponse> GetByIdAsync(int id, bool includeDeleted = false);
+
+        Task<EquipmentResponse> CreateAsync(CreateEquipmentRequest request);
+        Task<EquipmentResponse> UpdateAsync(int id, UpdateEquipmentRequest request);
+
         Task DeleteAsync(int id);
     }
 }

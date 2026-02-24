@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using OpsCommand.Api.Domain.Entities;
 using OpsCommand.Api.Infrastructure.Data;
 
@@ -19,25 +13,26 @@ namespace OpsCommand.Api.Repositories.Equipments
             _context = context;
         }
 
-        public async Task<List<Equipment>> GetAllAsync()
+        public async Task<List<Equipment>> GetAllAsync(bool includeDeleted = false)
         {
-            return await _context.Equipments
-                .Where(e => e.DeletedAt == null)
-                .ToListAsync();
+            var query = _context.Equipments.AsQueryable();
+            if (!includeDeleted) query = query.Where(equipment => equipment.DeletedAt == null);
+            return await query.ToListAsync();
         }
 
-        public async Task<Equipment?> GetByIdAsync(int id)
+        public async Task<Equipment?> GetByIdAsync(int id, bool includeDeleted = false)
         {
-            return await _context.Equipments
-                .FirstOrDefaultAsync(e => e.Id == id && e.DeletedAt == null);
+            var query = _context.Equipments.AsQueryable();
+            if (!includeDeleted) query = query.Where(equipment => equipment.DeletedAt == null);
+            return await query.FirstOrDefaultAsync(equipment => equipment.Id == id);
         }
 
         public async Task<Equipment?> GetByNameAsync(string name, bool includeDeleted = false)
         {
-            var q = _context.Equipments.AsQueryable();
-            if (!includeDeleted) q = q.Where(e => e.DeletedAt == null);
-
-            return await q.FirstOrDefaultAsync(e => e.Name == name);
+            var normalizedName = name.Trim();
+            var query = _context.Equipments.AsQueryable();
+            if (!includeDeleted) query = query.Where(equipment => equipment.DeletedAt == null);
+            return await query.FirstOrDefaultAsync(equipment => equipment.Name == normalizedName);
         }
 
         public async Task AddAsync(Equipment equipment)

@@ -1,41 +1,44 @@
 import { apiFetch } from "./api";
 
+export type EquipmentCategory = "Primary" | "Secondary" | "Melee" | "Utility";
+
 export type EquipmentDto = {
   id: number;
   name: string;
   category: string | null;
+  quantity: number;
+  deletedAt: string | null;
 };
 
 export type CreateEquipmentRequest = {
   name: string;
-  category: string | null;
+  category: EquipmentCategory;
+  quantity: number; // increment on create
 };
 
 export type UpdateEquipmentRequest = {
-  name: string;
-  category: string | null;
+  category?: EquipmentCategory;
+  quantity?: number; // set
 };
 
-export function getEquipment() {
+export async function getEquipment(): Promise<EquipmentDto[]> {
   return apiFetch<EquipmentDto[]>("/api/equipment");
 }
 
-export function createEquipment(body: CreateEquipmentRequest) {
-  return apiFetch<void>("/api/equipment", {
+export async function createEquipment(payload: CreateEquipmentRequest): Promise<EquipmentDto> {
+  return apiFetch<EquipmentDto>("/api/equipment", {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify(payload),
   });
 }
 
-export function updateEquipment(id: number, body: UpdateEquipmentRequest) {
-  return apiFetch<void>(`/api/equipment/${id}`, {
+export async function updateEquipment(id: number, payload: UpdateEquipmentRequest): Promise<EquipmentDto> {
+  return apiFetch<EquipmentDto>(`/api/equipment/${id}`, {
     method: "PUT",
-    body: JSON.stringify(body),
+    body: JSON.stringify(payload),
   });
 }
 
-export function deleteEquipment(id: number) {
-  return apiFetch<void>(`/api/equipment/${id}`, {
-    method: "DELETE",
-  });
+export async function deleteEquipment(id: number): Promise<void> {
+  await apiFetch<void>(`/api/equipment/${id}`, { method: "DELETE" });
 }
