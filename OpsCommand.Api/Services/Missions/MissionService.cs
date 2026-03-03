@@ -20,7 +20,7 @@ namespace OpsCommand.Api.Services.Missions
             _missionRepository = missionRepository;
             _userManager = userManager;
         }
-        
+
         private static readonly String[] AllowedStates = new[]
         {
             "Prepared",
@@ -32,26 +32,26 @@ namespace OpsCommand.Api.Services.Missions
         private static MissionResponseDto MapToDto(Mission mission)
         {
             return new MissionResponseDto
-                {
-                    Id = mission.Id,
-                    Name = mission.Name,
-                    Status = mission.Status,
-                    CommanderId = mission.CommanderId,
-                    CreatedAt = mission.CreatedAt,
-                    CreatedByUserId = mission.CreatedByUserId,
-                    Notes = mission.Notes,
-                    SquadId = mission.SquadId
-                };
+            {
+                Id = mission.Id,
+                Name = mission.Name,
+                Status = mission.Status,
+                CommanderId = mission.CommanderId,
+                CreatedAt = mission.CreatedAt,
+                CreatedByUserId = mission.CreatedByUserId,
+                Notes = mission.Notes,
+                SquadId = mission.SquadId
+            };
         }
 
 
 
-        public async Task <List<MissionResponseDto>> GetAllAsync()
+        public async Task<List<MissionResponseDto>> GetAllAsync()
         {
             var missions = await _missionRepository.GetAllAsync();
             return missions.Select(MapToDto).ToList();
         }
-        
+
 
 
         public async Task<MissionResponseDto?> GetByIdAsync(int id)
@@ -76,7 +76,7 @@ namespace OpsCommand.Api.Services.Missions
                     throw new ArgumentException("Commander user not found.");
                 }
 
-                if(await _userManager.IsLockedOutAsync(commander))
+                if (await _userManager.IsLockedOutAsync(commander))
                 {
                     throw new ArgumentException("Commander is inactive");
                 }
@@ -110,26 +110,37 @@ namespace OpsCommand.Api.Services.Missions
 
         public async Task<MissionResponseDto?> UpdateAsync(int id, MissionUpdateDto dto)
         {
-            // Commander promjene su zabranjene ovdje
             if (!string.IsNullOrWhiteSpace(dto.CommanderId) || dto.ClearCommander)
                 throw new ArgumentException("Use /commander endpoint to assign/unassign commander.");
 
             var mission = await _missionRepository.GetByIdAsync(id);
             if (mission == null) return null;
 
-            if (!string.IsNullOrWhiteSpace(dto.Name))
-                mission.Name = dto.Name;
+            var isTerminal = mission.Status is "Completed" or "Cancelled";
 
+            // notes uvijek smije
             if (dto.Notes != null)
                 mission.Notes = dto.Notes;
+
+            // Ako je terminal, ne diraj ništa drugo
+            if (isTerminal)
+            {
+                // ako user pokušava mijenjati Name/Status, javi  poruku
+                if (!string.IsNullOrWhiteSpace(dto.Name) || dto.Status != null)
+                    throw new ArgumentException($"Can't edit mission fields when status is '{mission.Status}'. Only Notes can be updated.");
+
+                await _missionRepository.UpdateAsync(mission);
+                return MapToDto(mission);
+            }
+
+            // normal edits
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+                mission.Name = dto.Name;
 
             if (dto.Status != null)
             {
                 if (!AllowedStates.Contains(dto.Status))
                     throw new ArgumentException("Invalid mission status.");
-
-                if (mission.Status is "Completed" or "Cancelled")
-                    throw new ArgumentException("Cannot modify a completed/cancelled mission.");
 
                 if (dto.Status == "Active" && string.IsNullOrWhiteSpace(mission.CommanderId))
                     throw new ArgumentException("Cannot activate mission without a commander.");
@@ -143,7 +154,7 @@ namespace OpsCommand.Api.Services.Missions
 
 
 
-        public async Task<bool>DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(int id)
         {
             var mission = await _missionRepository.GetByIdAsync(id);
 
@@ -185,6 +196,8 @@ namespace OpsCommand.Api.Services.Missions
 
 
 
+        // WILL IMPLEMENT PROPERLY LATER
+
         public async Task<MissionResponseDto?> AssignCommanderAsync(int missionId, string commanderId)
         {
             if (string.IsNullOrWhiteSpace(commanderId))
@@ -210,12 +223,12 @@ namespace OpsCommand.Api.Services.Missions
                 throw new ArgumentException("User is not eligible to be a commander.");
 
             //status check
-            if (mission.Status == "Completed" || mission.Status == "Cancelled")
-                throw new ArgumentException("Cannot assign commander to a completed/cancelled mission.");
+            if (mission.Status == "Completed")
+                throw new ArgumentException("Cannot assign commander to a completed mission.");
 
             if (mission.Status == "Active")
                 throw new ArgumentException("Cannot change commander while mission is Active.");
-            
+
             // commander mora imati squad
             if (commander.AssignedSquadId == null)
                 throw new ArgumentException("Commander must be assigned to a squad before being assigned to a mission.");
@@ -232,8 +245,8 @@ namespace OpsCommand.Api.Services.Missions
             mission.CommanderId = commanderId;
             mission.SquadId = commanderSquadId;
 
-            //status transition (Prepared -> Planned)
-            if (mission.Status == "Prepared")
+            // Prepared -> Planned, Cancelled -> Planned (reactivation path)
+            if (mission.Status == "Cancelled")
                 mission.Status = "Planned";
 
             await _missionRepository.UpdateAsync(mission);
@@ -249,8 +262,8 @@ namespace OpsCommand.Api.Services.Missions
             if (mission == null) return null;
 
             // guardrails
-            if (mission.Status == "Completed" || mission.Status == "Cancelled")
-                throw new ArgumentException("Cannot modify a completed/cancelled mission.");
+            if (mission.Status == "Completed")
+                throw new ArgumentException("Cannot modify a completed mission.");
 
             if (mission.Status == "Active")
                 throw new ArgumentException("Cannot unassign commander while mission is Active.");
@@ -258,6 +271,75 @@ namespace OpsCommand.Api.Services.Missions
             mission.CommanderId = null;
             mission.SquadId = null;
             mission.Status = "Prepared"; // vraćamo u pool
+
+            await _missionRepository.UpdateAsync(mission);
+            return MapToDto(mission);
+        }
+
+        public async Task<MissionResponseDto?> ActivateAsync(int missionId)
+        {
+            var mission = await _missionRepository.GetByIdAsync(missionId);
+            if (mission == null) return null;
+
+            if (mission.Status is "Completed" or "Cancelled")
+                throw new ArgumentException($"Cannot activate mission when status is '{mission.Status}'.");
+
+            if (string.IsNullOrWhiteSpace(mission.CommanderId))
+                throw new ArgumentException("Cannot activate mission without a commander.");
+
+            if (mission.Status != "Planned")
+                throw new ArgumentException("Only Planned missions can be activated.");
+
+            var activeForCommander = await _missionRepository
+                .GetActiveByCommanderIdAsync(mission.CommanderId!, excludeMissionId: mission.Id);
+            if (activeForCommander != null)
+                throw new ArgumentException("Commander already has an active mission.");
+
+            if (mission.SquadId != null)
+            {
+                var activeForSquad = await _missionRepository
+                    .GetActiveBySquadIdAsync(mission.SquadId.Value, excludeMissionId: mission.Id);
+                if (activeForSquad != null)
+                    throw new ArgumentException("Squad already has an active mission.");
+            }
+
+            mission.Status = "Active";
+            await _missionRepository.UpdateAsync(mission);
+            return MapToDto(mission);
+        }
+
+        public async Task<MissionResponseDto?> CompleteAsync(int missionId, string? notes)
+        {
+            var mission = await _missionRepository.GetByIdAsync(missionId);
+            if (mission == null) return null;
+
+            if (mission.Status != "Active")
+                throw new ArgumentException("Only Active missions can be completed.");
+
+            if (string.IsNullOrWhiteSpace(mission.CommanderId))
+                throw new ArgumentException("Cannot complete mission without a commander.");
+
+            if (notes != null) mission.Notes = notes;
+
+            mission.Status = "Completed";
+            await _missionRepository.UpdateAsync(mission);
+            return MapToDto(mission);
+        }
+
+        public async Task<MissionResponseDto?> CancelAsync(int missionId, string? notes)
+        {
+            var mission = await _missionRepository.GetByIdAsync(missionId);
+            if (mission == null) return null;
+
+            if (mission.Status == "Completed")
+                throw new ArgumentException("Cannot cancel a completed mission.");
+
+            mission.Status = "Cancelled";
+            if (notes != null) mission.Notes = notes;
+
+            // release resources
+            mission.CommanderId = null;
+            mission.SquadId = null;
 
             await _missionRepository.UpdateAsync(mission);
             return MapToDto(mission);

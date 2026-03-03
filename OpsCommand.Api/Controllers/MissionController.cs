@@ -67,7 +67,7 @@ namespace OpsCommand.Api.Controllers
 
         //POST api/mission
         [HttpPost]
-        [Authorize(Roles = "Admin, SuperAdmin")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult> Create([FromBody] MissionCreateDto dto)
         {
 
@@ -95,15 +95,19 @@ namespace OpsCommand.Api.Controllers
 
         //PUT api/mission/{id}
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin, SuperAdmin")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult> Update(int id, [FromBody] MissionUpdateDto dto)
         {
-            var updatedMission = await _missionService.UpdateAsync(id, dto);
-            if (updatedMission == null)
+            try
             {
-                return NotFound();
+                var updatedMission = await _missionService.UpdateAsync(id, dto);
+                if (updatedMission == null) return NotFound();
+                return Ok(updatedMission);
             }
-            return Ok(updatedMission);
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpPatch("{id}/commander")]
@@ -145,7 +149,7 @@ namespace OpsCommand.Api.Controllers
 
         //DELETE api/mission/{id}
         [HttpDelete("{id}")]
-            [Authorize(Roles = "Admin, SuperAdmin")]
+            [Authorize(Roles = "Admin,SuperAdmin")]
             public async Task<IActionResult> Delete(int id)
             {
                 var success = await _missionService.DeleteAsync(id);
@@ -155,5 +159,57 @@ namespace OpsCommand.Api.Controllers
                 }
                 return NoContent();
             }
+
+
+        //WILL IMPLEMENT PROPERLY LATER
+
+        [HttpPatch("{id}/activate")]
+        [Authorize(Roles = "Admin, SuperAdmin")]
+        public async Task<IActionResult> Activate(int id)
+        {
+            try
+            {
+                var updated = await _missionService.ActivateAsync(id);
+                if (updated == null) return NotFound();
+                return Ok(updated);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
+
+        [HttpPatch("{id}/complete")]
+        [Authorize(Roles = "Admin, SuperAdmin")]
+        public async Task<IActionResult> Complete(int id, [FromBody] MissionNotesDto dto)
+        {
+            try
+            {
+                var updated = await _missionService.CompleteAsync(id, dto?.Notes);
+                if (updated == null) return NotFound();
+                return Ok(updated);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPatch("{id}/cancel")]
+        [Authorize(Roles = "Admin, SuperAdmin")]
+        public async Task<IActionResult> Cancel(int id, [FromBody] MissionNotesDto dto)
+        {
+            try
+            {
+                var updated = await _missionService.CancelAsync(id, dto?.Notes);
+                if (updated == null) return NotFound();
+                return Ok(updated);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+    }
     } 

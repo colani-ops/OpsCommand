@@ -9,7 +9,7 @@ namespace OpsCommand.Api.Models.Missions
     public class MissionCreateDto
     {
         public string Name { get; set; } = string.Empty;
-        public string CommanderId { get; set; } = string.Empty;
+        public string? CommanderId { get; set; }
         public string? Notes { get; set; }
     }
 }

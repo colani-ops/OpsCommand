@@ -12,7 +12,7 @@ namespace OpsCommand.Api.Models.Missions
             public string Name { get; set; } = string.Empty;
             public string Status { get; set; } = string.Empty; //Planned, Active, Completed, Cancelled
 
-            public string CommanderId { get; set; } = string.Empty; //UserId
+            public string? CommanderId { get; set; } //UserId
             public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
             public string CreatedByUserId { get; set; } = string.Empty;
             public string? Notes { get; set; } //Results

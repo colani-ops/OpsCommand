@@ -22,8 +22,8 @@ export default function MyMissionsPage() {
       try {
         const data = await apiFetch<Mission[]>("/api/mission/my"); // ako ti je plural, promijeni
         setMissions(data);
-      } catch (e: any) {
-        setErr(e.message ?? "Failed to load missions");
+      } catch (e: unknown) {
+          setErr(e instanceof Error ? e.message : "Failed to load missions");
       }
     })();
   }, []);

@@ -16,7 +16,7 @@ namespace OpsCommand.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "SuperAdmin, Admin, Commander, Member, Recruit")]
+    [Authorize(Roles = "SuperAdmin,Admin,Commander,Member,Recruit")]
     public class SquadController : ControllerBase
     {
         private readonly ISquadService _squadService;
@@ -52,7 +52,7 @@ namespace OpsCommand.Api.Controllers
 
         //POST api/squad
         [HttpPost]
-        [Authorize(Roles = "Admin, SuperAdmin")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult> Create([FromBody] SquadCreateDto dto)
         {
             try
@@ -68,7 +68,7 @@ namespace OpsCommand.Api.Controllers
 
         //PUT api/squad/{id}
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin, SuperAdmin")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult> Update(int id, [FromBody] SquadUpdateDto dto)
         {
             try
@@ -86,7 +86,7 @@ namespace OpsCommand.Api.Controllers
 
         // DELETE api/squad{id}
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin, SuperAdmin")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult>Delete(int id)
         {
             var success = await _squadService.DeleteAsync(id);

@@ -19,5 +19,9 @@ namespace OpsCommand.Api.Services.Missions
 
         Task<MissionResponseDto?> AssignCommanderAsync(int missionId, string commanderId);
         Task<MissionResponseDto?> UnassignCommanderAsync(int missionId);
+
+        Task<MissionResponseDto?> ActivateAsync(int missionId);
+        Task<MissionResponseDto?> CompleteAsync(int missionId, string? notes);
+        Task<MissionResponseDto?> CancelAsync(int missionId, string? notes);
     }
 }

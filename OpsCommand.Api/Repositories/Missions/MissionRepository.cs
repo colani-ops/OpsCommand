@@ -68,5 +68,28 @@ namespace OpsCommand.Api.Repositories.Missions
             _context.Missions.Update(mission);
             await _context.SaveChangesAsync();
         }
+
+
+        public async Task<Mission?> GetActiveByCommanderIdAsync(string commanderId, int? excludeMissionId = null)
+        {
+            var query = _context.Missions
+                .Where(mission => mission.DeletedAt == null && mission.Status == "Active" && mission.CommanderId == commanderId);
+
+            if (excludeMissionId.HasValue)
+                query = query.Where(mission => mission.Id != excludeMissionId.Value);
+
+            return await query.FirstOrDefaultAsync();
+        }
+
+        public async Task<Mission?> GetActiveBySquadIdAsync(int squadId, int? excludeMissionId = null)
+        {
+            var query = _context.Missions
+                .Where(mission => mission.DeletedAt == null && mission.Status == "Active" && mission.SquadId == squadId);
+
+            if (excludeMissionId.HasValue)
+                query = query.Where(mission => mission.Id != excludeMissionId.Value);
+
+            return await query.FirstOrDefaultAsync();
+        }
     }
 }
