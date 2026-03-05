@@ -140,6 +140,8 @@ app.Logger.LogInformation("CORS origins: {Origins}", string.Join(", ", corsOrigi
 //User Seeding
 using (var scope = app.Services.CreateScope())
 {
+    app.Logger.LogInformation("Seeding roles...");
+
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     if (!app.Environment.IsDevelopment())
     {
@@ -154,10 +156,14 @@ using (var scope = app.Services.CreateScope())
     var email = builder.Configuration["Seed:SuperAdminEmail"] ?? "superadmin@debug.com";
     var password = builder.Configuration["Seed:SuperAdminPassword"];
 
+    app.Logger.LogInformation("Seeding SuperAdmin with email: {Email}", email);
+
     var user = await userManager.FindByEmailAsync(email);
 
     if (string.IsNullOrWhiteSpace(password))
         throw new Exception("Seed:SuperAdminPassword missing. Set user-secrets or env var.");
+
+    app.Logger.LogInformation("SuperAdmin exists? {Exists}", user != null);
 
     if (user == null)
     {
@@ -169,12 +175,16 @@ using (var scope = app.Services.CreateScope())
         };
 
         var result = await userManager.CreateAsync(user, password);
+        app.Logger.LogInformation("Create SuperAdmin result: {Succeeded}", result.Succeeded);
         if (!result.Succeeded)
             throw new Exception(string.Join(", ", result.Errors.Select(e => e.Description)));
     }
 
     if (!await userManager.IsInRoleAsync(user, "SuperAdmin"))
         await userManager.AddToRoleAsync(user, "SuperAdmin");
+
+    var cs = builder.Configuration.GetConnectionString("DefaultConnection") ?? "";
+    app.Logger.LogInformation("DB conn contains host: {Host}", cs.Contains("ep-") ? "Neon" : "Other");
 }
 
 
