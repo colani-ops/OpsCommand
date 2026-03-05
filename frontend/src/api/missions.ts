@@ -68,3 +68,21 @@ export function unassignCommander(missionId: number) {
     method: "DELETE",
   });
 }
+
+export function activateMission(id: number) {
+  return apiFetch<MissionDto>(`/api/mission/${id}/activate`, { method: "PATCH" });
+}
+
+export function completeMission(id: number, notes?: string | null) {
+  return apiFetch<MissionDto>(`/api/mission/${id}/complete`, {
+    method: "PATCH",
+    body: JSON.stringify({ notes: notes ?? null }),
+  });
+}
+
+export function cancelMission(id: number, notes?: string | null) {
+  return apiFetch<MissionDto>(`/api/mission/${id}/cancel`, {
+    method: "PATCH",
+    body: JSON.stringify({ notes: notes ?? null }),
+  });
+}

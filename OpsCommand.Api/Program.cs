@@ -35,7 +35,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole>()
@@ -50,7 +50,7 @@ builder.Services
     })
     .AddJwtBearer(options =>
     {
-        options.RequireHttpsMetadata = true;
+        options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
         options.SaveToken = true;
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -82,7 +82,7 @@ builder.Services.AddScoped<IEquipmentService, EquipmentService>();
 
 
 //CORS
-builder.Services.AddCors(options =>
+/*builder.Services.AddCors(options =>
 {
     options.AddPolicy("DevCors", policy =>
     {
@@ -91,7 +91,27 @@ builder.Services.AddCors(options =>
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
-});
+});*/
+
+var corsOrigins = builder.Configuration
+    .GetSection("Cors:Origins")
+    .Get<string[]>() ?? Array.Empty<string>();
+
+    builder.Services.AddCors(options =>
+        {   
+        options.AddPolicy("FrontendPolicy", policy =>
+        {
+            policy
+                .WithOrigins(corsOrigins)
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        });
+    });
+
+if (corsOrigins.Length == 0)
+{
+    throw new Exception("CORS origins not configured. Set Cors:Origins in appsettings or env vars.");
+}
 
 
 
@@ -109,10 +129,9 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
-app.UseCors("DevCors");
+app.UseCors("FrontendPolicy");
 
 app.UseAuthentication();
-
 app.UseAuthorization();
 
 app.MapControllers();
@@ -121,19 +140,23 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    await db.Database.MigrateAsync();
-}
+    if (!app.Environment.IsDevelopment())
+    {
+        await db.Database.MigrateAsync();
+    }
 
-using (var scope = app.Services.CreateScope())
-{
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
     await RoleSeeder.SeedRoles(roleManager);
 
-    // Seed SuperAdmin user ako ne postoji
-    var email = "superadmin@debug.com";
+    var email = builder.Configuration["Seed:SuperAdminEmail"] ?? "superadmin@debug.com";
+    var password = builder.Configuration["Seed:SuperAdminPassword"];
+
     var user = await userManager.FindByEmailAsync(email);
+
+    if (string.IsNullOrWhiteSpace(password))
+        throw new Exception("Seed:SuperAdminPassword missing. Set user-secrets or env var.");
 
     if (user == null)
     {
@@ -144,22 +167,15 @@ using (var scope = app.Services.CreateScope())
             EmailConfirmed = true
         };
 
-        var result = await userManager.CreateAsync(user, "Superadmin123!");
+        var result = await userManager.CreateAsync(user, password);
         if (!result.Succeeded)
             throw new Exception(string.Join(", ", result.Errors.Select(e => e.Description)));
     }
 
-    // Osiguraj role
     if (!await userManager.IsInRoleAsync(user, "SuperAdmin"))
         await userManager.AddToRoleAsync(user, "SuperAdmin");
 }
 
 
-//Role Seeding
-using (var scope = app.Services.CreateScope())
-{
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-    await RoleSeeder.SeedRoles(roleManager);
-}
 
     app.Run();
