@@ -126,12 +126,16 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
+app.UseRouting();
+
 app.UseCors("FrontendPolicy");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.Logger.LogInformation("CORS origins: {Origins}", string.Join(", ", corsOrigins));
 
 //User Seeding
 using (var scope = app.Services.CreateScope())
