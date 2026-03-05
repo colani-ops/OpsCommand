@@ -179,3 +179,5 @@ using (var scope = app.Services.CreateScope())
 
 
     app.Run();
+
+    app.MapGet("/", () => "OpsCommand API running");
