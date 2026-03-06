@@ -19,5 +19,8 @@ namespace OpsCommand.Api.Services.Users
 
         Task<UserResponseDto?> UpdateMeAsync(string userId, UpdateMeDto dto);
         Task<bool> ChangeMyPasswordAsync(string userId, ChangePasswordDto dto);
+
+        Task<IEnumerable<UserResponseDto>> GetPendingAsync();
+        Task<bool> ApproveUserAsync(string id);
     }
 }

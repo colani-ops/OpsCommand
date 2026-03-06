@@ -30,8 +30,10 @@ namespace OpsCommand.Api.Controllers
             _userManager = userManager;
         }
 
-        //GET: /api/users
+
+        //GET: /api/user
         [HttpGet]
+        [Authorize(Roles = "SuperAdmin,Admin")]
         public async Task<IActionResult> GetAll() {
             var users = await _userService.GetAllAsync();
 
@@ -39,8 +41,9 @@ namespace OpsCommand.Api.Controllers
         }
 
 
-        //GET /api/users/{id}
+        //GET /api/user/{id}
         [HttpGet("{id}")]
+        [Authorize(Roles ="SuperAdmin,Admin")]
         public async Task<IActionResult> GetById (string id)
         {
             var user = await _userService.GetByIdAsync(id);
@@ -51,27 +54,58 @@ namespace OpsCommand.Api.Controllers
          return Ok(user);
         }
 
-        //CREATE /api/users/new
+        //CREATE /api/user/new
 
-        //PUT /api/users/{id}/admin
+        //PUT /api/user/{id}/admin
         [HttpPut("{id}/admin")]
-        [Authorize(Roles = "Admin,SuperAdmin")]
+        [Authorize(Roles = "SuperAdmin,Admin")]
         public async Task<IActionResult> AdminUpdateUser(string id, [FromBody] AdminUpdateUserDto dto)
         {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(currentUserId))
+                return Unauthorized();
+
+            var callerIsSuperAdmin = User.IsInRole("SuperAdmin");
+
+            var target = await _userManager.FindByIdAsync(id);
+            if (target == null)
+                return NotFound();
+
+            var targetIsSuperAdmin = await _userManager.IsInRoleAsync(target, "SuperAdmin");
+
+            // Nobody updates their own role/squad through admin endpoint
+            if (currentUserId == id)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    new { message = "You cannot modify your own account through this endpoint." });
+            }
+
+            // Admin cannot modify SuperAdmin account
+            if (!callerIsSuperAdmin && targetIsSuperAdmin)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    new { message = "Admin cannot modify a SuperAdmin account." });
+            }
+
+            // Admin cannot assign SuperAdmin role
+            if (!callerIsSuperAdmin && dto.Role == "SuperAdmin")
+            {
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    new { message = "Admin cannot assign the SuperAdmin role." });
+            }
+
             var updatedUser = await _userService.AdminUpdateUserAsync(id, dto);
 
             if (updatedUser == null)
-            {
                 return NotFound();
-            }
 
             return Ok(updatedUser);
         }
 
 
-        //DELETE /api/users/{id}
+        //DELETE /api/user/{id}
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin,SuperAdmin")]
+        [Authorize(Roles = "SuperAdmin")]
         public async Task<IActionResult> DeleteById(string id) 
         {
 
@@ -101,9 +135,9 @@ namespace OpsCommand.Api.Controllers
             return NoContent();
         }
 
-        //POST /api/users/{id}/restore
+        //POST /api/user/{id}/restore
         [HttpPost("{id}/restore")]
-        [Authorize(Roles = "Admin,SuperAdmin")]
+        [Authorize(Roles = "SuperAdmin")]
         public async Task<IActionResult> RestoreById(string id)
         {
             var done = await _userService.RestoreAsync(id);
@@ -170,6 +204,27 @@ namespace OpsCommand.Api.Controllers
             {
                 return BadRequest(new { message = "Password change failed. Check current password or password rules." });
             }
+            return NoContent();
+        }
+
+
+
+        [HttpGet("pending")]
+        [Authorize(Roles = "SuperAdmin")]
+        public async Task<IActionResult> GetPending()
+        {
+            var users = await _userService.GetPendingAsync();
+            return Ok(users);
+        }
+
+
+
+        [HttpPost("{id}/approve")]
+        [Authorize(Roles = "SuperAdmin")]
+        public async Task<IActionResult> ApproveUser(string id)
+        {
+            var done = await _userService.ApproveUserAsync(id);
+            if (!done) return NotFound();
             return NoContent();
         }
     }

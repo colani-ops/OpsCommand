@@ -41,7 +41,8 @@ namespace OpsCommand.Api.Controllers
             {
                 UserName = string.IsNullOrWhiteSpace(request.UserName) ? request.Email : request.UserName,
                 Email = request.Email,
-                AssignedSquadId = null // Recruit nema jedinicu
+                AssignedSquadId = null, // Recruit nema jedinicu
+                LockoutEnabled = true
             };
 
             var result = await _userManager.CreateAsync(user, request.Password);
@@ -54,7 +55,10 @@ namespace OpsCommand.Api.Controllers
             // Default role = Recruit
             await _userManager.AddToRoleAsync(user, "Recruit");
 
-            return Ok("User registered successfully.");
+            // pending approval
+            await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddYears(100));
+
+            return Ok("Registration submitted. Waiting for Administrator approval.");
         }
 
         // POST: /api/auth/login
@@ -69,17 +73,16 @@ namespace OpsCommand.Api.Controllers
             if (user == null)
                 return Unauthorized("Invalid credentials.");
 
-            var passwordValid = await _userManager.CheckPasswordAsync(user, request.Password);
-            if (!passwordValid)
-                return Unauthorized("Invalid credentials.");
-
-
             //CHECK IF USER IS DISABLED
             if (await _userManager.IsLockedOutAsync(user))
             {
                 return StatusCode(StatusCodes.Status403Forbidden,
-                    new { message = "User disabled, contact Administrator." });
+                    new { message = "Account pending approval or disabled. Contact SuperAdmin." });
             }
+
+            var passwordValid = await _userManager.CheckPasswordAsync(user, request.Password);
+            if (!passwordValid)
+                return Unauthorized("Invalid credentials.");
 
             var token = await _tokenService.GenerateTokenAsync(user);
             var roles = await _userManager.GetRolesAsync(user);

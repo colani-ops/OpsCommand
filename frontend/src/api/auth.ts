@@ -1,6 +1,7 @@
 import { apiFetch } from "./api";
 
 const LOGIN_PATH = "/api/auth/login";
+const REGISTER_PATH = "/api/auth/register";
 
 export type AuthUser = {
   email: string;
@@ -15,6 +16,12 @@ type LoginResponse = {
   roles: string[];
 };
 
+type RegisterRequest = {
+  email: string;
+  password: string;
+  userName?: string;
+};
+
 export async function login(email: string, password: string): Promise<void> {
   const res = await apiFetch<LoginResponse>(LOGIN_PATH, {
     method: "POST",
@@ -26,6 +33,13 @@ export async function login(email: string, password: string): Promise<void> {
     "user",
     JSON.stringify({ email: res.email, userName: res.userName, roles: res.roles } satisfies AuthUser)
   );
+}
+
+export async function register(payload: RegisterRequest): Promise<string> {
+  return apiFetch<string>(REGISTER_PATH, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function logout(): void {

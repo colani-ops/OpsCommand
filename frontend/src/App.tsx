@@ -7,6 +7,8 @@ import MissionsPage from "./pages/MissionsPage";
 import ProfilePage from "./pages/ProfilePage";
 import { RequireAuth } from "./components/RequireAuth";
 import AppLayout from "./components/AppLayout";
+import RegisterPage from "./pages/RegisterPage";
+import UserManagementPage from "./pages/UserManagementPage";
 
 function Authed({ children }: { children: React.ReactNode }) {
   return (
@@ -27,6 +29,8 @@ export default function App() {
         <Route path="/missions" element={<Authed><MissionsPage /></Authed>} />
         <Route path="/equipment" element={<Authed><EquipmentPage /></Authed>} />
         <Route path="/profile" element={<Authed><ProfilePage /></Authed>} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/users" element={<Authed><UserManagementPage /></Authed>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

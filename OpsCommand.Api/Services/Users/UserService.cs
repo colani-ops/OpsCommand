@@ -1,13 +1,13 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using OpsCommand.Api.Domain.Entities;
+using OpsCommand.Api.Models.Users;
+using OpsCommand.Api.Repositories.Users;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
-using Microsoft.AspNetCore.Identity;
-using OpsCommand.Api.Domain.Entities;
-using OpsCommand.Api.Models.Users;
-using OpsCommand.Api.Repositories.Users;
 
 namespace OpsCommand.Api.Services.Users
 {
@@ -184,5 +184,44 @@ namespace OpsCommand.Api.Services.Users
 
             return result.Succeeded;
         }
+
+        public async Task<IEnumerable<UserResponseDto>> GetPendingAsync()
+        {
+            var pendingUsers = await _userManager.Users
+                .Where(u => u.LockoutEnabled && u.LockoutEnd != null && u.LockoutEnd > DateTimeOffset.UtcNow)
+                .ToListAsync();
+
+            var result = new List<UserResponseDto>();
+
+            foreach (var user in pendingUsers)
+            {
+                var roles = await _userManager.GetRolesAsync(user);
+
+                result.Add(new UserResponseDto
+                {
+                    Id = user.Id,
+                    Email = user.Email ?? string.Empty,
+                    UserName = user.UserName,
+                    AssignedSquadId = user.AssignedSquadId,
+                    Roles = roles,
+                    //IsActive = user.IsActive
+                });
+            }
+
+            return result;
+        }
+
+        public async Task<bool> ApproveUserAsync(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+                return false;
+
+            await _userManager.SetLockoutEndDateAsync(user, null);
+            await _userManager.SetLockoutEnabledAsync(user, false);
+
+            return true;
+        }
+
     }
 }

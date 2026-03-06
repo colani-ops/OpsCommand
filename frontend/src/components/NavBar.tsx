@@ -9,6 +9,7 @@ export default function NavBar() {
   const canSeeSquads = hasRole("Member", "Commander", "Admin", "SuperAdmin");
   const canSeeMissions = hasRole("Member", "Commander", "Admin", "SuperAdmin");
   const canSeeEquipment = hasRole("Member", "Commander", "Admin", "SuperAdmin");
+  const canSeeUsers = hasRole("Admin", "SuperAdmin");
 
   // Recruit: samo Profile (i Home)
   // Admin/SuperAdmin: sve (kasnije "Admin" tab)
@@ -35,6 +36,7 @@ export default function NavBar() {
         {canSeeSquads && <Link to="/squads" style={{ color: "white" }}>Squads</Link>}
         {canSeeMissions && <Link to="/missions" style={{ color: "white" }}>Missions</Link>}
         {canSeeEquipment && <Link to="/equipment" style={{ color: "white" }}>Equipment</Link>}
+        {canSeeUsers && <Link to="/users" style={{ color: "white" }}>Users</Link>}
         <Link to="/profile" style={{ color: "white" }}>Profile</Link>
       </div>
 
