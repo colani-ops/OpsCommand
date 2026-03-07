@@ -91,5 +91,15 @@ namespace OpsCommand.Api.Repositories.Missions
 
             return await query.FirstOrDefaultAsync();
         }
+
+        public async Task<bool> HasOpenMissionsForCommanderInSquadAsync(string commanderId, int squadId)
+        {
+            return await _context.Missions.AnyAsync(m =>
+                m.DeletedAt == null &&
+                m.CommanderId == commanderId &&
+                m.SquadId == squadId &&
+                m.Status != "Completed" &&
+                m.Status != "Cancelled");
+        }
     }
 }

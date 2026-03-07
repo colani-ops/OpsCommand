@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using OpsCommand.Api.Domain.Entities;
 using OpsCommand.Api.Models.Squads;
+using OpsCommand.Api.Repositories.Missions;
 using OpsCommand.Api.Repositories.Squads;
 using System;
 using System.Collections.Generic;
@@ -16,10 +17,12 @@ namespace OpsCommand.Api.Services.Squads
     {
         private readonly ISquadRepository _squadRepository;
         private readonly UserManager<ApplicationUser> _userManager;
-        public SquadService(ISquadRepository squadRepository, UserManager<ApplicationUser> userManager)
+        private readonly IMissionRepository _missionRepository;
+        public SquadService(ISquadRepository squadRepository, UserManager<ApplicationUser> userManager, IMissionRepository missionRepository)
         { 
             _squadRepository = squadRepository;
             _userManager = userManager;
+            _missionRepository = missionRepository;
         }
 
         private static readonly string[] AllowedTypes =
@@ -121,6 +124,19 @@ namespace OpsCommand.Api.Services.Squads
 
             await _squadRepository.AddAsync(squad);
 
+            if (!string.IsNullOrWhiteSpace(dto.CommanderId))
+            {
+                var commander = await _userManager.FindByIdAsync(dto.CommanderId);
+                if (commander == null)
+                    throw new ArgumentException("Commander user not found after squad creation.");
+
+                commander.AssignedSquadId = squad.Id;
+
+                var updateCommanderRes = await _userManager.UpdateAsync(commander);
+                if (!updateCommanderRes.Succeeded)
+                    throw new ArgumentException(string.Join("; ", updateCommanderRes.Errors.Select(e => e.Description)));
+            }
+
             return new SquadResponseDto
             {
                 Id = squad.Id,
@@ -139,6 +155,8 @@ namespace OpsCommand.Api.Services.Squads
             var squad = await _squadRepository.GetByIdAsync(id);
             if (squad == null) return null;
 
+            var oldCommanderId = squad.CommanderId;
+
             //Name / Type
             if (!string.IsNullOrWhiteSpace(dto.Name))
                 squad.Name = dto.Name;
@@ -154,32 +172,73 @@ namespace OpsCommand.Api.Services.Squads
             //CommanderId (PUT semantics: null = clear)
             var commanderId = string.IsNullOrWhiteSpace(dto.CommanderId) ? null : dto.CommanderId;
 
+            if (oldCommanderId != null && oldCommanderId != commanderId)
+            {
+                var hasOpenMissions = await _missionRepository
+                    .HasOpenMissionsForCommanderInSquadAsync(oldCommanderId, squad.Id);
+
+                if (hasOpenMissions)
+                    throw new ArgumentException("Cannot change or remove squad commander while they have open missions for this squad.");
+            }
+
             if (commanderId == null)
             {
+                if (oldCommanderId != null)
+                {
+                    var oldCommander = await _userManager.FindByIdAsync(oldCommanderId);
+                    if (oldCommander != null && oldCommander.AssignedSquadId == squad.Id)
+                    {
+                        oldCommander.AssignedSquadId = null;
+                        var oldUpdateRes = await _userManager.UpdateAsync(oldCommander);
+                        if (!oldUpdateRes.Succeeded)
+                            throw new ArgumentException(string.Join("; ", oldUpdateRes.Errors.Select(e => e.Description)));
+                    }
+                }
+
                 squad.CommanderId = null;
             }
             else
             {
-                // 1) commander user must exist
+                // commander user must exist
                 var commanderUser = await _userManager.FindByIdAsync(commanderId);
                 if (commanderUser == null)
                     throw new ArgumentException("Commander user not found.");
 
-                // 2) must have Commander role
+                // must have Commander role
                 var isCommander = await _userManager.IsInRoleAsync(commanderUser, "Commander");
                 if (!isCommander)
                     throw new ArgumentException("User is not eligible to be a commander.");
 
-                // 3) must be active (not locked out)
+                // must be active (not locked out)
                 if (await _userManager.IsLockedOutAsync(commanderUser))
                     throw new ArgumentException("Commander is inactive.");
 
-                // 4) must not already be assigned as commander to another squad
+                // must not already be assigned as commander to another squad
                 var existing = await _squadRepository.GetActiveSquadByCommanderIdAsync(commanderId, excludeSquadId: id);
                 if (existing != null)
                     throw new ArgumentException($"Commander is already assigned to squad '{existing.Name}' (Id {existing.Id}).");
 
                 squad.CommanderId = commanderId;
+
+                if (oldCommanderId != null && oldCommanderId != commanderId)
+                {
+                    var oldCommander = await _userManager.FindByIdAsync(oldCommanderId);
+                    if (oldCommander != null && oldCommander.AssignedSquadId == squad.Id)
+                    {
+                        oldCommander.AssignedSquadId = null;
+                        var oldUpdateRes = await _userManager.UpdateAsync(oldCommander);
+                        if (!oldUpdateRes.Succeeded)
+                            throw new ArgumentException(string.Join("; ", oldUpdateRes.Errors.Select(e => e.Description)));
+                    }
+                }
+
+                if (commanderUser.AssignedSquadId != squad.Id)
+                {
+                    commanderUser.AssignedSquadId = squad.Id;
+                    var commanderUpdateRes = await _userManager.UpdateAsync(commanderUser);
+                    if (!commanderUpdateRes.Succeeded)
+                        throw new ArgumentException(string.Join("; ", commanderUpdateRes.Errors.Select(e => e.Description)));
+                }
             }
 
             await _squadRepository.UpdateAsync(squad);
@@ -203,6 +262,23 @@ namespace OpsCommand.Api.Services.Squads
             var squad = await _squadRepository.GetByIdAsync(id);
             if (squad == null)
                 return false;
+
+            if (!string.IsNullOrWhiteSpace(squad.CommanderId))
+            {
+                var hasOpenMissions = await _missionRepository.HasOpenMissionsForCommanderInSquadAsync(squad.CommanderId, squad.Id);
+
+                if (hasOpenMissions)
+                    throw new ArgumentException("Cannot delete squad while it has open missions.");
+
+                var commander = await _userManager.FindByIdAsync(squad.CommanderId);
+                if (commander != null && commander.AssignedSquadId == squad.Id)
+                {
+                    commander.AssignedSquadId = null;
+                    var updateRes = await _userManager.UpdateAsync(commander);
+                    if (!updateRes.Succeeded)
+                        throw new ArgumentException(string.Join("; ", updateRes.Errors.Select(e => e.Description)));
+                }
+            }
 
             await _squadRepository.DeleteAsync(squad);
             return true;

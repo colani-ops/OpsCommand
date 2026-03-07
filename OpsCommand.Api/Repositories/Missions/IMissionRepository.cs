@@ -18,5 +18,6 @@ namespace OpsCommand.Api.Repositories.Missions
         Task DeleteAsync(Mission mission); //soft delete
         Task<Mission?> GetActiveByCommanderIdAsync(string commanderId, int? excludeMissionId = null);
         Task<Mission?> GetActiveBySquadIdAsync(int squadId, int? excludeMissionId = null);
+        Task<bool> HasOpenMissionsForCommanderInSquadAsync(string commanderId, int squadId);
     }
 }
