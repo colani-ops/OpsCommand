@@ -47,10 +47,16 @@ export default function MissionsPage() {
   async function load() {
     setErr(null);
     setLoading(true);
-    try {
-      const [missionsData, usersData] = await Promise.all([getMissions(), getUsers()]);
-      setItems(missionsData);
-      setCommanders(usersData.filter((u) => u.roles?.includes("Commander")));
+      try {
+        const missionsData = await getMissions();
+        setItems(missionsData);
+
+      if (canManage) {
+        const usersData = await getUsers();
+        setCommanders(usersData.filter((u) => u.roles?.includes("Commander")));
+      } else {
+      setCommanders([]);
+      }
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Failed to load missions");
     } finally {

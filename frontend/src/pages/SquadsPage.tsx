@@ -49,18 +49,23 @@ export default function SquadsPage() {
   async function load() {
     setErr(null);
     setLoading(true);
-  try {
-    const [squadsData, usersData] = await Promise.all([getSquads(), getUsers()]);
+    try {
+    const squadsData = await getSquads();
     setItems(squadsData);
 
-    const onlyCommanders = usersData.filter((u) => u.roles?.includes("Commander"));
-    setCommanders(onlyCommanders);
-  } catch (e: unknown) {
-    setErr(getErrorMessage(e) ?? "Failed to load squads");
-  } finally {
-    setLoading(false);
+      if (canManage) {
+        const usersData = await getUsers();
+        const onlyCommanders = usersData.filter((u) => u.roles?.includes("Commander"));
+        setCommanders(onlyCommanders);
+      } else {
+        setCommanders([]);
+      }
+    } catch (e: unknown) {
+      setErr(getErrorMessage(e) ?? "Failed to load squads");
+    } finally {
+      setLoading(false);
+    }
   }
-}
 
   useEffect(() => {
     load();
