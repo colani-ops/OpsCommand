@@ -3,7 +3,9 @@ import LoginPage from "./pages/LoginPage";
 import EquipmentPage from "./pages/EquipmentPage";
 import HomePage from "./pages/HomePage";
 import SquadsPage from "./pages/SquadsPage";
+import MySquadPage from "./pages/MySquadPage";
 import MissionsPage from "./pages/MissionsPage";
+import MyMissionsPage from "./pages/MyMissionsPage";
 import ProfilePage from "./pages/ProfilePage";
 import { RequireAuth } from "./components/RequireAuth";
 import AppLayout from "./components/AppLayout";
@@ -31,6 +33,8 @@ export default function App() {
         <Route path="/profile" element={<Authed><ProfilePage /></Authed>} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/users" element={<Authed><UserManagementPage /></Authed>} />
+        <Route path="/my-squad" element={<Authed><MySquadPage /></Authed>} />
+        <Route path="/my-missions" element={<Authed><MyMissionsPage /></Authed>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

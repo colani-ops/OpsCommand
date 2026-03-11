@@ -14,6 +14,17 @@ export type SquadDto = {
   missionsWon: number;
 };
 
+export type MySquadDto = {
+  id: number;
+  name: string;
+  type: SquadType | string;
+  commanderId: string | null;
+  commanderName: string | null;
+  missionsServed: number;
+  missionsWon: number;
+  successRate: number;
+};
+
 export type CreateSquadRequest = {
   name: string;
   type: SquadType;
@@ -28,6 +39,14 @@ export type UpdateSquadRequest = {
 
 export function getSquads() {
   return apiFetch<SquadDto[]>("/api/squad");
+}
+
+export function getSquad(id: number) {
+  return apiFetch<SquadDto>(`/api/squad/${id}`);
+}
+
+export function getMySquad() {
+  return apiFetch<MySquadDto | null>("/api/squad/my");
 }
 
 export function createSquad(body: CreateSquadRequest) {

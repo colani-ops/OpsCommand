@@ -6,11 +6,12 @@ export default function NavBar() {
   const user = getUser();
   const role = getPrimaryRole();
 
-  const canSeeSquads = hasRole("Member", "Commander", "Admin", "SuperAdmin");
-  const canSeeMissions = hasRole("Member", "Commander", "Admin", "SuperAdmin");
-  const canSeeEquipment = hasRole("Member", "Commander", "Admin", "SuperAdmin");
+  const canSeeSquads = hasRole("Admin", "SuperAdmin");
+  const canSeeMySquad = hasRole("Member", "Commander");// && user?.assignedSquadId;
+  const canSeeMissions = hasRole("Admin", "SuperAdmin");
+  const canSeeMyMissions = hasRole("Member", "Commander");
+  const canSeeEquipment = hasRole(/*"Member", */"Commander", "Admin", "SuperAdmin");
   const canSeeUsers = hasRole("Admin", "SuperAdmin");
-
   // Recruit: samo Profile (i Home)
   // Admin/SuperAdmin: sve (kasnije "Admin" tab)
 
@@ -33,10 +34,14 @@ export default function NavBar() {
 
       <div style={{ display: "flex", gap: 12 }}>
         <Link to="/" style={{ color: "white" }}>Home</Link>
+
+        {canSeeMySquad && <Link to="/my-squad" style={{ color: "white" }}>My Squad</Link>}
+        {canSeeMyMissions && <Link to="/my-missions" style={{ color: "white" }}>My Missions</Link>}
         {canSeeSquads && <Link to="/squads" style={{ color: "white" }}>Squads</Link>}
         {canSeeMissions && <Link to="/missions" style={{ color: "white" }}>Missions</Link>}
         {canSeeEquipment && <Link to="/equipment" style={{ color: "white" }}>Equipment</Link>}
         {canSeeUsers && <Link to="/users" style={{ color: "white" }}>Users</Link>}
+
         <Link to="/profile" style={{ color: "white" }}>Profile</Link>
       </div>
 

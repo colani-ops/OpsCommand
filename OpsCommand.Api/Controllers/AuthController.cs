@@ -92,7 +92,8 @@ namespace OpsCommand.Api.Controllers
                 Token = token,
                 Email = user.Email!,
                 UserName = user.UserName,
-                Roles = roles
+                Roles = roles,
+                Id = user.Id,
             };
 
             return Ok(response);
@@ -118,7 +119,8 @@ namespace OpsCommand.Api.Controllers
                 Token = string.Empty, // ili null, front ne mora koristiti ovdje
                 Email = user.Email!,
                 UserName = user.UserName,
-                Roles = roles
+                Roles = roles,
+                Id = user.Id,
             };
 
             return Ok(response);

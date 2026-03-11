@@ -1,61 +1,86 @@
 import { useEffect, useState } from "react";
-import { apiFetch } from "../api/api";
-import { logout } from "../api/auth";
-import { Link, useNavigate } from "react-router-dom";
-
-type Mission = {
-  id: number;
-  title?: string;
-  name?: string;
-  status?: string;
-  squadId?: number | null;
-  commanderId?: string | null;
-};
+import { Navigate } from "react-router-dom";
+import { hasRole } from "../api/auth";
+import { getMyMissions, type MissionDto } from "../api/missions";
 
 export default function MyMissionsPage() {
-  const nav = useNavigate();
-  const [missions, setMissions] = useState<Mission[]>([]);
+  const canAccess = hasRole("Member", "Commander");
+
+  const [missions, setMissions] = useState<MissionDto[]>([]);
+  const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
+  async function load() {
+    setErr(null);
+    setLoading(true);
+
+    try {
+      const data = await getMyMissions();
+      setMissions(data);
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Failed to load missions");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    (async () => {
-      try {
-        const data = await apiFetch<Mission[]>("/api/mission/my"); // ako ti je plural, promijeni
-        setMissions(data);
-      } catch (e: unknown) {
-          setErr(e instanceof Error ? e.message : "Failed to load missions");
-      }
-    })();
+    load();
   }, []);
 
+  if (!canAccess) {
+    return <Navigate to="/" replace />;
+  }
+
   return (
-    <div style={{ maxWidth: 900, margin: "40px auto", padding: 16 }}>
-      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <h2 style={{ marginRight: "auto" }}>My Missions</h2>
-        <Link to="/equipment">Equipment</Link>
-        <button
-          onClick={() => {
-            logout();
-            nav("/login");
-          }}
-        >
-          Logout
+
+        <button onClick={load} style={{ padding: "8px 12px", borderRadius: 8 }}>
+          Refresh
         </button>
       </div>
 
-      {err && <div style={{ color: "crimson" }}>{err}</div>}
+      {err && <div style={{ color: "crimson", marginTop: 10 }}>{err}</div>}
+      {loading && <div style={{ marginTop: 10 }}>Loading...</div>}
 
-      <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: 10 }}>
-        {missions.map((m) => (
-          <li key={m.id} style={{ border: "1px solid #333", borderRadius: 8, padding: 12 }}>
-            <div><b>{m.title ?? m.name ?? `Mission #${m.id}`}</b></div>
-            <div>Status: {m.status ?? "N/A"}</div>
-            <div>SquadId: {String(m.squadId ?? "")}</div>
-          </li>
-        ))}
-      </ul>
+      {!loading && (
+        <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
+          {missions.map((m) => (
+            <div
+              key={m.id}
+              style={{
+                border: "1px solid #333",
+                borderRadius: 12,
+                padding: 14,
+              }}
+            >
+              <div style={{ fontSize: 18, fontWeight: 700 }}>
+                {m.name} <span style={{ opacity: 0.7 }}>· {m.status}</span>
+              </div>
 
-      {!missions.length && !err && <div>No missions yet.</div>}
+              <div style={{ opacity: 0.85, marginTop: 6 }}>
+                CommanderId: {m.commanderId ?? "—"}
+              </div>
+
+              <div style={{ opacity: 0.85 }}>
+                SquadId: {m.squadId ?? "—"}
+              </div>
+
+              {m.notes && (
+                <div style={{ opacity: 0.85, marginTop: 6 }}>
+                  Notes: {m.notes}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && !err && missions.length === 0 && (
+        <div style={{ marginTop: 14 }}>No missions assigned.</div>
+      )}
     </div>
   );
 }

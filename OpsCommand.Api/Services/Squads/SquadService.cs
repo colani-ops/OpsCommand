@@ -83,6 +83,47 @@ namespace OpsCommand.Api.Services.Squads
             return result;
         }
 
+        public async Task<MySquadResponseDto?> GetMySquadAsync(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return null;
+
+            if (user.AssignedSquadId == null)
+                return null;
+
+            var squad = await _squadRepository.GetByIdAsync(user.AssignedSquadId.Value);
+            if (squad == null)
+                return null;
+
+            string? commanderName = null;
+
+            if (!string.IsNullOrWhiteSpace(squad.CommanderId))
+            {
+                var commander = await _userManager.FindByIdAsync(squad.CommanderId);
+                if (commander != null)
+                {
+                    commanderName = $"{commander.UserName} ({commander.Email})";
+                }
+            }
+
+            var successRate = squad.MissionsServed > 0
+                ? Math.Round((double)squad.MissionsWon / squad.MissionsServed * 100, 2)
+                : 0;
+
+            return new MySquadResponseDto
+            {
+                Id = squad.Id,
+                Name = squad.Name,
+                Type = squad.Type,
+                CommanderId = squad.CommanderId,
+                CommanderName = commanderName,
+                MissionsServed = squad.MissionsServed,
+                MissionsWon = squad.MissionsWon,
+                SuccessRate = successRate
+            };
+        }
+
         public async Task<SquadResponseDto> CreateAsync(SquadCreateDto dto)
         {
             if (!string.IsNullOrWhiteSpace(dto.CommanderId))

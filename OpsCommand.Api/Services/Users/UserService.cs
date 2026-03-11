@@ -74,7 +74,14 @@ namespace OpsCommand.Api.Services.Users
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null) return null;
 
-            //Role change (provjeri rezultate)
+            var allowedRoles = new[] { "Recruit", "Member", "Commander", "Admin", "SuperAdmin" };
+            if (!allowedRoles.Contains(dto.Role))
+                throw new ArgumentException("Invalid role.");
+
+            if ((dto.Role == "Member" || dto.Role == "Commander") && dto.AssignedSquadId == null)
+                throw new ArgumentException($"{dto.Role} must be assigned to a squad.");
+
+            // Role change
             var currentRoles = await _userManager.GetRolesAsync(user);
 
             var removeRes = await _userManager.RemoveFromRolesAsync(user, currentRoles);
@@ -85,10 +92,10 @@ namespace OpsCommand.Api.Services.Users
             if (!addRes.Succeeded)
                 throw new ArgumentException(string.Join("; ", addRes.Errors.Select(e => e.Description)));
 
-            //Squad change (promjena na user entity)
+            // Squad change
             user.AssignedSquadId = dto.AssignedSquadId;
 
-            //spremi user u bazu
+            // Save user
             var updateRes = await _userManager.UpdateAsync(user);
             if (!updateRes.Succeeded)
                 throw new ArgumentException(string.Join("; ", updateRes.Errors.Select(e => e.Description)));

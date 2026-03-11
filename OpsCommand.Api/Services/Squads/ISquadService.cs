@@ -12,7 +12,7 @@ namespace OpsCommand.Api.Services.Squads
     {
         Task<IEnumerable<SquadResponseDto>> GetAllAsync();
         Task<SquadResponseDto?> GetByIdAsync(int id);
-
+        Task<MySquadResponseDto?> GetMySquadAsync(string userId);
         Task<SquadResponseDto> CreateAsync(SquadCreateDto dto);
 
         Task<SquadResponseDto?> UpdateAsync(int id, SquadUpdateDto dto);

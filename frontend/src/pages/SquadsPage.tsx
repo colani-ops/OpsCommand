@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { hasRole } from "../api/auth";
-import { getUsers, type UserDto } from "../api/users";
+import { Navigate } from "react-router-dom";
+import { hasRole, getUser } from "../api/auth";
+import { /*getMe,*/ getUsers, type UserDto } from "../api/users";
 import {
   createSquad,
   deleteSquad,
@@ -28,6 +29,9 @@ type EditForm = {
 
 export default function SquadsPage() {
   const canManage = hasRole("Admin", "SuperAdmin");
+  const canAccess = hasRole(/*"Member", "Commander",*/"Admin", "SuperAdmin");
+
+  const currentUser = getUser();
 
   const [items, setItems] = useState<SquadDto[]>([]);
   const [commanders, setCommanders] = useState<UserDto[]>([]);
@@ -47,25 +51,22 @@ export default function SquadsPage() {
   const [editForm, setEditForm] = useState<EditForm | null>(null);
 
   async function load() {
-    setErr(null);
-    setLoading(true);
-    try {
+  setErr(null);
+  setLoading(true);
+
+  try {
     const squadsData = await getSquads();
     setItems(squadsData);
 
-      if (canManage) {
-        const usersData = await getUsers();
-        const onlyCommanders = usersData.filter((u) => u.roles?.includes("Commander"));
-        setCommanders(onlyCommanders);
-      } else {
-        setCommanders([]);
-      }
-    } catch (e: unknown) {
-      setErr(getErrorMessage(e) ?? "Failed to load squads");
-    } finally {
-      setLoading(false);
-    }
+    const usersData = await getUsers();
+    const onlyCommanders = usersData.filter((u) => u.roles?.includes("Commander"));
+    setCommanders(onlyCommanders);
+  } catch (e: unknown) {
+    setErr(getErrorMessage(e) ?? "Failed to load squads");
+  } finally {
+    setLoading(false);
   }
+}
 
   useEffect(() => {
     load();
@@ -110,7 +111,15 @@ export default function SquadsPage() {
 
   function commanderDisplay(commanderId: string | null) {
     if (!commanderId) return "—";
-    return commanderNameById.get(commanderId) ?? commanderId; // fallback na GUID ako nije učitan
+
+    const fromMap = commanderNameById.get(commanderId);
+    if (fromMap) return fromMap;
+
+    if (currentUser && commanderId === currentUser.id) {
+      return `${currentUser.userName} (${currentUser.email})`;
+    }
+
+    return commanderId;
   }
 
 
@@ -190,6 +199,10 @@ export default function SquadsPage() {
     } catch (e: unknown) {
       setErr(getErrorMessage(e) ?? "Failed to load squads");
     }
+  }
+
+  if (!canAccess) {
+    return <Navigate to="/" replace />;
   }
 
   return (
@@ -304,9 +317,19 @@ export default function SquadsPage() {
                         Commander: {commanderDisplay(s.commanderId)}
                       </div>
 
+                      <div style={{ opacity: 0.85, marginTop: 6 }}>
+                        Missions Served: {s.missionsServed}
+                      </div>
+
                       <div style={{ opacity: 0.85 }}>
-                         - Served: {s.missionsServed} - Won:{" "}
-                        {s.missionsWon}
+                        Successful Missions: {s.missionsWon}
+                      </div>
+
+                      <div style={{ opacity: 0.95, fontWeight: 600 }}>
+                        Success Rate:{" "}
+                        {s.missionsServed > 0
+                        ? `${Math.round((s.missionsWon / s.missionsServed) * 100)}%`
+                        : "N/A"}
                       </div>
 
                       {s.deletedAt && <div style={{ color: "orange" }}>Soft-deleted</div>}
@@ -354,7 +377,6 @@ export default function SquadsPage() {
                           {commanders.map((c) => {
                             const assignedTo = assignedSquadIdByCommanderId.get(c.id);
                             const assignedToOtherSquad = assignedTo != null && assignedTo !== s.id;
-
                              return (
                                 <option key={c.id} value={c.id} disabled={assignedToOtherSquad}>
                                   {commanderLabel(c)}

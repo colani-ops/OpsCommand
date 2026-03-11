@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { hasRole } from "../api/auth";
+import { Navigate } from "react-router-dom";
 import { getUsers, type UserDto } from "../api/users";
 import {
   assignCommander,
@@ -32,6 +33,8 @@ type EditForm = {
 
 export default function MissionsPage() {
   const canManage = hasRole("Admin", "SuperAdmin");
+
+  const canAccess = hasRole("Admin", "SuperAdmin");
 
   const [items, setItems] = useState<MissionDto[]>([]);
   const [commanders, setCommanders] = useState<UserDto[]>([]);
@@ -73,6 +76,10 @@ export default function MissionsPage() {
     for (const c of commanders) map.set(c.id, `${c.userName} (${c.email})`);
     return map;
   }, [commanders]);
+
+    if (!canAccess) {
+    return <Navigate to="/" replace />;
+    }
 
   function commanderDisplay(commanderId: string | null) {
     if (!commanderId) return "—";

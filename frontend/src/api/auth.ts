@@ -4,12 +4,14 @@ const LOGIN_PATH = "/api/auth/login";
 const REGISTER_PATH = "/api/auth/register";
 
 export type AuthUser = {
+  id: string;
   email: string;
   userName: string;
   roles: string[];
 };
 
 type LoginResponse = {
+  id: string;
   token: string;
   email: string;
   userName: string;
@@ -30,9 +32,14 @@ export async function login(email: string, password: string): Promise<void> {
 
   localStorage.setItem("token", res.token);
   localStorage.setItem(
-    "user",
-    JSON.stringify({ email: res.email, userName: res.userName, roles: res.roles } satisfies AuthUser)
-  );
+  "user",
+  JSON.stringify({
+    id: res.id,
+    email: res.email,
+    userName: res.userName,
+    roles: res.roles
+  } satisfies AuthUser)
+);
 }
 
 export async function register(payload: RegisterRequest): Promise<string> {

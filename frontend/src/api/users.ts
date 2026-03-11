@@ -17,6 +17,10 @@ export function getUsers() {
   return apiFetch<UserDto[]>("/api/user");
 }
 
+export function getMe() {
+  return apiFetch<UserDto>("/api/user/me");
+}
+
 export function getPendingUsers() {
   return apiFetch<UserDto[]>("/api/user/pending");
 }

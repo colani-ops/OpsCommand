@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading.Tasks;
+using System.Security.Claims;
 
 
 using Microsoft.AspNetCore.Authorization;
@@ -48,7 +49,19 @@ namespace OpsCommand.Api.Controllers
             return Ok(squad);
         }
 
+        // GET api/squad/my
+        [HttpGet("my")]
+        [Authorize(Roles = "Member,Commander")]
+        public async Task<IActionResult> GetMySquad()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+                return Unauthorized();
 
+            var squad = await _squadService.GetMySquadAsync(userId);
+
+            return Ok(squad);
+        }
 
         //POST api/squad
         [HttpPost]
