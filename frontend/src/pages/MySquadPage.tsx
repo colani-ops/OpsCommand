@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { getUser, hasRole } from "../api/auth";
 import { getEquipment, type EquipmentDto } from "../api/equipment";
 import {
@@ -11,6 +11,7 @@ import {
   type MySquadDto,
   type SquadEquipmentDto,
 } from "../api/squads";
+
 
 export default function MySquadPage() {
   const canAccess = hasRole("Member", "Commander");
@@ -210,9 +211,15 @@ export default function MySquadPage() {
                   >
                     <div>
                       <div style={{ fontWeight: 700 }}>
+                      <Link
+                        to={`/equipment/${item.equipmentId}`}
+                        style={{ color: "white", textDecoration: "none" }}
+                        title="Open equipment profile"
+                      >
                         {item.equipmentName}
+                      </Link>
                         {item.category ? ` · ${item.category}` : ""}
-                      </div>
+                    </div>
                       <div style={{ opacity: 0.85 }}>Quantity: {item.quantity}</div>
                     </div>
 

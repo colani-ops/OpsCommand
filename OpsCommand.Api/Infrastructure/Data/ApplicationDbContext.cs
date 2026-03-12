@@ -49,6 +49,12 @@ namespace OpsCommand.Api.Infrastructure.Data
                 entity.Property(e => e.Category)
                     .HasMaxLength(50);
 
+                entity.Property(e => e.Description)
+                    .HasMaxLength(1000);
+
+                entity.Property(e => e.Effectiveness)
+                    .IsRequired();
+
                 entity.HasIndex(e => e.Name).IsUnique();
             });
 

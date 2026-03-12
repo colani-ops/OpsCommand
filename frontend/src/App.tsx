@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import EquipmentPage from "./pages/EquipmentPage";
+import EquipmentProfilePage from "./pages/EquipmentProfilePage";
 import HomePage from "./pages/HomePage";
 import SquadsPage from "./pages/SquadsPage";
 import MySquadPage from "./pages/MySquadPage";
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/squads" element={<Authed><SquadsPage /></Authed>} />
         <Route path="/missions" element={<Authed><MissionsPage /></Authed>} />
         <Route path="/equipment" element={<Authed><EquipmentPage /></Authed>} />
+        <Route path="/equipment/:id" element={<Authed><EquipmentProfilePage /></Authed>} />
         <Route path="/profile" element={<Authed><ProfilePage /></Authed>} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/users" element={<Authed><UserManagementPage /></Authed>} />

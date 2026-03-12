@@ -1,3 +1,4 @@
+import { Link, Navigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { hasRole } from "../api/auth";
 import {
@@ -20,15 +21,20 @@ type CreateForm = {
   name: string;
   category: EquipmentCategory;
   quantity: number;
+  description: string;
+  effectiveness: number;
 };
 
 type EditForm = {
   category: EquipmentCategory;
   quantity: number;
+  description: string;
+  effectiveness: number;
 };
 
 export default function EquipmentPage() {
   const canManage = hasRole("Admin", "SuperAdmin");
+  const canAccess = hasRole("Commander", "Admin", "SuperAdmin");
 
   const [items, setItems] = useState<EquipmentDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,6 +45,8 @@ export default function EquipmentPage() {
     name: "",
     category: "Primary",
     quantity: 0,
+    description: "",
+    effectiveness: 50,
   });
 
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -67,13 +75,15 @@ export default function EquipmentPage() {
   );
 
   function startEdit(id: number) {
-    const e = items.find((x) => x.id === id);
-    if (!e) return;
+    const item = items.find((x) => x.id === id);
+    if (!item) return;
 
     setEditingId(id);
     setEditForm({
-      category: (e.category as EquipmentCategory) ?? "Primary",
-      quantity: e.quantity ?? 0,
+      category: (item.category as EquipmentCategory) ?? "Primary",
+      quantity: item.quantity ?? 0,
+      description: item.description ?? "",
+      effectiveness: item.effectiveness ?? 50,
     });
   }
 
@@ -90,12 +100,19 @@ export default function EquipmentPage() {
       name: createForm.name.trim(),
       category: createForm.category,
       quantity: Number(createForm.quantity) || 0,
+      description: createForm.description.trim() ? createForm.description.trim() : null,
+      effectiveness: Number(createForm.effectiveness) || 50,
     };
 
     try {
-      // backend radi upsert + restore + increment
       await createEquipment(payload);
-      setCreateForm({ name: "", category: "Primary", quantity: 0 });
+      setCreateForm({
+        name: "",
+        category: "Primary",
+        quantity: 0,
+        description: "",
+        effectiveness: 50,
+      });
       setShowCreate(false);
       await load();
     } catch (e: unknown) {
@@ -111,6 +128,8 @@ export default function EquipmentPage() {
       await updateEquipment(editingId, {
         category: editForm.category,
         quantity: Number(editForm.quantity) || 0,
+        description: editForm.description.trim() ? editForm.description.trim() : null,
+        effectiveness: Number(editForm.effectiveness) || 50,
       });
       cancelEdit();
       await load();
@@ -131,6 +150,11 @@ export default function EquipmentPage() {
       setErr(getErrorMessage(e));
     }
   }
+
+  if (!canAccess) {
+    return <Navigate to="/" replace />;
+  }
+
 
   return (
     <div>
@@ -199,6 +223,26 @@ export default function EquipmentPage() {
             style={{ padding: 10, borderRadius: 8 }}
           />
 
+          <textarea
+            value={createForm.description}
+            onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
+            placeholder="Description"
+            rows={3}
+            style={{ padding: 10, borderRadius: 8 }}
+          />
+
+          <input
+            type="number"
+            value={createForm.effectiveness}
+            onChange={(e) =>
+              setCreateForm((f) => ({ ...f, effectiveness: Number(e.target.value) }))
+            }
+            placeholder="Effectiveness (1-100)"
+            min={1}
+            max={100}
+            style={{ padding: 10, borderRadius: 8 }}
+          />
+
           <div style={{ display: "flex", gap: 10 }}>
             <button style={{ padding: "10px 14px", borderRadius: 8 }}>Save</button>
             <button
@@ -214,12 +258,12 @@ export default function EquipmentPage() {
 
       {!loading && (
         <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
-          {items.map((e) => {
-            const isEditing = editingId === e.id;
+          {items.map((item) => {
+            const isEditing = editingId === item.id;
 
             return (
               <div
-                key={e.id}
+                key={item.id}
                 style={{
                   border: "1px solid #333",
                   borderRadius: 12,
@@ -227,22 +271,43 @@ export default function EquipmentPage() {
                   display: "flex",
                   justifyContent: "space-between",
                   gap: 12,
-                  opacity: e.deletedAt ? 0.6 : 1,
+                  opacity: item.deletedAt ? 0.6 : 1,
                 }}
               >
                 <div style={{ flex: 1 }}>
                   {!isEditing ? (
                     <>
                       <div style={{ fontSize: 18, fontWeight: 700 }}>
-                        {e.name} <span style={{ opacity: 0.7 }}>· {e.category ?? "—"}</span>
+                        <Link
+                          to={`/equipment/${item.id}`}
+                          style={{ color: "white", textDecoration: "none" }}
+                          title="Open equipment profile"
+                        >
+                          {item.name}
+                        </Link>{" "}
+                        <span style={{ opacity: 0.7 }}>· {item.category ?? "—"}</span>
                       </div>
-                      <div style={{ opacity: 0.85, marginTop: 6 }}>Quantity: {e.quantity}</div>
-                      {e.deletedAt && <div style={{ color: "orange" }}>Soft-deleted</div>}
+
+                      <div style={{ opacity: 0.85, marginTop: 6 }}>
+                        Quantity: {item.quantity}
+                      </div>
+
+                      <div style={{ opacity: 0.85, marginTop: 6 }}>
+                        Effectiveness: {item.effectiveness}/100
+                      </div>
+
+                      {item.description && (
+                        <div style={{ opacity: 0.8, marginTop: 6, whiteSpace: "pre-wrap" }}>
+                          {item.description}
+                        </div>
+                      )}
+
+                      {item.deletedAt && <div style={{ color: "orange" }}>Soft-deleted</div>}
                     </>
                   ) : (
                     <>
                       <div style={{ fontWeight: 700, marginBottom: 8 }}>
-                        Editing: {editingItem?.name ?? `Equipment #${e.id}`}
+                        Editing: {editingItem?.name ?? `Equipment #${item.id}`}
                       </div>
 
                       <div style={{ display: "grid", gap: 10 }}>
@@ -271,6 +336,29 @@ export default function EquipmentPage() {
                           min={0}
                           style={{ padding: 10, borderRadius: 8 }}
                         />
+
+                        <textarea
+                          value={editForm?.description ?? ""}
+                          onChange={(ev) =>
+                            setEditForm((f) => (f ? { ...f, description: ev.target.value } : f))
+                          }
+                          rows={3}
+                          placeholder="Description"
+                          style={{ padding: 10, borderRadius: 8 }}
+                        />
+
+                        <input
+                          type="number"
+                          value={editForm?.effectiveness ?? 50}
+                          onChange={(ev) =>
+                            setEditForm((f) =>
+                              f ? { ...f, effectiveness: Number(ev.target.value) } : f
+                            )
+                          }
+                          min={1}
+                          max={100}
+                          style={{ padding: 10, borderRadius: 8 }}
+                        />
                       </div>
                     </>
                   )}
@@ -281,16 +369,16 @@ export default function EquipmentPage() {
                     !isEditing ? (
                       <>
                         <button
-                          onClick={() => startEdit(e.id)}
+                          onClick={() => startEdit(item.id)}
                           style={{ padding: "8px 12px", borderRadius: 8 }}
-                          disabled={!!e.deletedAt}
+                          disabled={!!item.deletedAt}
                         >
                           Edit
                         </button>
                         <button
-                          onClick={() => onDelete(e.id)}
+                          onClick={() => onDelete(item.id)}
                           style={{ padding: "8px 12px", borderRadius: 8 }}
-                          disabled={!!e.deletedAt}
+                          disabled={!!item.deletedAt}
                         >
                           Delete
                         </button>

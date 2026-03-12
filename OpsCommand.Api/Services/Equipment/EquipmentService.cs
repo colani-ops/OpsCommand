@@ -32,7 +32,9 @@ public class EquipmentService : IEquipmentService
         Name = e.Name,
         Category = e.Category,
         Quantity = e.Quantity,
-        DeletedAt = e.DeletedAt
+        DeletedAt = e.DeletedAt,
+        Description = e.Description,
+        Effectiveness = e.Effectiveness,
     };
 
     public async Task<List<EquipmentResponse>> GetAllAsync(bool includeDeleted = false)
@@ -60,6 +62,9 @@ public class EquipmentService : IEquipmentService
         if (request.Quantity < 0)
             throw new ArgumentException("Quantity cannot be negative.");
 
+        var effectiveness = NormalizeEffectiveness(request.Effectiveness);
+        var description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+
         var existing = await _repository.GetByNameAsync(name, includeDeleted: true);
 
         if (existing != null)
@@ -70,7 +75,10 @@ public class EquipmentService : IEquipmentService
             if (category != null)
                 existing.Category = category;
 
-            existing.Quantity += request.Quantity; // request.Quantity je int => nema CS0266
+            existing.Quantity += request.Quantity; // request.Quantity je int
+
+            existing.Description = description;
+            existing.Effectiveness = effectiveness;
 
             await _repository.UpdateAsync(existing);
             return ToDto(existing);
@@ -81,6 +89,8 @@ public class EquipmentService : IEquipmentService
             Name = name,
             Category = category,
             Quantity = request.Quantity,
+            Description = description,
+            Effectiveness = effectiveness,
             DeletedAt = null
         };
 
@@ -108,6 +118,12 @@ public class EquipmentService : IEquipmentService
             equipment.Quantity = request.Quantity.Value;
         }
 
+        if (request.Description != null)
+            equipment.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+
+        if (request.Effectiveness.HasValue)
+            equipment.Effectiveness = NormalizeEffectiveness(request.Effectiveness.Value);
+
         await _repository.UpdateAsync(equipment);
         return ToDto(equipment);
     }
@@ -122,5 +138,12 @@ public class EquipmentService : IEquipmentService
             equipment.DeletedAt = DateTime.UtcNow;
             await _repository.UpdateAsync(equipment);
         }
+    }
+
+    private static int NormalizeEffectiveness(int effectiveness)
+    {
+        if (effectiveness < 1 || effectiveness > 100)
+            throw new ArgumentException("Effectiveness must be between 1 and 100.");
+        return effectiveness;
     }
 }

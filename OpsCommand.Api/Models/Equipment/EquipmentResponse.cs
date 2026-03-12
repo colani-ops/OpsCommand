@@ -13,6 +13,8 @@ namespace OpsCommand.Api.Models.Equipment
         public string? Category { get; set; }
         public int Quantity { get; set; }
         public DateTime? DeletedAt { get; set; }
+        public string? Description { get; set; }
+        public int Effectiveness { get; set; }
     }
 }
 

@@ -17,6 +17,9 @@ namespace OpsCommand.Api.Domain.Entities
 
         public int Quantity { get; set; }
 
+        public string? Description { get; set; }
+        public int Effectiveness { get; set; }
+
         public DateTime? DeletedAt { get; set; }
 
         //Navigation

@@ -10,6 +10,8 @@ namespace OpsCommand.Api.Models.Equipment
     {
         public string? Category { get; set; }
         public int? Quantity { get; set; } // set semantics
+        public string? Description { get; set; }
+        public int? Effectiveness { get; set; }
     }
 }
 

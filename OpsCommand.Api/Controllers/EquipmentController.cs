@@ -13,6 +13,7 @@ namespace OpsCommand.Api.Controllers
 {
     [ApiController]
     [Route("api/equipment")]
+    [Authorize]
     public class EquipmentController : ControllerBase
     {
         private readonly IEquipmentService _service;
@@ -23,36 +24,37 @@ namespace OpsCommand.Api.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "Commander,Admin,SuperAdmin")]
         public async Task<IActionResult> GetAll([FromQuery] bool includeDeleted = false)
         {
-            // opcionalno: includeDeleted dopusti samo Adminu/SuperAdminu
             return Ok(await _service.GetAllAsync(includeDeleted));
         }
 
         [HttpGet("{id}")]
+        [Authorize(Roles = "Member,Commander,Admin,SuperAdmin")]
         public async Task<IActionResult> GetById(int id, [FromQuery] bool includeDeleted = false)
         {
             return Ok(await _service.GetByIdAsync(id, includeDeleted));
         }
 
-        [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPost]
+        [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult> Create([FromBody] CreateEquipmentRequest request)
         {
             var createdOrUpdated = await _service.CreateAsync(request);
             return Ok(createdOrUpdated);
         }
 
-        [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateEquipmentRequest request)
         {
             var updated = await _service.UpdateAsync(id, request);
             return Ok(updated);
         }
 
-        [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult> Delete(int id)
         {
             await _service.DeleteAsync(id);

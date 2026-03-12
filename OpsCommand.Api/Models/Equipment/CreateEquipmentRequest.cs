@@ -11,6 +11,8 @@ namespace OpsCommand.Api.Models.Equipment
         public string Name { get; set; } = null!;
         public string? Category { get; set; }
         public int Quantity { get; set; } = 0; // add-stock semantics
+        public string? Description { get; set; }
+        public int Effectiveness { get; set; } = 50;
     }
 }
 
