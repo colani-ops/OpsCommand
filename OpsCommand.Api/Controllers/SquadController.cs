@@ -96,7 +96,6 @@ namespace OpsCommand.Api.Controllers
             }
         }
 
-
         // DELETE api/squad{id}
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin,SuperAdmin")]
