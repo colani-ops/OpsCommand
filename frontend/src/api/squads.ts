@@ -25,12 +25,36 @@ export type MySquadDto = {
   successRate: number;
 };
 
+export type SquadProfileDto = {
+  id: number;
+  name: string;
+  type: SquadType | string | null;
+  commanderId: string | null;
+  commanderName: string | null;
+  isActive: boolean;
+  createdAt: string;
+  deletedAt: string | null;
+  missionsServed: number;
+  missionsWon: number;
+  successRate: number;
+  equipment: SquadEquipmentDto[];
+  members: SquadMemberDto[];
+};
+
 export type SquadEquipmentDto = {
   squadId: number;
   equipmentId: number;
   equipmentName: string;
   category: string | null;
   quantity: number;
+};
+
+export type SquadMemberDto = {
+  id: string;
+  email: string;
+  userName: string | null;
+  role: string;
+  isActive: boolean;
 };
 
 export type AddSquadEquipmentRequest = {
@@ -60,6 +84,10 @@ export function getSquads() {
 
 export function getSquad(id: number) {
   return apiFetch<SquadDto>(`/api/squad/${id}`);
+}
+
+export function getSquadProfile(id: number) {
+  return apiFetch<SquadProfileDto>(`/api/squad/${id}/profile`);
 }
 
 export function getMySquad() {

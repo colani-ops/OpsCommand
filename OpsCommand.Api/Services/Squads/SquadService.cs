@@ -1,8 +1,11 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using OpsCommand.Api.Domain.Entities;
 using OpsCommand.Api.Models.Squads;
 using OpsCommand.Api.Repositories.Missions;
 using OpsCommand.Api.Repositories.Squads;
+using OpsCommand.Api.Repositories.SquadEquipments;
+using OpsCommand.Api.Models.Squads.Equipment;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,11 +21,12 @@ namespace OpsCommand.Api.Services.Squads
         private readonly ISquadRepository _squadRepository;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IMissionRepository _missionRepository;
-        public SquadService(ISquadRepository squadRepository, UserManager<ApplicationUser> userManager, IMissionRepository missionRepository)
+        public SquadService(ISquadRepository squadRepository, UserManager<ApplicationUser> userManager, IMissionRepository missionRepository,ISquadEquipmentRepository squadEquipmentRepository)
         { 
             _squadRepository = squadRepository;
             _userManager = userManager;
             _missionRepository = missionRepository;
+            _squadEquipmentRepository = squadEquipmentRepository;
         }
 
         private static readonly string[] AllowedTypes =
@@ -31,6 +35,8 @@ namespace OpsCommand.Api.Services.Squads
                 "Tactical",
                 "Recon"
             ];
+
+        private readonly ISquadEquipmentRepository _squadEquipmentRepository;
 
 
 
@@ -81,6 +87,77 @@ namespace OpsCommand.Api.Services.Squads
             };
 
             return result;
+        }
+
+        public async Task<SquadProfileResponseDto?> GetProfileByIdAsync(int id)
+        {
+            var squad = await _squadRepository.GetByIdAsync(id);
+            if (squad == null)
+                return null;
+
+            string? commanderName = null;
+
+            if (!string.IsNullOrWhiteSpace(squad.CommanderId))
+            {
+                var commander = await _userManager.FindByIdAsync(squad.CommanderId);
+                if (commander != null)
+                {
+                    commanderName = $"{commander.UserName} ({commander.Email})";
+                }
+            }
+
+            var equipment = await _squadEquipmentRepository.GetBySquadIdAsync(id);
+
+            var equipmentDtos = equipment.Select(se => new SquadEquipmentResponseDto
+            {
+                SquadId = se.SquadId,
+                EquipmentId = se.EquipmentId,
+                EquipmentName = se.Equipment.Name,
+                Category = se.Equipment.Category,
+                Quantity = se.Quantity
+            }).ToList();
+
+            var squadUsers = await _userManager.Users
+            .Where(u => u.AssignedSquadId == id)
+            .ToListAsync();
+
+            var memberDtos = new List<SquadMemberDto>();
+
+            foreach (var user in squadUsers)
+            {
+                var roles = await _userManager.GetRolesAsync(user);
+                var primaryRole = roles.FirstOrDefault() ?? "Unknown";
+
+                memberDtos.Add(new SquadMemberDto
+                {
+                    Id = user.Id,
+                    Email = user.Email ?? string.Empty,
+                    UserName = user.UserName,
+                    Role = primaryRole,
+                    IsActive = !await _userManager.IsLockedOutAsync(user)
+                });
+            }
+
+            var successRate = squad.MissionsServed > 0
+                ? Math.Round((double)squad.MissionsWon / squad.MissionsServed * 100, 2)
+                : 0;
+
+            return new SquadProfileResponseDto
+            {
+                Id = squad.Id,
+                Name = squad.Name,
+                Type = squad.Type,
+                CommanderId = squad.CommanderId,
+                CommanderName = commanderName,
+                IsActive = squad.DeletedAt == null,
+                CreatedAt = squad.CreatedAt,
+                DeletedAt = squad.DeletedAt,
+                MissionsServed = squad.MissionsServed,
+                MissionsWon = squad.MissionsWon,
+                SuccessRate = successRate,
+                Equipment = equipmentDtos,
+                Members = memberDtos
+            };
         }
 
         public async Task<MySquadResponseDto?> GetMySquadAsync(string userId)
@@ -296,7 +373,6 @@ namespace OpsCommand.Api.Services.Squads
                 MissionsWon = squad.MissionsWon
             };
         }
-
 
         public async Task<bool>DeleteAsync(int id)
         {

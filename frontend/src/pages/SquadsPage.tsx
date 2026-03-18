@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { hasRole, getUser } from "../api/auth";
 import { /*getMe,*/ getUsers, type UserDto } from "../api/users";
 import {
@@ -310,7 +310,14 @@ export default function SquadsPage() {
                   {!isEditing ? (
                     <>
                       <div style={{ fontSize: 18, fontWeight: 700 }}>
-                        {s.name} <span style={{ opacity: 0.7 }}>· {s.type}</span>
+                        <Link
+                          to={`/squads/${s.id}`}
+                          style={{ color: "white", textDecoration: "none" }}
+                          title="Open squad profile"
+                        >
+                          {s.name}
+                        </Link>{" "}
+                        <span style={{ opacity: 0.7 }}>· {s.type}</span>
                       </div>
 
                       <div style={{ opacity: 0.85, marginTop: 6 }}>

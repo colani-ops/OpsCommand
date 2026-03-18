@@ -63,6 +63,18 @@ namespace OpsCommand.Api.Controllers
             return Ok(squad);
         }
 
+        // GET api/squad/{id}/profile
+        [HttpGet("{id}/profile")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
+        public async Task<IActionResult> GetProfile(int id)
+        {
+            var squad = await _squadService.GetProfileByIdAsync(id);
+            if (squad == null)
+                return NotFound();
+
+            return Ok(squad);
+        }
+
         //POST api/squad
         [HttpPost]
         [Authorize(Roles = "Admin,SuperAdmin")]

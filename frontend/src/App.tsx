@@ -5,6 +5,7 @@ import EquipmentProfilePage from "./pages/EquipmentProfilePage";
 import HomePage from "./pages/HomePage";
 import SquadsPage from "./pages/SquadsPage";
 import MySquadPage from "./pages/MySquadPage";
+import SquadProfilePage from "./pages/SquadProfilePage";
 import MissionsPage from "./pages/MissionsPage";
 import MyMissionsPage from "./pages/MyMissionsPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -29,13 +30,14 @@ export default function App() {
 
         <Route path="/" element={<Authed><HomePage /></Authed>} />
         <Route path="/squads" element={<Authed><SquadsPage /></Authed>} />
+        <Route path="/my-squad" element={<Authed><MySquadPage /></Authed>} />
+        <Route path="/squads/:id" element={<Authed><SquadProfilePage /></Authed>} />
         <Route path="/missions" element={<Authed><MissionsPage /></Authed>} />
         <Route path="/equipment" element={<Authed><EquipmentPage /></Authed>} />
         <Route path="/equipment/:id" element={<Authed><EquipmentProfilePage /></Authed>} />
         <Route path="/profile" element={<Authed><ProfilePage /></Authed>} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/users" element={<Authed><UserManagementPage /></Authed>} />
-        <Route path="/my-squad" element={<Authed><MySquadPage /></Authed>} />
         <Route path="/my-missions" element={<Authed><MyMissionsPage /></Authed>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />

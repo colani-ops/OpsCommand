@@ -18,5 +18,7 @@ namespace OpsCommand.Api.Services.Squads
         Task<SquadResponseDto?> UpdateAsync(int id, SquadUpdateDto dto);
 
         Task<bool> DeleteAsync(int id);
+
+        Task<SquadProfileResponseDto?> GetProfileByIdAsync(int id);
     }
 }
