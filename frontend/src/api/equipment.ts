@@ -10,6 +10,8 @@ export type EquipmentDto = {
   description: string | null;
   effectiveness: number;
   deletedAt: string | null;
+  allocatedQuantity: number;
+  availableQuantity: number;
 };
 
 export type CreateEquipmentRequest = {

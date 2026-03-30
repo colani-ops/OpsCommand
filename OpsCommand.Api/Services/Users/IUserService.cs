@@ -12,15 +12,19 @@ namespace OpsCommand.Api.Services.Users
     {
         Task<IEnumerable<UserResponseDto>> GetAllAsync();
         Task<UserResponseDto?> GetByIdAsync(string id);
+        Task<UserProfileResponseDto?> GetProfileByIdAsync(string targetUserId, string callerUserId, bool isAdmin);
         Task<UserResponseDto?> AdminUpdateUserAsync(string userId, AdminUpdateUserDto dto);
 
-        Task<bool> DisableUserAsync(string id);
-        Task<bool> RestoreAsync(string id);
+
 
         Task<UserResponseDto?> UpdateMeAsync(string userId, UpdateMeDto dto);
         Task<bool> ChangeMyPasswordAsync(string userId, ChangePasswordDto dto);
 
+
+
         Task<IEnumerable<UserResponseDto>> GetPendingAsync();
         Task<bool> ApproveUserAsync(string id);
+        Task<bool> DisableUserAsync(string id);
+        Task<bool> RestoreAsync(string id);
     }
 }

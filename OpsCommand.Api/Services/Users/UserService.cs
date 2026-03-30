@@ -48,7 +48,6 @@ namespace OpsCommand.Api.Services.Users
             return result;
         }
 
-
         public async Task<UserResponseDto?> GetByIdAsync(string id)
         {
             var user = await _userRepository.GetByIdAsync(id);
@@ -66,8 +65,6 @@ namespace OpsCommand.Api.Services.Users
                 Roles = roles
             };
         }
-
-
 
         public async Task<UserResponseDto?> AdminUpdateUserAsync(string userId, AdminUpdateUserDto dto)
         {
@@ -112,29 +109,44 @@ namespace OpsCommand.Api.Services.Users
             };
         }
 
-
-
-
-        public async Task<bool> DisableUserAsync(string id)
+        public async Task<UserProfileResponseDto?> GetProfileByIdAsync(string targetUserId, string callerUserId, bool isAdmin)
         {
-            var user = await _userManager.FindByIdAsync(id);
-            if (user == null)
-                return false;
+            var targetUser = await _userManager.FindByIdAsync(targetUserId);
+            if (targetUser == null)
+                return null;
 
-            await _userManager.SetLockoutEnabledAsync(user, true);
-            await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
-            return true;
-        }
+            var callerUser = await _userManager.FindByIdAsync(callerUserId);
+            if (callerUser == null)
+                return null;
 
-        public async Task<bool> RestoreAsync(string id)
-        {
-            var user = await _userManager.FindByIdAsync(id);
-            if (user == null)
-                return false;
+            if (!isAdmin)
+            {
+                var callerRoles = await _userManager.GetRolesAsync(callerUser);
+                var callerIsMemberOrCommander = callerRoles.Contains("Member") || callerRoles.Contains("Commander");
 
-            await _userManager.SetLockoutEndDateAsync(user, null);
-            await _userManager.SetLockoutEnabledAsync(user, false);
-            return true;
+                if (!callerIsMemberOrCommander)
+                    throw new UnauthorizedAccessException("You are not allowed to view this profile.");
+
+                if (callerUser.AssignedSquadId == null || targetUser.AssignedSquadId == null)
+                    throw new UnauthorizedAccessException("You are not allowed to view this profile.");
+
+                if (callerUser.AssignedSquadId != targetUser.AssignedSquadId)
+                    throw new UnauthorizedAccessException("You can only view profiles of users in your own squad.");
+            }
+
+            var roles = await _userManager.GetRolesAsync(targetUser);
+
+            string? primaryRole = roles.FirstOrDefault();
+
+            return new UserProfileResponseDto
+            {
+                Id = targetUser.Id,
+                Email = targetUser.Email ?? string.Empty,
+                UserName = targetUser.UserName,
+                AssignedSquadId = targetUser.AssignedSquadId,
+                PrimaryRole = primaryRole,
+                IsActive = !await _userManager.IsLockedOutAsync(targetUser)
+            };
         }
 
 
@@ -192,6 +204,8 @@ namespace OpsCommand.Api.Services.Users
             return result.Succeeded;
         }
 
+
+
         public async Task<IEnumerable<UserResponseDto>> GetPendingAsync()
         {
             var pendingUsers = await _userManager.Users
@@ -227,6 +241,28 @@ namespace OpsCommand.Api.Services.Users
             await _userManager.SetLockoutEndDateAsync(user, null);
             await _userManager.SetLockoutEnabledAsync(user, false);
 
+            return true;
+        }
+
+        public async Task<bool> DisableUserAsync(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+                return false;
+
+            await _userManager.SetLockoutEnabledAsync(user, true);
+            await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
+            return true;
+        }
+
+        public async Task<bool> RestoreAsync(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+                return false;
+
+            await _userManager.SetLockoutEndDateAsync(user, null);
+            await _userManager.SetLockoutEnabledAsync(user, false);
             return true;
         }
 

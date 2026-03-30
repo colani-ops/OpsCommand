@@ -1,7 +1,7 @@
 ﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpsCommand.Api.Models.Squads.Equipment;
+using OpsCommand.Api.Models.SquadEquipment;
 using OpsCommand.Api.Services.SquadEquipments;
 
 namespace OpsCommand.Api.Controllers

@@ -2,20 +2,33 @@
 using OpsCommand.Api.Models.Equipment;
 using OpsCommand.Api.Repositories.Equipments;
 using OpsCommand.Api.Services.Equipments;
+using Microsoft.EntityFrameworkCore;
+using OpsCommand.Api.Infrastructure.Data;
 
 public class EquipmentService : IEquipmentService
 {
     private readonly IEquipmentRepository _repository;
 
+    private readonly ApplicationDbContext _context;
+
+
+
     private static readonly HashSet<string> AllowedCategories =
         new(StringComparer.OrdinalIgnoreCase) { "Primary", "Secondary", "Melee", "Utility" };
 
-    public EquipmentService(IEquipmentRepository repository)
+
+
+    public EquipmentService(IEquipmentRepository repository, ApplicationDbContext context)
     {
         _repository = repository;
+        _context = context;
     }
 
+
+
     private static string NormalizeName(string name) => (name ?? "").Trim();
+
+
 
     private static string? NormalizeCategory(string? category)
     {
@@ -26,29 +39,81 @@ public class EquipmentService : IEquipmentService
         return c;
     }
 
-    private static EquipmentResponse ToDto(Equipment e) => new()
+
+
+    //Helper for Allocation
+    private async Task<(int allocated, int available)> GetAllocationAsync(int equipmentId, int totalQuantity)
     {
-        Id = e.Id,
-        Name = e.Name,
-        Category = e.Category,
-        Quantity = e.Quantity,
-        DeletedAt = e.DeletedAt,
-        Description = e.Description,
-        Effectiveness = e.Effectiveness,
-    };
+        var allocated = await _context.SquadEquipments
+            .Where(se => se.EquipmentId == equipmentId)
+            .SumAsync(se => (int?)se.Quantity) ?? 0;
+
+        var available = totalQuantity - allocated;
+        if (available < 0) available = 0;
+
+        return (allocated, available);
+    }
+
+
+
+    private async Task<EquipmentResponse> ToDtoWithAllocationAsync(Equipment e)
+    {
+        var (allocated, available) = await GetAllocationAsync(e.Id, e.Quantity);
+
+        return new EquipmentResponse
+        {
+            Id = e.Id,
+            Name = e.Name,
+            Category = e.Category,
+            Quantity = e.Quantity,
+            DeletedAt = e.DeletedAt,
+            Description = e.Description,
+            Effectiveness = e.Effectiveness,
+            AllocatedQuantity = allocated,
+            AvailableQuantity = available
+        };
+    }
+
+
 
     public async Task<List<EquipmentResponse>> GetAllAsync(bool includeDeleted = false)
     {
         var items = await _repository.GetAllAsync(includeDeleted);
-        return items.Select(ToDto).ToList();
+
+        var result = new List<EquipmentResponse>();
+
+        foreach (var e in items)
+        {
+            var (allocated, available) = await GetAllocationAsync(e.Id, e.Quantity);
+
+            result.Add(new EquipmentResponse
+            {
+                Id = e.Id,
+                Name = e.Name,
+                Category = e.Category,
+                Quantity = e.Quantity,
+                Description = e.Description,
+                Effectiveness = e.Effectiveness,
+                DeletedAt = e.DeletedAt,
+                AllocatedQuantity = allocated,
+                AvailableQuantity = available
+            });
+        }
+
+        return result;
     }
+
+
 
     public async Task<EquipmentResponse> GetByIdAsync(int id, bool includeDeleted = false)
     {
-        var e = await _repository.GetByIdAsync(id, includeDeleted)
+        var equipment = await _repository.GetByIdAsync(id, includeDeleted)
             ?? throw new KeyNotFoundException("Equipment not found");
-        return ToDto(e);
+
+        return await ToDtoWithAllocationAsync(equipment);
     }
+
+
 
     // CREATE = add-stock; if exists restore + increment
     public async Task<EquipmentResponse> CreateAsync(CreateEquipmentRequest request)
@@ -81,7 +146,8 @@ public class EquipmentService : IEquipmentService
             existing.Effectiveness = effectiveness;
 
             await _repository.UpdateAsync(existing);
-            return ToDto(existing);
+            
+            return await ToDtoWithAllocationAsync(existing);
         }
 
         var equipment = new Equipment
@@ -95,8 +161,11 @@ public class EquipmentService : IEquipmentService
         };
 
         await _repository.AddAsync(equipment);
-        return ToDto(equipment);
+
+        return await ToDtoWithAllocationAsync(equipment);
     }
+
+
 
     // UPDATE = set quantity (optional) + update category (optional)
     public async Task<EquipmentResponse> UpdateAsync(int id, UpdateEquipmentRequest request)
@@ -125,8 +194,10 @@ public class EquipmentService : IEquipmentService
             equipment.Effectiveness = NormalizeEffectiveness(request.Effectiveness.Value);
 
         await _repository.UpdateAsync(equipment);
-        return ToDto(equipment);
+        return await ToDtoWithAllocationAsync(equipment);
     }
+
+
 
     public async Task DeleteAsync(int id)
     {
@@ -139,6 +210,8 @@ public class EquipmentService : IEquipmentService
             await _repository.UpdateAsync(equipment);
         }
     }
+
+
 
     private static int NormalizeEffectiveness(int effectiveness)
     {

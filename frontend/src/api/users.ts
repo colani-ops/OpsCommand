@@ -8,6 +8,15 @@ export type UserDto = {
   roles: string[];
 };
 
+export type UserProfileDto = {
+  id: string;
+  email: string;
+  userName: string | null;
+  assignedSquadId: number | null;
+  primaryRole: string | null;
+  isActive: boolean;
+};
+
 export type AdminUpdateUserRequest = {
   role: string;
   assignedSquadId: number | null;
@@ -19,6 +28,10 @@ export function getUsers() {
 
 export function getMe() {
   return apiFetch<UserDto>("/api/user/me");
+}
+
+export function getUserProfile(id: string) {
+  return apiFetch<UserProfileDto>(`/api/user/${id}/profile`);
 }
 
 export function getPendingUsers() {

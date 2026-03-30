@@ -292,6 +292,18 @@ export default function EquipmentPage() {
                         Quantity: {item.quantity}
                       </div>
 
+                      {canManage && (
+                      <>
+                        <div style={{ opacity: 0.85, marginTop: 6 }}>
+                          Allocated: {item.allocatedQuantity}
+                        </div>
+
+                        <div style={{ opacity: 0.85, marginTop: 6 }}>
+                          Available: {item.availableQuantity}
+                        </div>
+                      </>
+                      )}
+
                       <div style={{ opacity: 0.85, marginTop: 6 }}>
                         Effectiveness: {item.effectiveness}/100
                       </div>

@@ -1,4 +1,4 @@
-﻿namespace OpsCommand.Api.Models.Squads.Equipment
+﻿namespace OpsCommand.Api.Models.SquadEquipment
 {
     public class AddSquadEquipmentRequest
     {

@@ -14,6 +14,14 @@ export type SquadDto = {
   missionsWon: number;
 };
 
+export type SquadMemberDto = {
+  id: string;
+  email: string;
+  userName: string | null;
+  role: string;
+  isActive: boolean;
+};
+
 export type MySquadDto = {
   id: number;
   name: string;
@@ -23,6 +31,7 @@ export type MySquadDto = {
   missionsServed: number;
   missionsWon: number;
   successRate: number;
+  members: SquadMemberDto[];
 };
 
 export type SquadProfileDto = {
@@ -47,14 +56,6 @@ export type SquadEquipmentDto = {
   equipmentName: string;
   category: string | null;
   quantity: number;
-};
-
-export type SquadMemberDto = {
-  id: string;
-  email: string;
-  userName: string | null;
-  role: string;
-  isActive: boolean;
 };
 
 export type AddSquadEquipmentRequest = {

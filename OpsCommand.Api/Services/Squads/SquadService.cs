@@ -5,7 +5,7 @@ using OpsCommand.Api.Models.Squads;
 using OpsCommand.Api.Repositories.Missions;
 using OpsCommand.Api.Repositories.Squads;
 using OpsCommand.Api.Repositories.SquadEquipments;
-using OpsCommand.Api.Models.Squads.Equipment;
+using OpsCommand.Api.Models.SquadEquipment;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -173,6 +173,32 @@ namespace OpsCommand.Api.Services.Squads
             if (squad == null)
                 return null;
 
+            var squadUsers = await _userManager.Users
+                .Where(u => u.AssignedSquadId == squad.Id)
+                .ToListAsync();
+
+            var memberDtos = new List<SquadMemberDto>();
+
+            foreach (var memberUser in squadUsers)
+            {
+                var roles = await _userManager.GetRolesAsync(memberUser);
+                var primaryRole = roles.FirstOrDefault() ?? "Unknown";
+
+                memberDtos.Add(new SquadMemberDto
+                {
+                    Id = memberUser.Id,
+                    Email = memberUser.Email ?? string.Empty,
+                    UserName = memberUser.UserName,
+                    Role = primaryRole,
+                    IsActive = !await _userManager.IsLockedOutAsync(memberUser)
+                });
+            }
+
+            memberDtos = memberDtos
+                .GroupBy(m => m.Id)
+                .Select(g => g.First())
+                .ToList();
+
             string? commanderName = null;
 
             if (!string.IsNullOrWhiteSpace(squad.CommanderId))
@@ -183,6 +209,11 @@ namespace OpsCommand.Api.Services.Squads
                     commanderName = $"{commander.UserName} ({commander.Email})";
                 }
             }
+
+            memberDtos = memberDtos
+                .GroupBy(m => m.Id)
+                .Select(g => g.First())
+                .ToList();
 
             var successRate = squad.MissionsServed > 0
                 ? Math.Round((double)squad.MissionsWon / squad.MissionsServed * 100, 2)
@@ -197,7 +228,8 @@ namespace OpsCommand.Api.Services.Squads
                 CommanderName = commanderName,
                 MissionsServed = squad.MissionsServed,
                 MissionsWon = squad.MissionsWon,
-                SuccessRate = successRate
+                SuccessRate = successRate,
+                Members = memberDtos
             };
         }
 

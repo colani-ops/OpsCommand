@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
-import { hasRole } from "../api/auth";
+import { getUser, hasRole } from "../api/auth";
 import { deleteSquad, getSquadProfile, type SquadProfileDto } from "../api/squads";
 
 export default function SquadProfilePage() {
@@ -13,6 +13,8 @@ export default function SquadProfilePage() {
   const [squad, setSquad] = useState<SquadProfileDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+
+   const currentUser = getUser();
 
   async function load() {
     if (!id) return;
@@ -123,9 +125,12 @@ export default function SquadProfilePage() {
                 }}
             >
           
-          <div style={{ fontWeight: 700 }}>
-            {member.userName ?? member.email}
-          </div>
+<Link
+  to={member.id === currentUser?.id ? "/myprofile" : `/users/${member.id}`}
+  style={{ color: "white", textDecoration: "none" }}
+>
+  {member.userName ?? member.email}
+</Link>
 
           <div style={{ opacity: 0.85, marginTop: 4 }}>{member.email}</div>
           <div style={{ opacity: 0.85 }}>Role: {member.role}</div>

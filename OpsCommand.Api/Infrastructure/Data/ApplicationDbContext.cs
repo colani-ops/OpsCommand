@@ -77,6 +77,25 @@ namespace OpsCommand.Api.Infrastructure.Data
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
+            //UserEquipment relationships
+            modelBuilder.Entity<UserEquipment>(entity =>
+            {
+                entity.ToTable("UserEquipments");
+
+                entity.Property(ue => ue.Quantity)
+                    .IsRequired();
+
+                entity.HasOne(ue => ue.User)
+                    .WithMany()
+                    .HasForeignKey(ue => ue.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(ue => ue.Equipment)
+                    .WithMany()
+                    .HasForeignKey(ue => ue.EquipmentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
         }
     }
 }

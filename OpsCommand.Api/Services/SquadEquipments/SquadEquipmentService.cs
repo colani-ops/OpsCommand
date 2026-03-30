@@ -1,9 +1,12 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿    using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using OpsCommand.Api.Domain.Entities;
-using OpsCommand.Api.Models.Squads.Equipment;
+using OpsCommand.Api.Models.SquadEquipment;
 using OpsCommand.Api.Repositories.Equipments;
 using OpsCommand.Api.Repositories.SquadEquipments;
 using OpsCommand.Api.Repositories.Squads;
+using Microsoft.EntityFrameworkCore;
+using OpsCommand.Api.Infrastructure.Data;
 
 namespace OpsCommand.Api.Services.SquadEquipments
 {
@@ -13,18 +16,23 @@ namespace OpsCommand.Api.Services.SquadEquipments
         private readonly ISquadRepository _squadRepository;
         private readonly IEquipmentRepository _equipmentRepository;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ApplicationDbContext _context;
 
         public SquadEquipmentService(
             ISquadEquipmentRepository squadEquipmentRepository,
             ISquadRepository squadRepository,
             IEquipmentRepository equipmentRepository,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            ApplicationDbContext context)
         {
             _squadEquipmentRepository = squadEquipmentRepository;
             _squadRepository = squadRepository;
             _equipmentRepository = equipmentRepository;
             _userManager = userManager;
+            _context = context;
         }
+
+
 
         private static SquadEquipmentResponseDto MapToDto(SquadEquipment se) => new()
         {
@@ -34,6 +42,8 @@ namespace OpsCommand.Api.Services.SquadEquipments
             Category = se.Equipment.Category,
             Quantity = se.Quantity
         };
+
+
 
         private async Task EnsureAccessAsync(int squadId, string userId, bool isAdmin)
         {
@@ -46,6 +56,35 @@ namespace OpsCommand.Api.Services.SquadEquipments
                 throw new UnauthorizedAccessException("You can only manage equipment for your own squad.");
         }
 
+
+
+        //Global Availability Helper
+        private async Task ValidateGlobalAvailabilityAsync(int squadId, int equipmentId, int requestedQuantity)
+        {
+            var equipment = await _context.Equipments
+                .FirstOrDefaultAsync(e => e.Id == equipmentId && e.DeletedAt == null);
+
+            if (equipment == null)
+                throw new ArgumentException("Equipment not found.");
+
+            var allocatedToOtherSquads = await _context.SquadEquipments
+                .Where(se => se.EquipmentId == equipmentId && se.SquadId != squadId)
+                .SumAsync(se => (int?)se.Quantity) ?? 0;
+
+            var totalAfterAllocation = allocatedToOtherSquads + requestedQuantity;
+
+            if (totalAfterAllocation > equipment.Quantity)
+            {
+                var available = equipment.Quantity - allocatedToOtherSquads;
+                if (available < 0) available = 0;
+
+                throw new ArgumentException(
+                    $"Not enough global equipment available. Requested: {requestedQuantity}, available for allocation: {available}.");
+            }
+        }
+
+
+
         public async Task<List<SquadEquipmentResponseDto>> GetBySquadIdAsync(int squadId, string userId, bool isAdmin)
         {
             await EnsureAccessAsync(squadId, userId, isAdmin);
@@ -57,6 +96,8 @@ namespace OpsCommand.Api.Services.SquadEquipments
             var items = await _squadEquipmentRepository.GetBySquadIdAsync(squadId);
             return items.Select(MapToDto).ToList();
         }
+
+
 
         public async Task<SquadEquipmentResponseDto> AddAsync(int squadId, AddSquadEquipmentRequest request, string userId, bool isAdmin)
         {
@@ -77,6 +118,8 @@ namespace OpsCommand.Api.Services.SquadEquipments
             if (existing != null)
                 throw new ArgumentException("This equipment is already assigned to the squad.");
 
+            await ValidateGlobalAvailabilityAsync(squadId, request.EquipmentId, request.Quantity);
+
             var entity = new SquadEquipment
             {
                 SquadId = squadId,
@@ -92,6 +135,8 @@ namespace OpsCommand.Api.Services.SquadEquipments
             return MapToDto(created);
         }
 
+
+
         public async Task<SquadEquipmentResponseDto> UpdateAsync(int squadId, int equipmentId, UpdateSquadEquipmentRequest request, string userId, bool isAdmin)
         {
             await EnsureAccessAsync(squadId, userId, isAdmin);
@@ -102,11 +147,15 @@ namespace OpsCommand.Api.Services.SquadEquipments
             var existing = await _squadEquipmentRepository.GetByIdsAsync(squadId, equipmentId)
                 ?? throw new KeyNotFoundException("Squad equipment entry not found.");
 
+            await ValidateGlobalAvailabilityAsync(squadId, equipmentId, request.Quantity);
+
             existing.Quantity = request.Quantity;
             await _squadEquipmentRepository.UpdateAsync(existing);
 
             return MapToDto(existing);
         }
+
+
 
         public async Task DeleteAsync(int squadId, int equipmentId, string userId, bool isAdmin)
         {

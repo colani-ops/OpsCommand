@@ -171,6 +171,27 @@ namespace OpsCommand.Api.Controllers
 
 
 
+        //GET /api/{id}/profile
+        [HttpGet("{id}/profile")]
+        [Authorize(Roles = "Member,Commander,Admin,SuperAdmin")]
+        public async Task<IActionResult> GetProfile(string id)
+        {
+            var callerUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(callerUserId))
+                return Unauthorized();
+
+            var isAdmin = User.IsInRole("Admin") || User.IsInRole("SuperAdmin");
+
+            var profile = await _userService.GetProfileByIdAsync(id, callerUserId, isAdmin);
+
+            if (profile == null)
+                return NotFound();
+
+            return Ok(profile);
+        }
+
+
+
         //PUT /api/user/me
         [HttpPut("me")]
         [Authorize]

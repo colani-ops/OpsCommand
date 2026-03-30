@@ -26,11 +26,4 @@ namespace OpsCommand.Api.Domain.Entities
 
         public int Quantity { get; set; }
     }
-
-
-    public class UserEquipment
-    {
-        public int UserId { get; set; }
-        public int EquipmentId { get; set; }
-    }
 }

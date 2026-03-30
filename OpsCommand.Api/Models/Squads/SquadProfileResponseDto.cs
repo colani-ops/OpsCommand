@@ -1,4 +1,4 @@
-﻿using OpsCommand.Api.Models.Squads.Equipment;
+﻿using OpsCommand.Api.Models.SquadEquipment;
 
 namespace OpsCommand.Api.Models.Squads
 {

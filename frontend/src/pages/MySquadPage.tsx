@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { getUser, hasRole } from "../api/auth";
 import { getEquipment, type EquipmentDto } from "../api/equipment";
+import { useErrorHandler } from "../hooks/useErrorHandler";
 import {
   addSquadEquipment,
   deleteSquadEquipment,
@@ -12,7 +13,6 @@ import {
   type SquadEquipmentDto,
 } from "../api/squads";
 
-
 export default function MySquadPage() {
   const canAccess = hasRole("Member", "Commander");
   const canManageEquipment = hasRole("Commander");
@@ -22,13 +22,15 @@ export default function MySquadPage() {
   const [equipment, setEquipment] = useState<SquadEquipmentDto[]>([]);
   const [availableEquipment, setAvailableEquipment] = useState<EquipmentDto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
+
+  const { error, showError, clearError } = useErrorHandler();
 
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<number | "">("");
   const [newQuantity, setNewQuantity] = useState<number>(1);
+  const [editQuantities, setEditQuantities] = useState<Record<number, number>>({});
 
   async function load() {
-    setErr(null);
+    clearError();
     setLoading(true);
 
     try {
@@ -50,7 +52,7 @@ export default function MySquadPage() {
         setAvailableEquipment([]);
       }
     } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Failed to load squad");
+      showError(e);
     } finally {
       setLoading(false);
     }
@@ -68,8 +70,9 @@ export default function MySquadPage() {
     e.preventDefault();
     if (!squad || selectedEquipmentId === "") return;
 
-    setErr(null);
     try {
+      clearError();
+
       await addSquadEquipment(squad.id, {
         equipmentId: Number(selectedEquipmentId),
         quantity: newQuantity,
@@ -78,20 +81,21 @@ export default function MySquadPage() {
       setSelectedEquipmentId("");
       setNewQuantity(1);
       await load();
-    } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Failed to add equipment");
+    } catch (e) {
+      showError(e);
     }
   }
 
   async function onUpdateQuantity(equipmentId: number, quantity: number) {
     if (!squad) return;
 
-    setErr(null);
     try {
+      clearError();
+
       await updateSquadEquipment(squad.id, equipmentId, { quantity });
       await load();
-    } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Failed to update quantity");
+    } catch (e) {
+      showError(e);
     }
   }
 
@@ -99,12 +103,13 @@ export default function MySquadPage() {
     if (!squad) return;
     if (!confirm("Remove this equipment from squad?")) return;
 
-    setErr(null);
     try {
+      clearError();
+
       await deleteSquadEquipment(squad.id, equipmentId);
       await load();
-    } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Failed to remove equipment");
+    } catch (e) {
+      showError(e);
     }
   }
 
@@ -118,14 +123,24 @@ export default function MySquadPage() {
         </button>
       </div>
 
-      {err && <div style={{ color: "crimson", marginTop: 10 }}>{err}</div>}
-      {loading && <div style={{ marginTop: 10 }}>Loading...</div>}
-
-      {!loading && !err && !squad && (
-        <div style={{ marginTop: 14 }}>No squad assigned.</div>
+      {error && (
+        <div
+          style={{
+            background: "#2a0000",
+            color: "#ff6b6b",
+            padding: 12,
+            borderRadius: 8,
+            marginTop: 10,
+            border: "1px solid #ff6b6b",
+          }}
+        >
+          ⚠ {error}
+        </div>
       )}
 
-      {!loading && !err && squad && (
+      {loading && <div style={{ marginTop: 10 }}>Loading...</div>}
+
+      {!loading && squad && (
         <>
           <div
             style={{
@@ -141,10 +156,62 @@ export default function MySquadPage() {
               {squad.name} <span style={{ opacity: 0.7 }}>· {squad.type}</span>
             </div>
 
-            <div><b>Commander:</b> {squad.commanderName ?? squad.commanderId ?? "—"}</div>
-            <div><b>Missions Served:</b> {squad.missionsServed}</div>
-            <div><b>Successful Missions:</b> {squad.missionsWon}</div>
-            <div><b>Success Rate:</b> {squad.missionsServed > 0 ? `${squad.successRate}%` : "N/A"}</div>
+            <div>
+              <b>Commander:</b> {squad.commanderName ?? squad.commanderId ?? "—"}
+            </div>
+            <div>
+              <b>Missions Served:</b> {squad.missionsServed}
+            </div>
+            <div>
+              <b>Successful Missions:</b> {squad.missionsWon}
+            </div>
+            <div>
+              <b>Success Rate:</b> {squad.missionsServed > 0 ? `${squad.successRate}%` : "N/A"}
+            </div>
+          </div>
+
+          <div
+            style={{
+              marginTop: 14,
+              border: "1px solid #333",
+              borderRadius: 12,
+              padding: 14,
+            }}
+          >
+            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>
+              Squad Members
+            </div>
+
+            {squad.members.length === 0 ? (
+              <div>No members assigned to this squad.</div>
+            ) : (
+              <div style={{ display: "grid", gap: 10 }}>
+                {squad.members.map((member) => (
+                  <div
+                    key={member.id}
+                    style={{
+                      border: "1px solid #333",
+                      borderRadius: 10,
+                      padding: 12,
+                    }}
+                  >
+                    <div style={{ fontWeight: 700 }}>
+                      <Link
+                        to={member.id === currentUser?.id ? "/myprofile" : `/users/${member.id}`}
+                        style={{ color: "white", textDecoration: "none" }}
+                        title={member.id === currentUser?.id ? "Open my profile" : "Open user profile"}
+                      >
+                        {member.userName ?? member.email}
+                      </Link>
+                    </div>
+
+                    <div style={{ opacity: 0.85 }}>
+                      Status: {member.isActive ? "Active" : "Disabled"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div
@@ -211,39 +278,48 @@ export default function MySquadPage() {
                   >
                     <div>
                       <div style={{ fontWeight: 700 }}>
-                      <Link
-                        to={`/equipment/${item.equipmentId}`}
-                        style={{ color: "white", textDecoration: "none" }}
-                        title="Open equipment profile"
-                      >
-                        {item.equipmentName}
-                      </Link>
+                        <Link
+                          to={`/equipment/${item.equipmentId}`}
+                          style={{ color: "white", textDecoration: "none" }}
+                          title="Open equipment profile"
+                        >
+                          {item.equipmentName}
+                        </Link>
                         {item.category ? ` · ${item.category}` : ""}
-                    </div>
+                      </div>
                       <div style={{ opacity: 0.85 }}>Quantity: {item.quantity}</div>
                     </div>
 
                     {canManageEquipment && currentUser && squad.commanderId === currentUser.id && (
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <button
-                          onClick={() => onUpdateQuantity(item.equipmentId, item.quantity + 1)}
-                          style={{ padding: "6px 10px", borderRadius: 8 }}
-                        >
-                          +1
-                        </button>
+                        <input
+                          type="number"
+                          min={1}
+                          value={editQuantities[item.equipmentId] ?? item.quantity}
+                          onChange={(e) =>
+                            setEditQuantities((prev) => ({
+                              ...prev,
+                              [item.equipmentId]: Number(e.target.value),
+                            }))
+                          }
+                          style={{ width: 70, padding: 6, borderRadius: 6 }}
+                        />
 
                         <button
+                          type="button"
                           onClick={() =>
-                            item.quantity > 1
-                              ? onUpdateQuantity(item.equipmentId, item.quantity - 1)
-                              : onDeleteEquipment(item.equipmentId)
+                            onUpdateQuantity(
+                              item.equipmentId,
+                              editQuantities[item.equipmentId] ?? item.quantity
+                            )
                           }
                           style={{ padding: "6px 10px", borderRadius: 8 }}
                         >
-                          -1
+                          Save
                         </button>
 
                         <button
+                          type="button"
                           onClick={() => onDeleteEquipment(item.equipmentId)}
                           style={{ padding: "6px 10px", borderRadius: 8 }}
                         >

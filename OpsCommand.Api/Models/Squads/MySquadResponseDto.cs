@@ -13,5 +13,7 @@
         public int MissionsWon { get; set; }
 
         public double SuccessRate { get; set; }
+
+        public List<SquadMemberDto> Members { get; set; } = new();
     }
 }

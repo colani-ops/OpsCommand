@@ -11,12 +11,14 @@ using OpsCommand.Api.Repositories.Equipments;
 using OpsCommand.Api.Repositories.Missions;
 using OpsCommand.Api.Repositories.SquadEquipments;
 using OpsCommand.Api.Repositories.Squads;
+using OpsCommand.Api.Repositories.UserEquipments;
 using OpsCommand.Api.Repositories.Users;
 using OpsCommand.Api.Services.Auth;
 using OpsCommand.Api.Services.Equipments;
 using OpsCommand.Api.Services.Missions;
 using OpsCommand.Api.Services.SquadEquipments;
 using OpsCommand.Api.Services.Squads;
+using OpsCommand.Api.Services.UserEquipments;
 using OpsCommand.Api.Services.Users;
 using System.Text;
 
@@ -81,6 +83,9 @@ builder.Services.AddScoped<IMissionService, MissionService>();
 
 builder.Services.AddScoped<IEquipmentRepository, EquipmentRepository>();
 builder.Services.AddScoped<IEquipmentService, EquipmentService>();
+
+builder.Services.AddScoped<IUserEquipmentRepository, UserEquipmentRepository>();
+builder.Services.AddScoped<IUserEquipmentService, UserEquipmentService>();
 
 builder.Services.AddScoped<ISquadEquipmentRepository, SquadEquipmentRepository>();
 builder.Services.AddScoped<ISquadEquipmentService, SquadEquipmentService>();
