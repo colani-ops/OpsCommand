@@ -13,7 +13,6 @@ import {
 } from "../api/userEquipment";
 
 export default function MyProfilePage() {
-  const user = getUser();
 
   const [assignedSquadId, setAssignedSquadId] = useState<number | null>(null);
   const [squadName, setSquadName] = useState<string | null>(null);
@@ -27,6 +26,9 @@ export default function MyProfilePage() {
   const [editQuantities, setEditQuantities] = useState<Record<number, number>>({});
 
   const { error, showError, clearError } = useErrorHandler();
+
+  const user = getUser();
+  const userIdOrEmail = user?.email ?? null;
 
   async function loadProfileData() {
     if (!user) {
@@ -72,8 +74,65 @@ export default function MyProfilePage() {
   }
 
   useEffect(() => {
-    loadProfileData();
-  }, [user]);
+  let cancelled = false;
+
+  async function loadProfileData() {
+    if (!user) {
+      setLoadingProfile(false);
+      return;
+    }
+
+    setLoadingProfile(true);
+
+    try {
+      const me = await getMe();
+      if (cancelled) return;
+
+      const squadId = me.assignedSquadId ?? null;
+      setAssignedSquadId(squadId);
+
+      if (!squadId) {
+        setSquadName(null);
+        setAvailableEquipment([]);
+        setMyEquipment([]);
+        return;
+      }
+
+      const squad = await getSquad(squadId);
+      if (cancelled) return;
+
+      setSquadName(squad.name);
+
+      const [available, mine] = await Promise.all([
+        getAvailableUserEquipment(),
+        getMyUserEquipment(),
+      ]);
+
+      if (cancelled) return;
+
+      setAvailableEquipment(available);
+      setMyEquipment(mine);
+    } catch (e: unknown) {
+      if (!cancelled) {
+        showError(e);
+        setAssignedSquadId(null);
+        setSquadName(null);
+        setAvailableEquipment([]);
+        setMyEquipment([]);
+      }
+    } finally {
+      if (!cancelled) {
+        setLoadingProfile(false);
+      }
+    }
+  }
+
+  loadProfileData();
+
+  return () => {
+    cancelled = true;
+  };
+}, [userIdOrEmail]);
 
   async function onAddMyEquipment(e: React.FormEvent) {
     e.preventDefault();
