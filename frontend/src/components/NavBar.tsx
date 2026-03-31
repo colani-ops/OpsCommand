@@ -42,7 +42,7 @@ export default function NavBar() {
         {canSeeEquipment && <Link to="/equipment" style={{ color: "white" }}>Equipment</Link>}
         {canSeeUsers && <Link to="/users" style={{ color: "white" }}>Users</Link>}
 
-        <Link to="/myprofile" style={{ color: "white" }}>Profile</Link>
+        <Link to="/my-profile" style={{ color: "white" }}>My Profile</Link>
       </div>
 
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>

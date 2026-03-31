@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { hasRole, getUser } from "../api/auth";
 import { /*getMe,*/ getUsers, type UserDto } from "../api/users";
@@ -10,6 +10,8 @@ import {
   type SquadDto,
   type SquadType,
 } from "../api/squads";
+import { useErrorHandler } from "../hooks/useErrorHandler";
+import ErrorBanner from "../components/ErrorBanner";
 
 const TYPES: SquadType[] = ["Assault", "Tactical", "Recon"];
 
@@ -36,7 +38,6 @@ export default function SquadsPage() {
   const [items, setItems] = useState<SquadDto[]>([]);
   const [commanders, setCommanders] = useState<UserDto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
 
   // Create form state
   const [showCreate, setShowCreate] = useState(false);
@@ -50,27 +51,29 @@ export default function SquadsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
 
-  async function load() {
-  setErr(null);
-  setLoading(true);
+  const { error, showError, clearError } = useErrorHandler();
 
-  try {
-    const squadsData = await getSquads();
-    setItems(squadsData);
+  const load = useCallback(async () => {
+    clearError();
+    setLoading(true);
 
-    const usersData = await getUsers();
-    const onlyCommanders = usersData.filter((u) => u.roles?.includes("Commander"));
-    setCommanders(onlyCommanders);
-  } catch (e: unknown) {
-    setErr(getErrorMessage(e) ?? "Failed to load squads");
-  } finally {
-    setLoading(false);
-  }
-}
+    try {
+      const squadsData = await getSquads();
+      setItems(squadsData);
+
+      const usersData = await getUsers();
+      const onlyCommanders = usersData.filter((u) => u.roles?.includes("Commander"));
+      setCommanders(onlyCommanders);
+    } catch (e: unknown) {
+      showError(e, "Failed to load squads");
+    } finally {
+      setLoading(false);
+    }
+  }, [clearError, showError]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   // helper: find squad for edit init
   const editingSquad = useMemo(
@@ -122,14 +125,6 @@ export default function SquadsPage() {
     return commanderId;
   }
 
-
-  function getErrorMessage(e: unknown): string {
-    if (e instanceof Error) return e.message;
-    if (typeof e === "string") return e;
-    return "Unexpected error";
-  }
-
-
   function startEdit(id: number) {
     const s = items.find((x) => x.id === id);
     if (!s) return;
@@ -149,7 +144,7 @@ export default function SquadsPage() {
 
   async function submitCreate(e: React.FormEvent) {
     e.preventDefault();
-    setErr(null);
+    clearError();
 
     const payload = {
       name: createForm.name.trim(),
@@ -163,14 +158,14 @@ export default function SquadsPage() {
       setShowCreate(false);
       await load();
     } catch (e: unknown) {
-      setErr(getErrorMessage(e) ?? "Failed to load squads");
+      showError(e, "Failed to load squads");
     }
   }
 
   async function submitEdit() {
     if (!editingId || !editForm) return;
 
-    setErr(null);
+    clearError();
 
     const payload = {
       name: editForm.name.trim(),
@@ -183,21 +178,21 @@ export default function SquadsPage() {
       cancelEdit();
       await load();
     } catch (e: unknown) {
-      setErr(getErrorMessage(e) ?? "Failed to load squads");
+      showError(e, "Failed to load squads");
     }
   }
 
   async function onDelete(id: number) {
     if (!confirm("Soft-delete this squad?")) return;
 
-    setErr(null);
+    clearError();
     try {
       await deleteSquad(id);
       // if we were editing this one, exit edit mode
       if (editingId === id) cancelEdit();
       await load();
     } catch (e: unknown) {
-      setErr(getErrorMessage(e) ?? "Failed to load squads");
+      showError(e, "Failed to load squads");
     }
   }
 
@@ -224,7 +219,7 @@ export default function SquadsPage() {
         </button>
       </div>
 
-      {err && <div style={{ color: "crimson", marginTop: 10 }}>{err}</div>}
+      <ErrorBanner error={error} />
       {loading && <div style={{ marginTop: 10 }}>Loading...</div>}
 
       {/* CREATE FORM */}
@@ -440,7 +435,7 @@ export default function SquadsPage() {
         </div>
       )}
 
-      {!loading && !err && items.length === 0 && <div>No squads yet.</div>}
+      {!loading && !error && items.length === 0 && <div>No squads yet.</div>}
     </div>
   );
 }

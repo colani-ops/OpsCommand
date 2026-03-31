@@ -5,12 +5,18 @@ export function useErrorHandler() {
 
   function showError(e: unknown, fallback = "Something went wrong") {
     const message =
-      e instanceof Error ? e.message : typeof e === "string" ? e : fallback;
+      e instanceof Error
+        ? e.message
+        : typeof e === "string"
+        ? e
+        : fallback;
 
     setError(message);
 
-    // UX boost
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   }
 
   function clearError() {

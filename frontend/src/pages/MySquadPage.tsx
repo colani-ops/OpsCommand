@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { getUser, hasRole } from "../api/auth";
 import { getEquipment, type EquipmentDto } from "../api/equipment";
-import { useErrorHandler } from "../hooks/useErrorHandler";
 import {
   addSquadEquipment,
   deleteSquadEquipment,
@@ -12,6 +11,8 @@ import {
   type MySquadDto,
   type SquadEquipmentDto,
 } from "../api/squads";
+import { useErrorHandler } from "../hooks/useErrorHandler";
+import ErrorBanner from "../components/ErrorBanner";
 
 export default function MySquadPage() {
   const canAccess = hasRole("Member", "Commander");
@@ -23,13 +24,13 @@ export default function MySquadPage() {
   const [availableEquipment, setAvailableEquipment] = useState<EquipmentDto[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const { error, showError, clearError } = useErrorHandler();
-
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<number | "">("");
   const [newQuantity, setNewQuantity] = useState<number>(1);
   const [editQuantities, setEditQuantities] = useState<Record<number, number>>({});
 
-  async function load() {
+  const { error, showError, clearError } = useErrorHandler();
+  
+  const load = useCallback(async () => {
     clearError();
     setLoading(true);
 
@@ -56,12 +57,12 @@ export default function MySquadPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [canManageEquipment, clearError, showError]);
 
   useEffect(() => {
     load();
-  }, []);
-
+  }, [load]);
+  
   if (!canAccess) {
     return <Navigate to="/" replace />;
   }
@@ -123,20 +124,7 @@ export default function MySquadPage() {
         </button>
       </div>
 
-      {error && (
-        <div
-          style={{
-            background: "#2a0000",
-            color: "#ff6b6b",
-            padding: 12,
-            borderRadius: 8,
-            marginTop: 10,
-            border: "1px solid #ff6b6b",
-          }}
-        >
-          ⚠ {error}
-        </div>
-      )}
+      <ErrorBanner error={error} />
 
       {loading && <div style={{ marginTop: 10 }}>Loading...</div>}
 
@@ -197,7 +185,7 @@ export default function MySquadPage() {
                   >
                     <div style={{ fontWeight: 700 }}>
                       <Link
-                        to={member.id === currentUser?.id ? "/myprofile" : `/users/${member.id}`}
+                        to={member.id === currentUser?.id ? "/my-profile" : `/users/${member.id}`}
                         style={{ color: "white", textDecoration: "none" }}
                         title={member.id === currentUser?.id ? "Open my profile" : "Open user profile"}
                       >

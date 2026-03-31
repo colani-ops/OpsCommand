@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getUser } from "../api/auth";
 import { getMe } from "../api/users";
 import { getSquad } from "../api/squads";
-import { useErrorHandler } from "../hooks/useErrorHandler";
 import {
   addMyUserEquipment,
   deleteMyUserEquipment,
@@ -11,6 +10,8 @@ import {
   updateMyUserEquipment,
   type UserEquipmentDto,
 } from "../api/userEquipment";
+import { useErrorHandler } from "../hooks/useErrorHandler";
+import ErrorBanner from "../components/ErrorBanner";
 
 export default function MyProfilePage() {
 
@@ -25,19 +26,18 @@ export default function MyProfilePage() {
   const [newQuantity, setNewQuantity] = useState<number>(1);
   const [editQuantities, setEditQuantities] = useState<Record<number, number>>({});
 
+  const user = getUser();
+
   const { error, showError, clearError } = useErrorHandler();
 
-  const user = getUser();
-  const userIdOrEmail = user?.email ?? null;
-
-  async function loadProfileData() {
+  const loadProfileData = useCallback(async () => {
     if (!user) {
       setLoadingProfile(false);
       return;
     }
 
-    clearError();
     setLoadingProfile(true);
+    clearError();
 
     try {
       const me = await getMe();
@@ -71,68 +71,11 @@ export default function MyProfilePage() {
     } finally {
       setLoadingProfile(false);
     }
-  }
+  }, [user, clearError, showError]);
 
   useEffect(() => {
-  let cancelled = false;
-
-  async function loadProfileData() {
-    if (!user) {
-      setLoadingProfile(false);
-      return;
-    }
-
-    setLoadingProfile(true);
-
-    try {
-      const me = await getMe();
-      if (cancelled) return;
-
-      const squadId = me.assignedSquadId ?? null;
-      setAssignedSquadId(squadId);
-
-      if (!squadId) {
-        setSquadName(null);
-        setAvailableEquipment([]);
-        setMyEquipment([]);
-        return;
-      }
-
-      const squad = await getSquad(squadId);
-      if (cancelled) return;
-
-      setSquadName(squad.name);
-
-      const [available, mine] = await Promise.all([
-        getAvailableUserEquipment(),
-        getMyUserEquipment(),
-      ]);
-
-      if (cancelled) return;
-
-      setAvailableEquipment(available);
-      setMyEquipment(mine);
-    } catch (e: unknown) {
-      if (!cancelled) {
-        showError(e);
-        setAssignedSquadId(null);
-        setSquadName(null);
-        setAvailableEquipment([]);
-        setMyEquipment([]);
-      }
-    } finally {
-      if (!cancelled) {
-        setLoadingProfile(false);
-      }
-    }
-  }
-
-  loadProfileData();
-
-  return () => {
-    cancelled = true;
-  };
-}, [userIdOrEmail]);
+    loadProfileData();
+  }, [loadProfileData]);
 
   async function onAddMyEquipment(e: React.FormEvent) {
     e.preventDefault();
@@ -182,20 +125,7 @@ export default function MyProfilePage() {
     <div>
       <h2>My Profile</h2>
 
-      {error && (
-        <div
-          style={{
-            background: "#2a0000",
-            color: "#ff6b6b",
-            padding: 12,
-            borderRadius: 8,
-            marginTop: 10,
-            border: "1px solid #ff6b6b",
-          }}
-        >
-          ⚠ {error}
-        </div>
-      )}
+      <ErrorBanner error={error} />
 
       {!user ? (
         <p>No user loaded.</p>

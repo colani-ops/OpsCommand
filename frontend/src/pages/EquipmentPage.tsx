@@ -1,5 +1,5 @@
 import { Link, Navigate } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { hasRole } from "../api/auth";
 import {
   createEquipment,
@@ -9,13 +9,11 @@ import {
   type EquipmentCategory,
   type EquipmentDto,
 } from "../api/equipment";
+import { useErrorHandler } from "../hooks/useErrorHandler";
+import ErrorBanner from "../components/ErrorBanner";
+
 
 const CATEGORIES: EquipmentCategory[] = ["Primary", "Secondary", "Melee", "Utility"];
-
-function getErrorMessage(e: unknown): string {
-  if (e instanceof Error) return e.message;
-  return "Unexpected error";
-}
 
 type CreateForm = {
   name: string;
@@ -38,7 +36,6 @@ export default function EquipmentPage() {
 
   const [items, setItems] = useState<EquipmentDto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
 
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<CreateForm>({
@@ -52,22 +49,24 @@ export default function EquipmentPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
 
-  async function load() {
-    setErr(null);
+  const { error, showError, clearError } = useErrorHandler();
+
+  const load = useCallback(async () => {
+    clearError();
     setLoading(true);
     try {
       const data = await getEquipment();
       setItems(data);
     } catch (e: unknown) {
-      setErr(getErrorMessage(e));
+      showError(e);
     } finally {
       setLoading(false);
     }
-  }
+  }, [clearError, showError]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const editingItem = useMemo(
     () => items.find((x) => x.id === editingId) ?? null,
@@ -94,7 +93,7 @@ export default function EquipmentPage() {
 
   async function submitCreate(ev: React.FormEvent) {
     ev.preventDefault();
-    setErr(null);
+    clearError();
 
     const payload = {
       name: createForm.name.trim(),
@@ -116,14 +115,14 @@ export default function EquipmentPage() {
       setShowCreate(false);
       await load();
     } catch (e: unknown) {
-      setErr(getErrorMessage(e));
+      showError(e);
     }
   }
 
   async function submitEdit() {
     if (!editingId || !editForm) return;
 
-    setErr(null);
+    clearError();
     try {
       await updateEquipment(editingId, {
         category: editForm.category,
@@ -134,20 +133,20 @@ export default function EquipmentPage() {
       cancelEdit();
       await load();
     } catch (e: unknown) {
-      setErr(getErrorMessage(e));
+      showError(e);
     }
   }
 
   async function onDelete(id: number) {
     if (!confirm("Soft-delete this equipment?")) return;
 
-    setErr(null);
+    clearError();
     try {
       await deleteEquipment(id);
       if (editingId === id) cancelEdit();
       await load();
     } catch (e: unknown) {
-      setErr(getErrorMessage(e));
+      showError(e);
     }
   }
 
@@ -175,7 +174,7 @@ export default function EquipmentPage() {
         </button>
       </div>
 
-      {err && <div style={{ color: "crimson", marginTop: 10 }}>{err}</div>}
+      <ErrorBanner error={error} />
       {loading && <div style={{ marginTop: 10 }}>Loading...</div>}
 
       {canManage && showCreate && (
@@ -421,7 +420,7 @@ export default function EquipmentPage() {
         </div>
       )}
 
-      {!loading && !err && items.length === 0 && <div>No equipment yet.</div>}
+      {!loading && !error && items.length === 0 && <div>No equipment yet.</div>}
     </div>
   );
 }

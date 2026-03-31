@@ -37,7 +37,7 @@ export default function App() {
         <Route path="/missions" element={<Authed><MissionsPage /></Authed>} />
         <Route path="/equipment" element={<Authed><EquipmentPage /></Authed>} />
         <Route path="/equipment/:id" element={<Authed><EquipmentProfilePage /></Authed>} />
-        <Route path="/myprofile" element={<Authed><MyProfilePage /></Authed>} />
+        <Route path="/my-profile" element={<Authed><MyProfilePage /></Authed>} />
         <Route path="/users/:id" element={<Authed><UserProfilePage /></Authed>} />
  
         <Route path="/users" element={<Authed><UserManagementPage /></Authed>} />

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { hasRole } from "../api/auth";
 import { Navigate } from "react-router-dom";
 import { getUsers, type UserDto } from "../api/users";
@@ -15,6 +15,8 @@ import {
   completeMission,
   cancelMission,
 } from "../api/missions";
+import { useErrorHandler } from "../hooks/useErrorHandler";
+import ErrorBanner from "../components/ErrorBanner";
 
 const STATUSES: MissionStatus[] = ["Prepared", "Planned", "Active", "Completed", "Cancelled"];
 
@@ -39,7 +41,6 @@ export default function MissionsPage() {
   const [items, setItems] = useState<MissionDto[]>([]);
   const [commanders, setCommanders] = useState<UserDto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
 
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<CreateForm>({ name: "", commanderId: "", notes: "" });
@@ -47,29 +48,31 @@ export default function MissionsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
 
-  async function load() {
-    setErr(null);
+  const { error, showError, clearError } = useErrorHandler();
+
+  const load = useCallback(async () => {
+    clearError();
     setLoading(true);
-      try {
-        const missionsData = await getMissions();
-        setItems(missionsData);
+    try {
+      const missionsData = await getMissions();
+      setItems(missionsData);
 
       if (canManage) {
         const usersData = await getUsers();
         setCommanders(usersData.filter((u) => u.roles?.includes("Commander")));
       } else {
-      setCommanders([]);
+        setCommanders([]);
       }
     } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Failed to load missions");
+      showError(e instanceof Error ? e.message : "Failed to load missions");
     } finally {
       setLoading(false);
     }
-  }
+  }, [canManage, clearError, showError]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const commanderNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -103,7 +106,7 @@ export default function MissionsPage() {
 
   async function submitCreate(e: React.FormEvent) {
     e.preventDefault();
-    setErr(null);
+    clearError();
 
     const payload = {
       name: createForm.name.trim(),
@@ -117,13 +120,13 @@ export default function MissionsPage() {
       setShowCreate(false);
       await load();
     } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Create failed");
+      showError(e instanceof Error ? e.message : "Create failed");
     }
   }
 
   async function submitEdit() {
     if (!editingId || !editForm) return;
-    setErr(null);
+    clearError();
 
     try {
       // 1) commander assign/unassign ide preko dedicated endpointa
@@ -146,51 +149,51 @@ export default function MissionsPage() {
       cancelEdit();
       await load();
     } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Update failed");
+      showError(e instanceof Error ? e.message : "Update failed");
     }
   }
 
   async function onDelete(id: number) {
     if (!confirm("Soft-delete this mission?")) return;
-    setErr(null);
+    clearError();
     try {
       await deleteMission(id);
       if (editingId === id) cancelEdit();
       await load();
     } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Delete failed");
+      showError(e instanceof Error ? e.message : "Delete failed");
     }
   }
 
 async function onActivate(id: number) {
-  setErr(null);
+  clearError();
   try {
     await activateMission(id);
     await load();
   } catch (e: unknown) {
-    setErr(e instanceof Error ? e.message : "Activate failed");
+    showError(e instanceof Error ? e.message : "Activate failed");
   }
 }
 
 async function onComplete(id: number) {
-  setErr(null);
+  clearError();
   try {
     const notes = prompt("Notes for completion (optional):") ?? "";
     await completeMission(id, notes.trim() ? notes : null);
     await load();
   } catch (e: unknown) {
-    setErr(e instanceof Error ? e.message : "Complete failed");
+    showError(e instanceof Error ? e.message : "Complete failed");
   }
 }
 
 async function onCancel(id: number) {
-  setErr(null);
+  clearError();
   try {
     const notes = prompt("Cancel reason (optional):") ?? "";
     await cancelMission(id, notes.trim() ? notes : null);
     await load();
   } catch (e: unknown) {
-    setErr(e instanceof Error ? e.message : "Cancel failed");
+    showError(e instanceof Error ? e.message : "Cancel failed");
   }
 }
 
@@ -210,7 +213,7 @@ async function onCancel(id: number) {
         </button>
       </div>
 
-      {err && <div style={{ color: "crimson", marginTop: 10 }}>{err}</div>}
+      <ErrorBanner error={error} />
       {loading && <div style={{ marginTop: 10 }}>Loading...</div>}
 
       {canManage && showCreate && (
@@ -393,7 +396,7 @@ async function onCancel(id: number) {
         </div>
       )}
 
-      {!loading && !err && items.length === 0 && <div>No missions yet.</div>}
+      {!loading && !error && items.length === 0 && <div>No missions yet.</div>}
     </div>
   );
 }
