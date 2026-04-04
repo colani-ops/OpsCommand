@@ -211,5 +211,20 @@ namespace OpsCommand.Api.Controllers
             }
         }
 
+        [HttpPost("{id}/execute")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
+        public async Task<IActionResult> Execute(int id)
+        {
+            try
+            {
+                var result = await _missionService.ExecuteAsync(id);
+                if (result == null) return NotFound();
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
     }
-    } 
+} 

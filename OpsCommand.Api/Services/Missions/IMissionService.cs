@@ -23,5 +23,7 @@ namespace OpsCommand.Api.Services.Missions
         Task<MissionResponseDto?> ActivateAsync(int missionId);
         Task<MissionResponseDto?> CompleteAsync(int missionId, string? notes);
         Task<MissionResponseDto?> CancelAsync(int missionId, string? notes);
+
+        Task<MissionExecutionResponseDto?> ExecuteAsync(int missionId);
     }
 }

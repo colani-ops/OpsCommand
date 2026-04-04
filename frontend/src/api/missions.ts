@@ -1,6 +1,8 @@
 import { apiFetch } from "./api";
 
 export type MissionStatus = "Prepared" | "Planned" | "Active" | "Completed" | "Cancelled";
+export type MissionTerrain = "Urban" | "Plains" | "Forest" | "Mountain";
+export type MissionDifficulty = "Low" | "Medium" | "High";
 
 export type MissionDto = {
   id: number;
@@ -8,22 +10,46 @@ export type MissionDto = {
   status: MissionStatus;
   commanderId: string | null;
   squadId: number | null;
-  createdAt: string; // ISO
+  createdAt: string;
   createdByUserId: string;
   notes: string | null;
+
+  terrain: MissionTerrain | null;
+  difficulty: MissionDifficulty | null;
+
+  successChanceSnapshot: number | null;
+  wasSuccessful: boolean | null;
+  executedAt: string | null;
+};
+
+export type MissionExecutionResultDto = {
+  missionId: number;
+  missionName: string;
+  terrain: string;
+  difficulty: string;
+  baseScore: number;
+  equipmentScore: number;
+  modifierScore: number;
+  finalScore: number;
+  successChance: number;
+  wasSuccessful: boolean;
+  outcome: string;
 };
 
 export type CreateMissionRequest = {
   name: string;
   commanderId?: string | null;
   notes?: string | null;
+  terrain?: MissionTerrain | null;
+  difficulty?: MissionDifficulty | null;
 };
 
 export type UpdateMissionRequest = {
   name?: string | null;
   notes?: string | null;
   status?: MissionStatus | null;
-  // commanderId / clearCommander ne stavljamo ovdje (backend to blokira)
+  terrain?: MissionTerrain | null;
+  difficulty?: MissionDifficulty | null;
 };
 
 export function getMissions() {
@@ -84,5 +110,11 @@ export function cancelMission(id: number, notes?: string | null) {
   return apiFetch<MissionDto>(`/api/mission/${id}/cancel`, {
     method: "PATCH",
     body: JSON.stringify({ notes: notes ?? null }),
+  });
+}
+
+export function executeMission(id: number) {
+  return apiFetch<MissionExecutionResultDto>(`/api/mission/${id}/execute`, {
+    method: "POST",
   });
 }

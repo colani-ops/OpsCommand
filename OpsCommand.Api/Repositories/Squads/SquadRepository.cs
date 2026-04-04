@@ -29,7 +29,7 @@ namespace OpsCommand.Api.Repositories.Squads
 
         }
 
-        public async Task<Squad> GetByIdAsync(int id)
+        public async Task<Squad?> GetByIdAsync(int id)
         {
             return await _context.Squads
                 .FirstOrDefaultAsync(s => s.Id == id && s.DeletedAt == null);

@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 export function useErrorHandler() {
   const [error, setError] = useState<string | null>(null);
 
-  function showError(e: unknown, fallback = "Something went wrong") {
+  const showError = useCallback((e: unknown, fallback = "Something went wrong") => {
     const message =
       e instanceof Error
         ? e.message
@@ -17,11 +17,11 @@ export function useErrorHandler() {
       top: 0,
       behavior: "smooth",
     });
-  }
+  }, []);
 
-  function clearError() {
+  const clearError = useCallback(() => {
     setError(null);
-  }
+  }, []);
 
   return {
     error,

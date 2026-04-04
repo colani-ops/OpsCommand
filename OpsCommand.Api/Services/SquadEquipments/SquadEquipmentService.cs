@@ -5,7 +5,6 @@ using OpsCommand.Api.Models.SquadEquipment;
 using OpsCommand.Api.Repositories.Equipments;
 using OpsCommand.Api.Repositories.SquadEquipments;
 using OpsCommand.Api.Repositories.Squads;
-using Microsoft.EntityFrameworkCore;
 using OpsCommand.Api.Infrastructure.Data;
 
 namespace OpsCommand.Api.Services.SquadEquipments

@@ -11,5 +11,9 @@ namespace OpsCommand.Api.Models.Missions
         public string Name { get; set; } = string.Empty;
         public string? CommanderId { get; set; }
         public string? Notes { get; set; }
+
+        public string? Terrain { get; set; }
+        public string? Difficulty { get; set; }
+        public string? EnemyStrength { get; set; }
     }
 }

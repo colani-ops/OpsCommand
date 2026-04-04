@@ -1,32 +1,35 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { hasRole } from "../api/auth";
 import { getMyMissions, type MissionDto } from "../api/missions";
+import { useErrorHandler } from "../hooks/useErrorHandler";
+import ErrorBanner from "../components/ErrorBanner";
 
 export default function MyMissionsPage() {
   const canAccess = hasRole("Member", "Commander");
 
   const [missions, setMissions] = useState<MissionDto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
 
-  async function load() {
-    setErr(null);
+  const { error, showError, clearError } = useErrorHandler();
+
+  const load = useCallback(async () => {
+    clearError();
     setLoading(true);
 
     try {
       const data = await getMyMissions();
       setMissions(data);
     } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Failed to load missions");
+      showError(e instanceof Error ? e.message : "Failed to load missions");
     } finally {
       setLoading(false);
     }
-  }
+  }, [clearError, showError]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   if (!canAccess) {
     return <Navigate to="/" replace />;
@@ -42,7 +45,7 @@ export default function MyMissionsPage() {
         </button>
       </div>
 
-      {err && <div style={{ color: "crimson", marginTop: 10 }}>{err}</div>}
+      <ErrorBanner error={error} />
       {loading && <div style={{ marginTop: 10 }}>Loading...</div>}
 
       {!loading && (
@@ -61,15 +64,38 @@ export default function MyMissionsPage() {
               </div>
 
               <div style={{ opacity: 0.85, marginTop: 6 }}>
-                CommanderId: {m.commanderId ?? "—"}
+                Terrain: {m.terrain ?? "—"}
               </div>
 
               <div style={{ opacity: 0.85 }}>
-                SquadId: {m.squadId ?? "—"}
+                Difficulty: {m.difficulty ?? "—"}
               </div>
 
+              <div style={{ opacity: 0.85 }}>
+                Executed At: {m.executedAt ? new Date(m.executedAt).toLocaleString() : "—"}
+              </div>
+
+              <div style={{ opacity: 0.85 }}>
+                Success Snapshot: {m.successChanceSnapshot ?? "—"}
+              </div>
+
+            <div
+              style={{
+                opacity: 0.95,
+                fontWeight: 600,
+                color:
+                  m.wasSuccessful == null
+                  ? undefined
+                  : m.wasSuccessful
+                  ? "#7CFC98"
+                  : "#FF7B7B",
+              }}
+            >
+              Outcome: {m.wasSuccessful == null ? "—" : m.wasSuccessful ? "Success" : "Failure"}
+            </div>
+
               {m.notes && (
-                <div style={{ opacity: 0.85, marginTop: 6 }}>
+                <div style={{ opacity: 0.85, marginTop: 8, whiteSpace: "pre-wrap" }}>
                   Notes: {m.notes}
                 </div>
               )}
@@ -78,7 +104,7 @@ export default function MyMissionsPage() {
         </div>
       )}
 
-      {!loading && !err && missions.length === 0 && (
+      {!loading && !error && missions.length === 0 && (
         <div style={{ marginTop: 14 }}>No missions assigned.</div>
       )}
     </div>

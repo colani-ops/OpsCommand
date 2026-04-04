@@ -6,9 +6,11 @@ import {
   assignCommander,
   createMission,
   deleteMission,
+  executeMission,
   getMissions,
+  type MissionDifficulty,
   type MissionDto,
-  type MissionStatus,
+  type MissionTerrain,
   unassignCommander,
   updateMission,
   activateMission,
@@ -18,20 +20,24 @@ import {
 import { useErrorHandler } from "../hooks/useErrorHandler";
 import ErrorBanner from "../components/ErrorBanner";
 
-const STATUSES: MissionStatus[] = ["Prepared", "Planned", "Active", "Completed", "Cancelled"];
-
 type CreateForm = {
   name: string;
-  commanderId: string; // "" = none
+  commanderId: string;
   notes: string;
+  terrain: MissionTerrain;
+  difficulty: MissionDifficulty;
 };
 
 type EditForm = {
   name: string;
-  status: MissionStatus;
   notes: string;
-  commanderId: string; // "" = none
+  commanderId: string;
+  terrain: MissionTerrain;
+  difficulty: MissionDifficulty;
 };
+
+const TERRAINS: MissionTerrain[] = ["Urban", "Plains", "Forest", "Mountain"];
+const DIFFICULTIES: MissionDifficulty[] = ["Low", "Medium", "High"];
 
 export default function MissionsPage() {
   const canManage = hasRole("Admin", "SuperAdmin");
@@ -43,7 +49,13 @@ export default function MissionsPage() {
   const [loading, setLoading] = useState(true);
 
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState<CreateForm>({ name: "", commanderId: "", notes: "" });
+  const [createForm, setCreateForm] = useState<CreateForm>({
+  name: "",
+  commanderId: "",
+  notes: "",
+  terrain: "Urban",
+  difficulty: "Medium",
+});
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
@@ -93,9 +105,10 @@ export default function MissionsPage() {
     setEditingId(m.id);
     setEditForm({
       name: m.name,
-      status: m.status,
       notes: m.notes ?? "",
       commanderId: m.commanderId ?? "",
+      terrain: (m.terrain as MissionTerrain) ?? "Urban",
+      difficulty: (m.difficulty as MissionDifficulty) ?? "Medium",
     });
   }
 
@@ -112,11 +125,19 @@ export default function MissionsPage() {
       name: createForm.name.trim(),
       commanderId: createForm.commanderId.trim() ? createForm.commanderId.trim() : null,
       notes: createForm.notes.trim() ? createForm.notes.trim() : null,
+      terrain: createForm.terrain,
+      difficulty: createForm.difficulty,
     };
 
     try {
       await createMission(payload);
-      setCreateForm({ name: "", commanderId: "", notes: "" });
+      setCreateForm({
+        name: "",
+        commanderId: "",
+        notes: "",
+        terrain: "Urban",
+        difficulty: "Medium",
+    });
       setShowCreate(false);
       await load();
     } catch (e: unknown) {
@@ -129,7 +150,7 @@ export default function MissionsPage() {
     clearError();
 
     try {
-      // 1) commander assign/unassign ide preko dedicated endpointa
+      // commander assign/unassign ide preko dedicated endpointa
       const desiredCommander = editForm.commanderId.trim() ? editForm.commanderId.trim() : null;
       const current = items.find((x) => x.id === editingId);
       const currentCommander = current?.commanderId ?? null;
@@ -139,12 +160,25 @@ export default function MissionsPage() {
         else await assignCommander(editingId, desiredCommander);
       }
 
-      // 2) update ostalog preko PUT
-      await updateMission(editingId, {
+      // update ostalog preko PUT
+      const currentMission = items.find((x) => x.id === editingId);
+        if (!currentMission) return;
+
+      const isTerminal =
+        currentMission.status === "Completed" || currentMission.status === "Cancelled";
+
+      const payload = isTerminal
+        ? {
+          notes: editForm.notes.trim() ? editForm.notes.trim() : null,
+        }
+      : {
         name: editForm.name.trim() || null,
         notes: editForm.notes.trim() ? editForm.notes.trim() : null,
-        status: editForm.status,
-      });
+        terrain: editForm.terrain,
+        difficulty: editForm.difficulty,
+      };
+
+    await updateMission(editingId, payload);
 
       cancelEdit();
       await load();
@@ -197,6 +231,16 @@ async function onCancel(id: number) {
   }
 }
 
+async function onExecute(id: number) {
+  clearError();
+  try {
+    await executeMission(id);
+    await load();
+  } catch (e: unknown) {
+    showError(e);
+  }
+}
+
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -238,6 +282,8 @@ async function onCancel(id: number) {
             style={{ padding: 10, borderRadius: 8 }}
           />
 
+          <div style={{ display: "grid", gap: 6 }}>
+            <label style={{ fontWeight: 600 }}>Commander</label>
           <select
             value={createForm.commanderId}
             onChange={(e) => setCreateForm((f) => ({ ...f, commanderId: e.target.value }))}
@@ -250,6 +296,37 @@ async function onCancel(id: number) {
               </option>
             ))}
           </select>
+          </div>
+
+          <div style={{ display: "grid", gap: 6 }}>
+            <label style={{ fontWeight: 600 }}>Terrain</label>
+          <select
+            value={createForm.terrain}
+            onChange={(e) => setCreateForm((f) => ({ ...f, terrain: e.target.value as MissionTerrain }))}
+            style={{ padding: 10, borderRadius: 8 }}
+          >
+            {TERRAINS.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+          </div>
+
+          <div style={{ display: "grid", gap: 6 }}>
+            <label style={{ fontWeight: 600 }}>Difficulty</label>
+          <select
+            value={createForm.difficulty}
+            onChange={(e) => setCreateForm((f) => ({ ...f, difficulty: e.target.value as MissionDifficulty }))}
+            style={{ padding: 10, borderRadius: 8 }}
+          >
+            {DIFFICULTIES.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+          </div>
 
           <textarea
             value={createForm.notes}
@@ -271,7 +348,10 @@ async function onCancel(id: number) {
       {!loading && (
         <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
           {items.map((m) => {
+
             const isEditing = editingId === m.id;
+            const isTerminal =
+              m.status === "Completed";
 
             return (
               <div
@@ -286,6 +366,11 @@ async function onCancel(id: number) {
                 }}
               >
                 <div style={{ flex: 1 }}>
+                  {isTerminal && (
+                    <div style={{ color: "#bbb", fontSize: 14, marginBottom: 8 }}>
+                      Completed / Cancelled missions allow notes-only editing.
+                    </div>
+                  )}
                   {!isEditing ? (
                     <>
                       <div style={{ fontSize: 18, fontWeight: 700 }}>
@@ -298,19 +383,53 @@ async function onCancel(id: number) {
 
                       <div style={{ opacity: 0.85 }}>SquadId: {m.squadId ?? "—"}</div>
 
+                      <div style={{ opacity: 0.85, marginTop: 6 }}>
+                        Terrain: {m.terrain ?? "—"}
+                      </div>
+
+                      <div style={{ opacity: 0.85 }}>
+                        Difficulty: {m.difficulty ?? "—"}
+                      </div>
+
+                      <div style={{ opacity: 0.85 }}>
+                        Executed At: {m.executedAt ? new Date(m.executedAt).toLocaleString() : "—"}
+                      </div>
+
+                      <div style={{ opacity: 0.85 }}>
+                        Success Snapshot: {m.successChanceSnapshot ?? "—"}
+                      </div>
+
+                      <div style={{ opacity: 0.85 }}>
+                        Outcome: {m.wasSuccessful == null ? "—" : m.wasSuccessful ? "Success" : "Failure"}
+                      </div>
+
                       {m.notes && <div style={{ opacity: 0.85, marginTop: 6 }}>Notes: {m.notes}</div>}
 
                       {canManage && (
-                        <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                        {m.status === "Planned" && (
                           <button onClick={() => onActivate(m.id)} style={{ padding: "6px 10px", borderRadius: 8 }}>
                             Activate
                           </button>
-                          <button onClick={() => onComplete(m.id)} style={{ padding: "6px 10px", borderRadius: 8 }}>
-                            Complete
-                          </button>
+                        )}
+
+                        {m.status === "Active" && (
+                        <>
+                        <button onClick={() => onExecute(m.id)} style={{ padding: "6px 10px", borderRadius: 8 }}>
+                          Execute
+                        </button>
+
+                        <button onClick={() => onComplete(m.id)} style={{ padding: "6px 10px", borderRadius: 8 }}>
+                          Complete
+                        </button>
+                        </>
+                        )}
+
+                        {m.status !== "Completed" && m.status !== "Cancelled" && (
                           <button onClick={() => onCancel(m.id)} style={{ padding: "6px 10px", borderRadius: 8 }}>
                             Cancel
                           </button>
+                        )}
                         </div>
                       )}
                     </>
@@ -324,26 +443,16 @@ async function onCancel(id: number) {
                           onChange={(e) => setEditForm((f) => (f ? { ...f, name: e.target.value } : f))}
                           placeholder="Name"
                           style={{ padding: 10, borderRadius: 8 }}
+                          disabled={isTerminal}
                         />
 
-                        <select
-                          value={editForm?.status ?? "Prepared"}
-                          onChange={(e) =>
-                            setEditForm((f) => (f ? { ...f, status: e.target.value as MissionStatus } : f))
-                          }
-                          style={{ padding: 10, borderRadius: 8 }}
-                        >
-                          {STATUSES.map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </select>
-
+                        <div style={{ display: "grid", gap: 6 }}>
+                          <label style={{ fontWeight: 600 }}>Commander</label>
                         <select
                           value={editForm?.commanderId ?? ""}
                           onChange={(e) => setEditForm((f) => (f ? { ...f, commanderId: e.target.value } : f))}
                           style={{ padding: 10, borderRadius: 8 }}
+                          disabled={isTerminal}
                         >
                           <option value="">— None —</option>
                           {commanders.map((c) => (
@@ -352,6 +461,7 @@ async function onCancel(id: number) {
                             </option>
                           ))}
                         </select>
+                        </div>
 
                         <textarea
                           value={editForm?.notes ?? ""}
@@ -360,6 +470,42 @@ async function onCancel(id: number) {
                           rows={3}
                           style={{ padding: 10, borderRadius: 8 }}
                         />
+
+                        <div style={{ display: "grid", gap: 6 }}>
+                          <label style={{ fontWeight: 600 }}>Terrain</label>
+                        <select
+                          value={editForm?.terrain ?? "Urban"}
+                          onChange={(e) =>
+                            setEditForm((f) => (f ? { ...f, terrain: e.target.value as MissionTerrain } : f))
+                          }
+                          style={{ padding: 10, borderRadius: 8 }}
+                          disabled={isTerminal}
+                        >
+                          {TERRAINS.map((t) => (
+                            <option key={t} value={t}>
+                              {t}
+                            </option>
+                          ))}
+                        </select>
+                        </div>
+
+                        <div style={{ display: "grid", gap: 6 }}>
+                          <label style={{ fontWeight: 600 }}>Difficulty</label>
+                        <select
+                          value={editForm?.difficulty ?? "Medium"}
+                          onChange={(e) =>
+                            setEditForm((f) => (f ? { ...f, difficulty: e.target.value as MissionDifficulty } : f))
+                          }
+                          style={{ padding: 10, borderRadius: 8 }}
+                          disabled={isTerminal}
+                        >
+                          {DIFFICULTIES.map((d) => (
+                            <option key={d} value={d}>
+                              {d}
+                            </option>
+                          ))}
+                        </select>
+                        </div>
                       </div>
                     </>
                   )}

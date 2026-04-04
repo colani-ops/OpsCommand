@@ -17,5 +17,13 @@ namespace OpsCommand.Api.Models.Missions
             public string CreatedByUserId { get; set; } = string.Empty;
             public string? Notes { get; set; } //Results
             public int? SquadId { get; set; }
+
+            public string? Terrain { get; set; }
+            public string? Difficulty { get; set; }
+            public string? EnemyStrength { get; set; }
+
+            public int? SuccessChanceSnapshot { get; set; }
+            public bool? WasSuccessful { get; set; }
+            public DateTime? ExecutedAt { get; set; }
     }
 }

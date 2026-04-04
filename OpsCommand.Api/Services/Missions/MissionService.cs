@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using OpsCommand.Api.Repositories.Squads;
+using OpsCommand.Api.Repositories.SquadEquipments;
 
 namespace OpsCommand.Api.Services.Missions
 {
@@ -15,10 +17,19 @@ namespace OpsCommand.Api.Services.Missions
         private readonly IMissionRepository _missionRepository;
         private readonly UserManager<ApplicationUser> _userManager;
 
-        public MissionService(IMissionRepository missionRepository, UserManager<ApplicationUser> userManager)
+        private readonly ISquadRepository _squadRepository;
+        private readonly ISquadEquipmentRepository _squadEquipmentRepository;
+
+        public MissionService(
+            IMissionRepository missionRepository,
+            UserManager<ApplicationUser> userManager,
+            ISquadRepository squadRepository,
+            ISquadEquipmentRepository squadEquipmentRepository)
         {
             _missionRepository = missionRepository;
             _userManager = userManager;
+            _squadRepository = squadRepository;
+            _squadEquipmentRepository = squadEquipmentRepository;
         }
 
         private static readonly String[] AllowedStates = new[]
@@ -40,7 +51,12 @@ namespace OpsCommand.Api.Services.Missions
                 CreatedAt = mission.CreatedAt,
                 CreatedByUserId = mission.CreatedByUserId,
                 Notes = mission.Notes,
-                SquadId = mission.SquadId
+                SquadId = mission.SquadId,
+                Terrain = mission.Terrain,
+                Difficulty = mission.Difficulty,
+                SuccessChanceSnapshot = mission.SuccessChanceSnapshot,
+                WasSuccessful = mission.WasSuccessful,
+                ExecutedAt = mission.ExecutedAt
             };
         }
 
@@ -68,37 +84,38 @@ namespace OpsCommand.Api.Services.Missions
 
         public async Task<MissionResponseDto> CreateAsync(MissionCreateDto dto, string createdByUserId)
         {
+            ApplicationUser? commander = null;
+
             if (!string.IsNullOrWhiteSpace(dto.CommanderId))
             {
-                var commander = await _userManager.FindByIdAsync(dto.CommanderId);
+                commander = await _userManager.FindByIdAsync(dto.CommanderId);
                 if (commander == null)
-                {
                     throw new ArgumentException("Commander user not found.");
-                }
 
                 if (await _userManager.IsLockedOutAsync(commander))
-                {
                     throw new ArgumentException("Commander is inactive");
-                }
 
                 var isCommander = await _userManager.IsInRoleAsync(commander, "Commander");
-
                 if (!isCommander)
-                {
                     throw new ArgumentException("User is not eligible to be a commander");
-                }
+
+                if (commander.AssignedSquadId == null)
+                    throw new ArgumentException("Commander must be assigned to a squad before mission creation.");
             }
 
-            var hasCommander = !string.IsNullOrWhiteSpace(dto.CommanderId);
+            var hasCommander = commander != null;
 
             var mission = new Mission
             {
                 Name = dto.Name,
                 Status = hasCommander ? "Planned" : "Prepared",
-                CommanderId = hasCommander ? dto.CommanderId : null,
+                CommanderId = hasCommander ? commander!.Id : null,
+                SquadId = hasCommander ? commander!.AssignedSquadId : null,
                 CreatedAt = DateTime.UtcNow,
                 CreatedByUserId = createdByUserId,
-                Notes = dto.Notes
+                Notes = dto.Notes,
+                Terrain = dto.Terrain,
+                Difficulty = dto.Difficulty
             };
 
             await _missionRepository.AddAsync(mission);
@@ -116,7 +133,7 @@ namespace OpsCommand.Api.Services.Missions
             var mission = await _missionRepository.GetByIdAsync(id);
             if (mission == null) return null;
 
-            var isTerminal = mission.Status is "Completed" or "Cancelled";
+            var isTerminal = mission.Status is "Completed";
 
             // notes uvijek smije
             if (dto.Notes != null)
@@ -125,7 +142,7 @@ namespace OpsCommand.Api.Services.Missions
             // Ako je terminal, ne diraj ništa drugo
             if (isTerminal)
             {
-                // ako user pokušava mijenjati Name/Status, javi  poruku
+                // ako user pokušava mijenjati Name/Status, javi poruku
                 if (!string.IsNullOrWhiteSpace(dto.Name) || dto.Status != null)
                     throw new ArgumentException($"Can't edit mission fields when status is '{mission.Status}'. Only Notes can be updated.");
 
@@ -138,15 +155,13 @@ namespace OpsCommand.Api.Services.Missions
                 mission.Name = dto.Name;
 
             if (dto.Status != null)
-            {
-                if (!AllowedStates.Contains(dto.Status))
-                    throw new ArgumentException("Invalid mission status.");
+                throw new ArgumentException("Use mission action routes to change status.");
 
-                if (dto.Status == "Active" && string.IsNullOrWhiteSpace(mission.CommanderId))
-                    throw new ArgumentException("Cannot activate mission without a commander.");
+            if (!string.IsNullOrWhiteSpace(dto.Terrain))
+                mission.Terrain = dto.Terrain;
 
-                mission.Status = dto.Status;
-            }
+            if (!string.IsNullOrWhiteSpace(dto.Difficulty))
+                mission.Difficulty = dto.Difficulty;
 
             await _missionRepository.UpdateAsync(mission);
             return MapToDto(mission);
@@ -245,7 +260,10 @@ namespace OpsCommand.Api.Services.Missions
             mission.CommanderId = commanderId;
             mission.SquadId = commanderSquadId;
 
-            // Prepared -> Planned, Cancelled -> Planned (reactivation path)
+            // If mission now has a commander, move it into Planned
+            if (mission.Status == "Prepared")
+                mission.Status = "Planned";
+
             if (mission.Status == "Cancelled")
                 mission.Status = "Planned";
 
@@ -343,6 +361,160 @@ namespace OpsCommand.Api.Services.Missions
 
             await _missionRepository.UpdateAsync(mission);
             return MapToDto(mission);
+        }
+
+        private static readonly string[] AllowedTerrains = new[]
+        {
+            "Urban",
+            "Plains",
+            "Forest",
+            "Mountain"
+        };
+
+        private static readonly string[] AllowedDifficulties = new[]
+        {
+            "Low",
+            "Medium",
+            "High"
+        };
+
+        private static int GetDifficultyModifier(string difficulty) => difficulty switch
+        {
+            "Low" => 15,
+            "Medium" => 0,
+            "High" => -15,
+            _ => 0
+        };
+
+        private static double GetTerrainMultiplier(string terrain, string? category) => terrain switch
+        {
+            "Urban" => category switch
+            {
+                "Utility" => 1.2,
+                "Primary" => 1.1,
+                "Secondary" => 1.0,
+                "Melee" => 0.9,
+                _ => 1.0
+            },
+            "Plains" => category switch
+            {
+                "Primary" => 1.3,
+                "Secondary" => 1.0,
+                "Utility" => 0.9,
+                "Melee" => 0.7,
+                _ => 1.0
+            },
+            "Forest" => category switch
+            {
+                "Utility" => 1.2,
+                "Melee" => 1.1,
+                "Primary" => 1.0,
+                "Secondary" => 0.9,
+                _ => 1.0
+            },
+            "Mountain" => category switch
+            {
+                "Utility" => 1.3,
+                "Primary" => 1.0,
+                "Secondary" => 0.9,
+                "Melee" => 0.8,
+                _ => 1.0
+            },
+            _ => 1.0
+        };
+
+        public async Task<MissionExecutionResponseDto?> ExecuteAsync(int missionId)
+        {
+            var mission = await _missionRepository.GetByIdAsync(missionId);
+            if (mission == null)
+                return null;
+
+            if (mission.Status != "Active")
+                throw new ArgumentException("Only Active missions can be executed.");
+
+            if (mission.SquadId == null)
+                throw new ArgumentException("Mission must have an assigned squad before execution.");
+
+            if (string.IsNullOrWhiteSpace(mission.Terrain) || !AllowedTerrains.Contains(mission.Terrain))
+                throw new ArgumentException("Mission terrain is missing or invalid.");
+
+            if (string.IsNullOrWhiteSpace(mission.Difficulty) || !AllowedDifficulties.Contains(mission.Difficulty))
+                throw new ArgumentException("Mission difficulty is missing or invalid.");
+
+            var squad = await _squadRepository.GetByIdAsync(mission.SquadId.Value);
+            if (squad == null)
+                throw new ArgumentException("Assigned squad not found.");
+
+            var squadEquipment = await _squadEquipmentRepository.GetBySquadIdAsync(squad.Id);
+
+            const int baseScore = 50;
+
+            var difficultyModifier = GetDifficultyModifier(mission.Difficulty);
+            var modifierScore = difficultyModifier;
+
+            double rawEquipmentScore = 0;
+
+            foreach (var se in squadEquipment)
+            {
+                var effectiveness = se.Equipment.Effectiveness;
+                var quantity = se.Quantity;
+                var multiplier = GetTerrainMultiplier(mission.Terrain, se.Equipment.Category);
+
+                rawEquipmentScore += effectiveness * quantity * multiplier;
+            }
+
+            var equipmentScore = (int)Math.Min(30, Math.Round(rawEquipmentScore / 20.0));
+
+            var finalScore = baseScore + modifierScore + equipmentScore;
+
+            if (finalScore < 0) finalScore = 0;
+            if (finalScore > 95) finalScore = 95;
+
+            var successChance = finalScore;
+            var roll = Random.Shared.Next(1, 101);
+            var wasSuccessful = roll <= successChance;
+
+            mission.SuccessChanceSnapshot = successChance;
+            mission.WasSuccessful = wasSuccessful;
+            mission.ExecutedAt = DateTime.UtcNow;
+            mission.Status = "Completed";
+
+            var outcomeText = wasSuccessful ? "Mission succeeded." : "Mission failed.";
+
+            var executionSummary =
+                $"{outcomeText}\n" +
+                $"Success chance: {successChance}%\n" +
+                $"Base score: {baseScore}\n" +
+                $"Equipment score: {equipmentScore}\n" +
+                $"Modifier score: {modifierScore}\n" +
+                $"Final score: {finalScore}\n" +
+                $"Executed at: {mission.ExecutedAt:yyyy-MM-dd HH:mm:ss} UTC";
+
+            mission.Notes = string.IsNullOrWhiteSpace(mission.Notes)
+                ? executionSummary
+                : $"{mission.Notes}\n\n{executionSummary}";
+
+            squad.MissionsServed += 1;
+            if (wasSuccessful)
+                squad.MissionsWon += 1;
+
+            await _missionRepository.UpdateAsync(mission);
+            await _squadRepository.UpdateAsync(squad);
+
+            return new MissionExecutionResponseDto
+            {
+                MissionId = mission.Id,
+                MissionName = mission.Name,
+                Terrain = mission.Terrain,
+                Difficulty = mission.Difficulty,
+                BaseScore = baseScore,
+                EquipmentScore = equipmentScore,
+                ModifierScore = modifierScore,
+                FinalScore = finalScore,
+                SuccessChance = successChance,
+                WasSuccessful = wasSuccessful,
+                Outcome = wasSuccessful ? "Success" : "Failure"
+            };
         }
     }
 }
