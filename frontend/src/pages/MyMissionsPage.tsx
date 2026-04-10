@@ -4,61 +4,9 @@ import { hasRole } from "../api/auth";
 import { getMyMissions, type MissionDto } from "../api/missions";
 import { useErrorHandler } from "../hooks/useErrorHandler";
 import ErrorBanner from "../components/ErrorBanner";
-
-function getStatusBadgeStyle(status: MissionDto["status"]): React.CSSProperties {
-  const base: React.CSSProperties = {
-    display: "inline-block",
-    padding: "4px 10px",
-    borderRadius: 999,
-    fontSize: 12,
-    fontWeight: 700,
-    border: "1px solid",
-  };
-
-  switch (status) {
-    case "Prepared":
-      return { ...base, background: "#2e2e2e", color: "#d6d6d6", borderColor: "#555" };
-    case "Planned":
-      return { ...base, background: "#1d3557", color: "#bde0fe", borderColor: "#457b9d" };
-    case "Active":
-      return { ...base, background: "#3a2a00", color: "#ffd166", borderColor: "#a36a00" };
-    case "Completed":
-      return { ...base, background: "#0d3b1e", color: "#7CFC98", borderColor: "#2a7a45" };
-    case "Cancelled":
-      return { ...base, background: "#3a0f0f", color: "#ff9b9b", borderColor: "#b04a4a" };
-    default:
-      return base;
-  }
-}
-
-function getMetaBadgeStyle(): React.CSSProperties {
-  return {
-    display: "inline-block",
-    padding: "4px 10px",
-    borderRadius: 999,
-    fontSize: 12,
-    fontWeight: 600,
-    border: "1px solid #444",
-    background: "#1b1b1b",
-    color: "#ddd",
-  };
-}
-
-function getOutcomeText(m: MissionDto) {
-  if (m.wasSuccessful == null) return "—";
-  return m.wasSuccessful ? "Success" : "Failure";
-}
-
-function getOutcomeStyle(m: MissionDto): React.CSSProperties {
-  if (m.wasSuccessful == null) {
-    return { opacity: 0.85, fontWeight: 600 };
-  }
-
-  return {
-    fontWeight: 700,
-    color: m.wasSuccessful ? "#7CFC98" : "#FF7B7B",
-  };
-}
+import MissionStatusBadge from "../components/MissionStatusBadge";
+import MissionMetaBadge from "../components/MissionMetaBadge";
+import MissionOutcome from "../components/MissionOutcome";
 
 export default function MyMissionsPage() {
   const canAccess = hasRole("Member", "Commander");
@@ -114,11 +62,11 @@ export default function MyMissionsPage() {
                 padding: 14,
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <div style={{ fontSize: 18, fontWeight: 700 }}>{m.name}</div>
-                <span style={getStatusBadgeStyle(m.status)}>{m.status}</span>
-                <span style={getMetaBadgeStyle()}>{m.terrain ?? "No terrain"}</span>
-                <span style={getMetaBadgeStyle()}>{m.difficulty ?? "No difficulty"}</span>
+                  <MissionStatusBadge status={m.status} />
+                  <MissionMetaBadge>{m.terrain ?? "No terrain"}</MissionMetaBadge>
+                  <MissionMetaBadge>{m.difficulty ?? "No difficulty"}</MissionMetaBadge>
               </div>
 
               <div style={{ opacity: 0.85, marginTop: 10 }}>
@@ -129,9 +77,7 @@ export default function MyMissionsPage() {
                 Success Snapshot: {m.successChanceSnapshot != null ? `${m.successChanceSnapshot}%` : "—"}
               </div>
 
-              <div style={{ marginTop: 6, ...getOutcomeStyle(m) }}>
-                Outcome: {getOutcomeText(m)}
-              </div>
+              <MissionOutcome mission={m} />
 
               {m.notes && (
                 <div
@@ -149,6 +95,23 @@ export default function MyMissionsPage() {
                   <div>{m.notes}</div>
                 </div>
               )}
+              
+              {m.status === "Planned" && (
+                <div
+                  style={{
+                  marginTop: 10,
+                  padding: 10,
+                  borderRadius: 8,
+                  background: "#101820",
+                  border: "1px solid #2c3e50",
+                  opacity: 0.92,
+                  }}
+                >
+      <div style={{ fontWeight: 700, marginBottom: 6 }}>Planning Phase</div>
+    <div>Check your squad loadout and mission terrain before activation.</div>
+  </div>
+)}
+
             </div>
           ))}
         </div>

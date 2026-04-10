@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getUser } from "../api/auth";
 import { getMe } from "../api/users";
 import { getSquad } from "../api/squads";
@@ -14,10 +14,10 @@ import { useErrorHandler } from "../hooks/useErrorHandler";
 import ErrorBanner from "../components/ErrorBanner";
 
 export default function MyProfilePage() {
-
   const [assignedSquadId, setAssignedSquadId] = useState<number | null>(null);
   const [squadName, setSquadName] = useState<string | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [savingEquipment, setSavingEquipment] = useState(false);
 
   const [availableEquipment, setAvailableEquipment] = useState<UserEquipmentDto[]>([]);
   const [myEquipment, setMyEquipment] = useState<UserEquipmentDto[]>([]);
@@ -26,9 +26,27 @@ export default function MyProfilePage() {
   const [newQuantity, setNewQuantity] = useState<number>(1);
   const [editQuantities, setEditQuantities] = useState<Record<number, number>>({});
 
-  const user = getUser();
-
+  const user = useMemo(() => getUser(), []);
   const { error, showError, clearError } = useErrorHandler();
+
+  const loadEquipmentData = useCallback(async () => {
+    try {
+      const [available, mine] = await Promise.all([
+        getAvailableUserEquipment(),
+        getMyUserEquipment(),
+      ]);
+
+      setAvailableEquipment(available);
+      setMyEquipment(mine);
+      setEditQuantities(
+        Object.fromEntries(mine.map((item) => [item.equipmentId, item.quantity]))
+      );
+    } catch (e: unknown) {
+      showError(e);
+      setAvailableEquipment([]);
+      setMyEquipment([]);
+    }
+  }, [showError]);
 
   const loadProfileData = useCallback(async () => {
     if (!user) {
@@ -41,8 +59,8 @@ export default function MyProfilePage() {
 
     try {
       const me = await getMe();
-
       const squadId = me.assignedSquadId ?? null;
+
       setAssignedSquadId(squadId);
 
       if (!squadId) {
@@ -55,13 +73,7 @@ export default function MyProfilePage() {
       const squad = await getSquad(squadId);
       setSquadName(squad.name);
 
-      const [available, mine] = await Promise.all([
-        getAvailableUserEquipment(),
-        getMyUserEquipment(),
-      ]);
-
-      setAvailableEquipment(available);
-      setMyEquipment(mine);
+      await loadEquipmentData();
     } catch (e: unknown) {
       showError(e);
       setAssignedSquadId(null);
@@ -71,7 +83,7 @@ export default function MyProfilePage() {
     } finally {
       setLoadingProfile(false);
     }
-  }, [user, clearError, showError]);
+  }, [user, clearError, showError, loadEquipmentData]);
 
   useEffect(() => {
     loadProfileData();
@@ -83,6 +95,7 @@ export default function MyProfilePage() {
 
     try {
       clearError();
+      setSavingEquipment(true);
 
       await addMyUserEquipment({
         equipmentId: Number(selectedEquipmentId),
@@ -91,20 +104,25 @@ export default function MyProfilePage() {
 
       setSelectedEquipmentId("");
       setNewQuantity(1);
-      await loadProfileData();
+      await loadEquipmentData();
     } catch (e: unknown) {
       showError(e);
+    } finally {
+      setSavingEquipment(false);
     }
   }
 
   async function onUpdateMyEquipment(equipmentId: number, quantity: number) {
     try {
       clearError();
+      setSavingEquipment(true);
 
       await updateMyUserEquipment(equipmentId, { quantity });
-      await loadProfileData();
+      await loadEquipmentData();
     } catch (e: unknown) {
       showError(e);
+    } finally {
+      setSavingEquipment(false);
     }
   }
 
@@ -113,11 +131,14 @@ export default function MyProfilePage() {
 
     try {
       clearError();
+      setSavingEquipment(true);
 
       await deleteMyUserEquipment(equipmentId);
-      await loadProfileData();
+      await loadEquipmentData();
     } catch (e: unknown) {
       showError(e);
+    } finally {
+      setSavingEquipment(false);
     }
   }
 
@@ -179,6 +200,7 @@ export default function MyProfilePage() {
                       setSelectedEquipmentId(e.target.value ? Number(e.target.value) : "")
                     }
                     style={{ padding: 10, borderRadius: 8 }}
+                    disabled={savingEquipment}
                   >
                     <option value="">— Select equipment —</option>
                     {availableEquipment.map((eq) => (
@@ -194,10 +216,14 @@ export default function MyProfilePage() {
                     value={newQuantity}
                     onChange={(e) => setNewQuantity(Number(e.target.value))}
                     style={{ padding: 10, borderRadius: 8 }}
+                    disabled={savingEquipment}
                   />
 
-                  <button style={{ padding: "10px 14px", borderRadius: 8 }}>
-                    Add To My Loadout
+                  <button
+                    style={{ padding: "10px 14px", borderRadius: 8 }}
+                    disabled={savingEquipment}
+                  >
+                    {savingEquipment ? "Saving..." : "Add To My Loadout"}
                   </button>
                 </form>
               </div>
@@ -250,6 +276,7 @@ export default function MyProfilePage() {
                               }))
                             }
                             style={{ width: 70, padding: 6, borderRadius: 6 }}
+                            disabled={savingEquipment}
                           />
 
                           <button
@@ -261,16 +288,18 @@ export default function MyProfilePage() {
                               )
                             }
                             style={{ padding: "6px 10px", borderRadius: 8 }}
+                            disabled={savingEquipment}
                           >
-                            Save
+                            {savingEquipment ? "Saving..." : "Save"}
                           </button>
 
                           <button
                             type="button"
                             onClick={() => onDeleteMyEquipment(item.equipmentId)}
                             style={{ padding: "6px 10px", borderRadius: 8 }}
+                            disabled={savingEquipment}
                           >
-                            Remove
+                            {savingEquipment ? "Working..." : "Remove"}
                           </button>
                         </div>
                       </div>
