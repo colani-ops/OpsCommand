@@ -7,7 +7,6 @@
 
         public string Terrain { get; set; } = string.Empty;
         public string Difficulty { get; set; } = string.Empty;
-        public string EnemyStrength { get; set; } = string.Empty;
 
         public int BaseScore { get; set; }
         public int EquipmentScore { get; set; }

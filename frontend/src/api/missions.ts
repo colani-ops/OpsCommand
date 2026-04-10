@@ -47,9 +47,25 @@ export type CreateMissionRequest = {
 export type UpdateMissionRequest = {
   name?: string | null;
   notes?: string | null;
-  status?: MissionStatus | null;
   terrain?: MissionTerrain | null;
   difficulty?: MissionDifficulty | null;
+};
+
+export type MissionReadinessDto = {
+  missionId: number;
+  missionName: string;
+  status: string;
+  commanderId: string | null;
+  squadId: number | null;
+  terrain: string;
+  difficulty: string;
+  baseScore: number;
+  difficultyModifier: number;
+  equipmentScore: number;
+  finalScore: number;
+  projectedSuccessChance: number;
+  recommendedCategories: string[];
+  readinessLabel: string;
 };
 
 export function getMissions() {
@@ -117,4 +133,8 @@ export function executeMission(id: number) {
   return apiFetch<MissionExecutionResultDto>(`/api/mission/${id}/execute`, {
     method: "POST",
   });
+}
+
+export function getMissionReadiness(id: number) {
+  return apiFetch<MissionReadinessDto>(`/api/mission/${id}/readiness`);
 }

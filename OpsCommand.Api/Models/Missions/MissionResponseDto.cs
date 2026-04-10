@@ -20,7 +20,6 @@ namespace OpsCommand.Api.Models.Missions
 
             public string? Terrain { get; set; }
             public string? Difficulty { get; set; }
-            public string? EnemyStrength { get; set; }
 
             public int? SuccessChanceSnapshot { get; set; }
             public bool? WasSuccessful { get; set; }

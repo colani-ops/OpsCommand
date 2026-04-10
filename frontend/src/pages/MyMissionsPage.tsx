@@ -5,6 +5,61 @@ import { getMyMissions, type MissionDto } from "../api/missions";
 import { useErrorHandler } from "../hooks/useErrorHandler";
 import ErrorBanner from "../components/ErrorBanner";
 
+function getStatusBadgeStyle(status: MissionDto["status"]): React.CSSProperties {
+  const base: React.CSSProperties = {
+    display: "inline-block",
+    padding: "4px 10px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 700,
+    border: "1px solid",
+  };
+
+  switch (status) {
+    case "Prepared":
+      return { ...base, background: "#2e2e2e", color: "#d6d6d6", borderColor: "#555" };
+    case "Planned":
+      return { ...base, background: "#1d3557", color: "#bde0fe", borderColor: "#457b9d" };
+    case "Active":
+      return { ...base, background: "#3a2a00", color: "#ffd166", borderColor: "#a36a00" };
+    case "Completed":
+      return { ...base, background: "#0d3b1e", color: "#7CFC98", borderColor: "#2a7a45" };
+    case "Cancelled":
+      return { ...base, background: "#3a0f0f", color: "#ff9b9b", borderColor: "#b04a4a" };
+    default:
+      return base;
+  }
+}
+
+function getMetaBadgeStyle(): React.CSSProperties {
+  return {
+    display: "inline-block",
+    padding: "4px 10px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 600,
+    border: "1px solid #444",
+    background: "#1b1b1b",
+    color: "#ddd",
+  };
+}
+
+function getOutcomeText(m: MissionDto) {
+  if (m.wasSuccessful == null) return "—";
+  return m.wasSuccessful ? "Success" : "Failure";
+}
+
+function getOutcomeStyle(m: MissionDto): React.CSSProperties {
+  if (m.wasSuccessful == null) {
+    return { opacity: 0.85, fontWeight: 600 };
+  }
+
+  return {
+    fontWeight: 700,
+    color: m.wasSuccessful ? "#7CFC98" : "#FF7B7B",
+  };
+}
+
 export default function MyMissionsPage() {
   const canAccess = hasRole("Member", "Commander");
 
@@ -59,44 +114,39 @@ export default function MyMissionsPage() {
                 padding: 14,
               }}
             >
-              <div style={{ fontSize: 18, fontWeight: 700 }}>
-                {m.name} <span style={{ opacity: 0.7 }}>· {m.status}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ fontSize: 18, fontWeight: 700 }}>{m.name}</div>
+                <span style={getStatusBadgeStyle(m.status)}>{m.status}</span>
+                <span style={getMetaBadgeStyle()}>{m.terrain ?? "No terrain"}</span>
+                <span style={getMetaBadgeStyle()}>{m.difficulty ?? "No difficulty"}</span>
               </div>
 
-              <div style={{ opacity: 0.85, marginTop: 6 }}>
-                Terrain: {m.terrain ?? "—"}
-              </div>
-
-              <div style={{ opacity: 0.85 }}>
-                Difficulty: {m.difficulty ?? "—"}
-              </div>
-
-              <div style={{ opacity: 0.85 }}>
+              <div style={{ opacity: 0.85, marginTop: 10 }}>
                 Executed At: {m.executedAt ? new Date(m.executedAt).toLocaleString() : "—"}
               </div>
 
               <div style={{ opacity: 0.85 }}>
-                Success Snapshot: {m.successChanceSnapshot ?? "—"}
+                Success Snapshot: {m.successChanceSnapshot != null ? `${m.successChanceSnapshot}%` : "—"}
               </div>
 
-            <div
-              style={{
-                opacity: 0.95,
-                fontWeight: 600,
-                color:
-                  m.wasSuccessful == null
-                  ? undefined
-                  : m.wasSuccessful
-                  ? "#7CFC98"
-                  : "#FF7B7B",
-              }}
-            >
-              Outcome: {m.wasSuccessful == null ? "—" : m.wasSuccessful ? "Success" : "Failure"}
-            </div>
+              <div style={{ marginTop: 6, ...getOutcomeStyle(m) }}>
+                Outcome: {getOutcomeText(m)}
+              </div>
 
               {m.notes && (
-                <div style={{ opacity: 0.85, marginTop: 8, whiteSpace: "pre-wrap" }}>
-                  Notes: {m.notes}
+                <div
+                  style={{
+                    marginTop: 10,
+                    padding: 10,
+                    borderRadius: 8,
+                    background: "#151515",
+                    border: "1px solid #2d2d2d",
+                    whiteSpace: "pre-wrap",
+                    opacity: 0.92,
+                  }}
+                >
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>Mission Notes</div>
+                  <div>{m.notes}</div>
                 </div>
               )}
             </div>

@@ -15,15 +15,14 @@ namespace OpsCommand.Api.Services.Missions
         Task<MissionResponseDto?> UpdateAsync(int id, MissionUpdateDto dto);
         Task<bool> DeleteAsync(int id);
 
-        Task<List<MissionResponseDto>> GetMyMissionsAsync(string userId);
-
         Task<MissionResponseDto?> AssignCommanderAsync(int missionId, string commanderId);
         Task<MissionResponseDto?> UnassignCommanderAsync(int missionId);
+        Task<List<MissionResponseDto>> GetMyMissionsAsync(string userId);
 
         Task<MissionResponseDto?> ActivateAsync(int missionId);
         Task<MissionResponseDto?> CompleteAsync(int missionId, string? notes);
         Task<MissionResponseDto?> CancelAsync(int missionId, string? notes);
-
         Task<MissionExecutionResponseDto?> ExecuteAsync(int missionId);
+        Task<MissionReadinessResponseDto?> GetReadinessAsync(int missionId);
     }
 }

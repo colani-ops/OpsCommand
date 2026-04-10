@@ -26,6 +26,7 @@ namespace OpsCommand.Api.Controllers
 
         //GET api/mission
         [HttpGet]
+        [Authorize(Roles = "Admin, SuperAdmin")]
         public async Task<IActionResult> GetAll()
         {
             var missions = await _missionService.GetAllAsync();
@@ -36,6 +37,7 @@ namespace OpsCommand.Api.Controllers
 
         //GET api/mission/id
         [HttpGet("{id}")]
+        [Authorize] //All users - maybe for missionProfile later?
         public async Task<IActionResult> GetById(int id)
         {
             var mission = await _missionService.GetByIdAsync(id);
@@ -110,6 +112,8 @@ namespace OpsCommand.Api.Controllers
             }
         }
 
+
+
         [HttpPatch("{id}/commander")]
         [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult> AssignCommander(int id, [FromBody] AssignCommanderDto dto)
@@ -149,16 +153,17 @@ namespace OpsCommand.Api.Controllers
 
         //DELETE api/mission/{id}
         [HttpDelete("{id}")]
-            [Authorize(Roles = "Admin,SuperAdmin")]
-            public async Task<IActionResult> Delete(int id)
+        [Authorize(Roles = "Admin,SuperAdmin")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var success = await _missionService.DeleteAsync(id);
+            if (!success)
             {
-                var success = await _missionService.DeleteAsync(id);
-                if (!success)
-                {
-                    return NotFound();
-                }
-                return NoContent();
+                return NotFound();
             }
+            
+            return NoContent();
+        }
 
 
         //WILL IMPLEMENT PROPERLY LATER
@@ -220,6 +225,22 @@ namespace OpsCommand.Api.Controllers
                 var result = await _missionService.ExecuteAsync(id);
                 if (result == null) return NotFound();
                 return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("{id}/readiness")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
+        public async Task<IActionResult> GetReadiness(int id)
+        {
+            try
+            {
+                var readiness = await _missionService.GetReadinessAsync(id);
+                if (readiness == null) return NotFound();
+                return Ok(readiness);
             }
             catch (ArgumentException ex)
             {
