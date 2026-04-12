@@ -43,7 +43,13 @@ type EditForm = {
 };
 
 const TERRAINS: MissionTerrain[] = ["Urban", "Plains", "Forest", "Mountain"];
-const DIFFICULTIES: MissionDifficulty[] = ["Low", "Medium", "High"];
+const DIFFICULTIES: MissionDifficulty[] = [
+  "Very Low",
+  "Low",
+  "Medium",
+  "High",
+  "Very High",
+];
 
 export default function MissionsPage() {
   const canManage = hasRole("Admin", "SuperAdmin");

@@ -2,7 +2,12 @@ import { apiFetch } from "./api";
 
 export type MissionStatus = "Prepared" | "Planned" | "Active" | "Completed" | "Cancelled";
 export type MissionTerrain = "Urban" | "Plains" | "Forest" | "Mountain";
-export type MissionDifficulty = "Low" | "Medium" | "High";
+export type MissionDifficulty =
+  | "Very Low"
+  | "Low"
+  | "Medium"
+  | "High"
+  | "Very High";
 
 export type MissionDto = {
   id: number;

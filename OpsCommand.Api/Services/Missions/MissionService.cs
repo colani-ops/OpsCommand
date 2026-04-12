@@ -401,19 +401,22 @@ namespace OpsCommand.Api.Services.Missions
 
         private static readonly string[] AllowedDifficulties = new[]
         {
+            "Very Low",
             "Low",
             "Medium",
-            "High"
+            "High",
+            "Very High"
         };
 
         private static int GetDifficultyModifier(string difficulty) => difficulty switch
         {
-            "Low" => 15,
+            "Very Low" => 20,
+            "Low" => 10,
             "Medium" => 0,
-            "High" => -15,
+            "High" => -10,
+            "Very High" => -20,
             _ => 0
         };
-
         private static double GetTerrainMultiplier(string terrain, string? category) => terrain switch
         {
             "Urban" => category switch
