@@ -24,5 +24,9 @@ namespace OpsCommand.Api.Models.Missions
             public int? SuccessChanceSnapshot { get; set; }
             public bool? WasSuccessful { get; set; }
             public DateTime? ExecutedAt { get; set; }
+
+            //Pseudo Real-time
+            public DateTime? ActivatedAt { get; set; }
+            public int? DurationMinutes { get; set; }
     }
 }

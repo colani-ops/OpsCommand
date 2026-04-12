@@ -25,6 +25,9 @@ export type MissionDto = {
   successChanceSnapshot: number | null;
   wasSuccessful: boolean | null;
   executedAt: string | null;
+
+  activatedAt: string | null;
+  durationMinutes: number | null;
 };
 
 export type MissionExecutionResultDto = {
@@ -54,6 +57,10 @@ export type UpdateMissionRequest = {
   notes?: string | null;
   terrain?: MissionTerrain | null;
   difficulty?: MissionDifficulty | null;
+};
+
+export type ActivateMissionRequest = {
+  durationMinutes: number;
 };
 
 export type MissionReadinessDto = {
@@ -116,8 +123,11 @@ export function unassignCommander(missionId: number) {
   });
 }
 
-export function activateMission(id: number) {
-  return apiFetch<MissionDto>(`/api/mission/${id}/activate`, { method: "PATCH" });
+export function activateMission(id: number, payload: ActivateMissionRequest) {
+  return apiFetch<MissionDto>(`/api/mission/${id}/activate`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function completeMission(id: number, notes?: string | null) {

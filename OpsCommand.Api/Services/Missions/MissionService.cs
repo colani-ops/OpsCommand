@@ -49,7 +49,9 @@ namespace OpsCommand.Api.Services.Missions
                 Difficulty = mission.Difficulty,
                 SuccessChanceSnapshot = mission.SuccessChanceSnapshot,
                 WasSuccessful = mission.WasSuccessful,
-                ExecutedAt = mission.ExecutedAt
+                ExecutedAt = mission.ExecutedAt,
+                ActivatedAt = mission.ActivatedAt,
+                DurationMinutes = mission.DurationMinutes
             };
         }
 
@@ -315,6 +317,8 @@ namespace OpsCommand.Api.Services.Missions
             if (mission.Status == "Active")
                 throw new ArgumentException("Cannot unassign commander while mission is Active.");
 
+            mission.ActivatedAt = null;
+            mission.DurationMinutes = null;
             mission.CommanderId = null;
             mission.SquadId = null;
             mission.Status = "Prepared"; // vraćamo u pool
@@ -323,10 +327,13 @@ namespace OpsCommand.Api.Services.Missions
             return MapToDto(mission);
         }
 
-        public async Task<MissionResponseDto?> ActivateAsync(int missionId)
+        public async Task<MissionResponseDto?> ActivateAsync(int missionId, int durationMinutes)
         {
             var mission = await _missionRepository.GetByIdAsync(missionId);
             if (mission == null) return null;
+
+            if (durationMinutes < 1)
+                throw new ArgumentException("Duration must be at least 1 minute.");
 
             if (mission.Status is "Completed" or "Cancelled")
                 throw new ArgumentException($"Cannot activate mission when status is '{mission.Status}'.");
@@ -351,6 +358,9 @@ namespace OpsCommand.Api.Services.Missions
             }
 
             mission.Status = "Active";
+            mission.ActivatedAt = DateTime.UtcNow;
+            mission.DurationMinutes = durationMinutes;
+
             await _missionRepository.UpdateAsync(mission);
             return MapToDto(mission);
         }
@@ -383,6 +393,9 @@ namespace OpsCommand.Api.Services.Missions
 
             mission.Status = "Cancelled";
             if (notes != null) mission.Notes = notes;
+
+            mission.ActivatedAt = null;
+            mission.DurationMinutes = null;
 
             // release resources
             mission.CommanderId = null;
@@ -418,6 +431,7 @@ namespace OpsCommand.Api.Services.Missions
             "Very High" => -20,
             _ => 0
         };
+
         private static double GetTerrainMultiplier(string terrain, string? category) => terrain switch
         {
             "Urban" => category switch
@@ -463,6 +477,13 @@ namespace OpsCommand.Api.Services.Missions
 
             if (mission.Status != "Active")
                 throw new ArgumentException("Only Active missions can be executed.");
+
+            if (mission.ActivatedAt == null || mission.DurationMinutes == null)
+                throw new ArgumentException("Mission activation timing data is missing.");
+
+            var readyAt = mission.ActivatedAt.Value.AddMinutes(mission.DurationMinutes.Value);
+            if (DateTime.UtcNow < readyAt)
+                throw new ArgumentException("Mission is still in progress and cannot be executed yet.");
 
             var squad = await _squadRepository.GetByIdAsync(mission.SquadId ?? 0);
             if (squad == null)

@@ -170,11 +170,11 @@ namespace OpsCommand.Api.Controllers
 
         [HttpPatch("{id}/activate")]
         [Authorize(Roles = "Admin, SuperAdmin")]
-        public async Task<IActionResult> Activate(int id)
+        public async Task<IActionResult> Activate(int id, [FromBody] MissionActivateDto dto)
         {
             try
             {
-                var updated = await _missionService.ActivateAsync(id);
+                var updated = await _missionService.ActivateAsync(id, dto.DurationMinutes);
                 if (updated == null) return NotFound();
                 return Ok(updated);
             }

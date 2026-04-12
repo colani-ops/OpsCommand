@@ -32,5 +32,6 @@ function getStatusBadgeStyle(status: MissionStatus): CSSProperties {
 }
 
 export default function MissionStatusBadge({ status }: MissionStatusBadgeProps) {
-  return <span style={getStatusBadgeStyle(status)}>{status}</span>;
+  const label = status === "Active" ? "In Progress" : status;
+  return <span style={getStatusBadgeStyle(status)}>{label}</span>;
 }

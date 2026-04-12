@@ -24,10 +24,14 @@ namespace OpsCommand.Api.Domain.Entities
             public string? Notes { get; set; } //Results
 
             public string? Terrain { get; set; }          // Urban, Plains, Forest, Mountain
-            public string? Difficulty { get; set; }       // Low, Medium, High
+            public string? Difficulty { get; set; }       // Very Low, Low, Medium, High, Very High
 
             public int? SuccessChanceSnapshot { get; set; }
             public bool? WasSuccessful { get; set; }
             public DateTime? ExecutedAt { get; set; }
-        }
+
+            //Pseudo real-time
+            public DateTime? ActivatedAt { get; set; }
+            public int? DurationMinutes { get; set; }
+    }
     }

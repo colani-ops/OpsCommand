@@ -55,9 +55,13 @@ export default function MissionsPage() {
   const canManage = hasRole("Admin", "SuperAdmin");
   const canAccess = hasRole("Admin", "SuperAdmin");
 
+
+
   const [items, setItems] = useState<MissionDto[]>([]);
   const [commanders, setCommanders] = useState<UserDto[]>([]);
   const [loading, setLoading] = useState(true);
+
+
 
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<CreateForm>({
@@ -68,13 +72,21 @@ export default function MissionsPage() {
     difficulty: "Medium",
   });
 
+
+
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
 
+
+
   const { error, showError, clearError } = useErrorHandler();
+
+
 
   const [readinessByMissionId, setReadinessByMissionId] = useState<Record<number, MissionReadinessDto | undefined>>({});
   const [loadingReadinessId, setLoadingReadinessId] = useState<number | null>(null);
+
+
 
   const load = useCallback(async () => {
     clearError();
@@ -98,9 +110,13 @@ export default function MissionsPage() {
     }
   }, [canManage, clearError, showError]);
 
+
+
   useEffect(() => {
     load();
   }, [load]);
+
+
 
   const commanderNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -110,9 +126,24 @@ export default function MissionsPage() {
     return map;
   }, [commanders]);
 
+
+
+  const [, setNowTick] = useState(0);
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setNowTick((v) => v + 1);
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }, []);
+
+
+
   if (!canAccess) {
     return <Navigate to="/" replace />;
   }
+
+
 
   function commanderDisplay(commanderId: string | null) {
     if (!commanderId) return "—";
@@ -232,8 +263,18 @@ export default function MissionsPage() {
 
   async function onActivate(id: number) {
     clearError();
+
+    const raw = prompt("Mission duration in minutes:", "30");
+    if (raw == null) return;
+
+    const durationMinutes = Number(raw);
+    if (!Number.isFinite(durationMinutes) || durationMinutes < 1) {
+      showError("Duration must be a positive number of minutes.");
+      return;
+    }
+
     try {
-      await activateMission(id);
+      await activateMission(id, { durationMinutes });
       await load();
     } catch (e: unknown) {
       showError(e instanceof Error ? e.message : "Activate failed");
@@ -276,6 +317,31 @@ export default function MissionsPage() {
   } finally {
     setLoadingReadinessId(null);
   }
+  }
+
+  function formatRemainingTime(activatedAt: string | null, durationMinutes: number | null) {
+    if (!activatedAt || durationMinutes == null) return "—";
+
+  const activated = new Date(activatedAt).getTime();
+  const readyAt = activated + durationMinutes * 60 * 1000;
+  const diffMs = readyAt - Date.now();
+
+  if (diffMs <= 0) return "Ready for execution";
+
+  const totalSeconds = Math.floor(diffMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${minutes}m ${seconds}s remaining`;
+  }
+
+  function isMissionReadyForExecution(activatedAt: string | null, durationMinutes: number | null) {
+  if (!activatedAt || durationMinutes == null) return false;
+
+  const activated = new Date(activatedAt).getTime();
+  const readyAt = activated + durationMinutes * 60 * 1000;
+
+  return Date.now() >= readyAt;
 }
 
   return (
@@ -401,6 +467,10 @@ export default function MissionsPage() {
             const canPreviewReadiness =
               m.status === "Planned";
 
+            const isReadyForExecution = isMissionReadyForExecution(m.activatedAt, m.durationMinutes);
+            
+            
+            
             return (
               <div
                 key={m.id}
@@ -436,6 +506,28 @@ export default function MissionsPage() {
                       </div>
 
                       <div style={{ opacity: 0.85 }}>SquadId: {m.squadId ?? "—"}</div>
+
+                      {m.status === "Active" && (
+                      <div
+                        style={{
+                          marginTop: 10,
+                          padding: 10,
+                          borderRadius: 8,
+                          background: "#1a1a1a",
+                          border: "1px solid #444",
+                        }}
+                      >
+                      <div>
+                        <b>Activated At:</b> {" "}
+                        {m.activatedAt ? new Date(m.activatedAt).toLocaleString() : "—"}</div>
+                      <div>
+                        <b>Duration:</b>  {" "}
+                        {m.durationMinutes != null ? `${m.durationMinutes} min` : "—"}</div>
+                      <div>
+                        <b>Status Window:</b> {" "}
+                        {formatRemainingTime(m.activatedAt, m.durationMinutes)}</div>
+                    </div>
+                    )}
 
                       <div style={{ opacity: 0.85, marginTop: 6 }}>
                         Executed At: {m.executedAt ? new Date(m.executedAt).toLocaleString() : "—"}
@@ -522,12 +614,16 @@ export default function MissionsPage() {
                             </button>
                           )}
 
-                          {m.status === "Active" && (
-                            <>
-                              <button onClick={() => onExecute(m.id)} style={{ padding: "6px 10px", borderRadius: 8 }}>
-                                Execute
-                              </button>
-                            </>
+                          {m.status === "Active" && !isReadyForExecution && (
+                            <span style={{ opacity: 0.75, fontSize: 14 }}>
+                              Execution available when timer expires.
+                          </span>
+                          )}
+
+                          {m.status === "Active" && isReadyForExecution && (
+                            <button onClick={() => onExecute(m.id)} style={{ padding: "6px 10px", borderRadius: 8 }}>
+                              Execute
+                            </button>
                           )}
 
                           {m.status !== "Completed" && m.status !== "Cancelled" && (

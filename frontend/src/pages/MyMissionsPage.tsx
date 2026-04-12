@@ -8,11 +8,28 @@ import MissionStatusBadge from "../components/MissionStatusBadge";
 import MissionMetaBadge from "../components/MissionMetaBadge";
 import MissionOutcome from "../components/MissionOutcome";
 
+function formatRemainingTime(activatedAt: string | null, durationMinutes: number | null) {
+  if (!activatedAt || durationMinutes == null) return "—";
+
+  const activated = new Date(activatedAt).getTime();
+  const readyAt = activated + durationMinutes * 60 * 1000;
+  const diffMs = readyAt - Date.now();
+
+  if (diffMs <= 0) return "Ready for execution";
+
+  const totalSeconds = Math.floor(diffMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${minutes}m ${seconds}s remaining`;
+}
+
 export default function MyMissionsPage() {
   const canAccess = hasRole("Member", "Commander");
 
   const [missions, setMissions] = useState<MissionDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [, setNowTick] = useState(0);
 
   const { error, showError, clearError } = useErrorHandler();
 
@@ -29,6 +46,14 @@ export default function MyMissionsPage() {
       setLoading(false);
     }
   }, [clearError, showError]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNowTick((v) => v + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     load();
@@ -62,12 +87,37 @@ export default function MyMissionsPage() {
                 padding: 14,
               }}
             >
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <div style={{ fontSize: 18, fontWeight: 700 }}>{m.name}</div>
-                  <MissionStatusBadge status={m.status} />
-                  <MissionMetaBadge>{m.terrain ?? "No terrain"}</MissionMetaBadge>
-                  <MissionMetaBadge>{m.difficulty ?? "No difficulty"}</MissionMetaBadge>
+                <MissionStatusBadge status={m.status} />
+                <MissionMetaBadge>{m.terrain ?? "No terrain"}</MissionMetaBadge>
+                <MissionMetaBadge>{m.difficulty ?? "No difficulty"}</MissionMetaBadge>
               </div>
+
+              {m.status === "Active" && (
+                <div
+                  style={{
+                    marginTop: 10,
+                    padding: 10,
+                    borderRadius: 8,
+                    background: "#1a1a1a",
+                    border: "1px solid #444",
+                  }}
+                >
+                  <div>
+                    <b>Activated At:</b>{" "}
+                    {m.activatedAt ? new Date(m.activatedAt).toLocaleString() : "—"}
+                  </div>
+                  <div>
+                    <b>Duration:</b>{" "}
+                    {m.durationMinutes != null ? `${m.durationMinutes} min` : "—"}
+                  </div>
+                  <div>
+                    <b>Status Window:</b>{" "}
+                    {formatRemainingTime(m.activatedAt, m.durationMinutes)}
+                  </div>
+                </div>
+              )}
 
               <div style={{ opacity: 0.85, marginTop: 10 }}>
                 Executed At: {m.executedAt ? new Date(m.executedAt).toLocaleString() : "—"}
@@ -95,23 +145,22 @@ export default function MyMissionsPage() {
                   <div>{m.notes}</div>
                 </div>
               )}
-              
+
               {m.status === "Planned" && (
                 <div
                   style={{
-                  marginTop: 10,
-                  padding: 10,
-                  borderRadius: 8,
-                  background: "#101820",
-                  border: "1px solid #2c3e50",
-                  opacity: 0.92,
+                    marginTop: 10,
+                    padding: 10,
+                    borderRadius: 8,
+                    background: "#101820",
+                    border: "1px solid #2c3e50",
+                    opacity: 0.92,
                   }}
                 >
-      <div style={{ fontWeight: 700, marginBottom: 6 }}>Planning Phase</div>
-    <div>Check your squad loadout and mission terrain before activation.</div>
-  </div>
-)}
-
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>Planning Phase</div>
+                  <div>Check your squad loadout and mission terrain before activation.</div>
+                </div>
+              )}
             </div>
           ))}
         </div>
