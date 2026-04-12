@@ -45,5 +45,32 @@ namespace OpsCommand.Api.Repositories.UserEquipments
             _context.UserEquipments.Remove(userEquipment);
             await _context.SaveChangesAsync();
         }
+
+
+        public async Task<List<UserEquipment>> GetBySquadIdAsync(int squadId)
+        {
+            var now = DateTimeOffset.UtcNow;
+
+            return await _context.UserEquipments
+                .Include(ue => ue.Equipment)
+                .Include(ue => ue.User)
+                .Where(ue =>
+                    ue.User.AssignedSquadId == squadId &&
+                    (ue.User.LockoutEnd == null || ue.User.LockoutEnd <= now))
+                .ToListAsync();
+        }
+
+        public async Task<int> GetTotalAllocatedQuantityForEquipmentAsync(int squadId, int equipmentId)
+        {
+            var now = DateTimeOffset.UtcNow;
+
+            return await _context.UserEquipments
+                .Include(ue => ue.User)
+                .Where(ue =>
+                    ue.EquipmentId == equipmentId &&
+                    ue.User.AssignedSquadId == squadId &&
+                    (ue.User.LockoutEnd == null || ue.User.LockoutEnd <= now))
+                .SumAsync(ue => ue.Quantity);
+        }
     }
 }

@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using OpsCommand.Api.Repositories.Squads;
 using OpsCommand.Api.Repositories.SquadEquipments;
+using OpsCommand.Api.Repositories.UserEquipments;
 
 namespace OpsCommand.Api.Services.Missions
 {
@@ -18,18 +19,18 @@ namespace OpsCommand.Api.Services.Missions
         private readonly UserManager<ApplicationUser> _userManager;
 
         private readonly ISquadRepository _squadRepository;
-        private readonly ISquadEquipmentRepository _squadEquipmentRepository;
+        private readonly IUserEquipmentRepository _userEquipmentRepository;
 
         public MissionService(
             IMissionRepository missionRepository,
             UserManager<ApplicationUser> userManager,
             ISquadRepository squadRepository,
-            ISquadEquipmentRepository squadEquipmentRepository)
+            IUserEquipmentRepository userEquipmentRepository)
         {
             _missionRepository = missionRepository;
             _userManager = userManager;
             _squadRepository = squadRepository;
-            _squadEquipmentRepository = squadEquipmentRepository;
+            _userEquipmentRepository = userEquipmentRepository;
         }
 
         private static MissionResponseDto MapToDto(Mission mission)
@@ -560,18 +561,18 @@ namespace OpsCommand.Api.Services.Missions
             if (squad == null)
                 throw new ArgumentException("Assigned squad not found.");
 
-            var squadEquipment = await _squadEquipmentRepository.GetBySquadIdAsync(squad.Id);
+            var squadUserEquipment = await _userEquipmentRepository.GetBySquadIdAsync(squad.Id);
 
             const int baseScore = 50;
 
             var difficultyModifier = GetDifficultyModifier(mission.Difficulty);
             double rawEquipmentScore = 0;
 
-            foreach (var se in squadEquipment)
+            foreach (var userEquipment in squadUserEquipment)
             {
-                var effectiveness = se.Equipment.Effectiveness;
-                var quantity = se.Quantity;
-                var multiplier = GetTerrainMultiplier(mission.Terrain, se.Equipment.Category);
+                var effectiveness = userEquipment.Equipment.Effectiveness;
+                var quantity = userEquipment.Quantity;
+                var multiplier = GetTerrainMultiplier(mission.Terrain, userEquipment.Equipment.Category);
 
                 rawEquipmentScore += effectiveness * quantity * multiplier;
             }

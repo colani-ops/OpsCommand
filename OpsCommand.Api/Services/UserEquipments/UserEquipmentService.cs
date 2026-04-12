@@ -37,17 +37,41 @@ namespace OpsCommand.Api.Services.UserEquipments
             if (user == null || user.AssignedSquadId == null)
                 return new List<UserEquipmentResponseDto>();
 
+            var squadId = user.AssignedSquadId.Value;
+            var now = DateTimeOffset.UtcNow;
+
             var squadEquipment = await _context.SquadEquipments
                 .Include(se => se.Equipment)
-                .Where(se => se.SquadId == user.AssignedSquadId.Value)
+                .Where(se => se.SquadId == squadId)
                 .ToListAsync();
 
-            return squadEquipment.Select(se => new UserEquipmentResponseDto
+            var squadUserEquipment = await _context.UserEquipments
+                .Include(ue => ue.User)
+                .Where(ue =>
+                    ue.User.AssignedSquadId == squadId &&
+                    (ue.User.LockoutEnd == null || ue.User.LockoutEnd <= now))
+                .ToListAsync();
+
+            return squadEquipment.Select(se =>
             {
-                EquipmentId = se.EquipmentId,
-                EquipmentName = se.Equipment.Name,
-                Category = se.Equipment.Category,
-                Quantity = se.Quantity
+                var totalAllocated = squadUserEquipment
+                    .Where(ue => ue.EquipmentId == se.EquipmentId)
+                    .Sum(ue => ue.Quantity);
+
+                var myAllocated = squadUserEquipment
+                    .Where(ue => ue.UserId == userId && ue.EquipmentId == se.EquipmentId)
+                    .Sum(ue => ue.Quantity);
+
+                var availableToMe = se.Quantity - (totalAllocated - myAllocated);
+                if (availableToMe < 0) availableToMe = 0;
+
+                return new UserEquipmentResponseDto
+                {
+                    EquipmentId = se.EquipmentId,
+                    EquipmentName = se.Equipment.Name,
+                    Category = se.Equipment.Category,
+                    Quantity = availableToMe
+                };
             }).ToList();
         }
 
@@ -78,10 +102,16 @@ namespace OpsCommand.Api.Services.UserEquipments
             if (squadEquipment == null)
                 throw new ArgumentException("This equipment is not available to your squad.");
 
-            if (request.Quantity > squadEquipment.Quantity)
-                throw new ArgumentException("Requested quantity exceeds squad availability.");
-
             var existing = await _userEquipmentRepository.GetByIdAsync(userId, request.EquipmentId);
+
+            var alreadyAllocated = await _userEquipmentRepository
+                .GetTotalAllocatedQuantityForEquipmentAsync(user.AssignedSquadId.Value, request.EquipmentId);
+
+            var currentUserQuantity = existing?.Quantity ?? 0;
+            var availableRemaining = squadEquipment.Quantity - (alreadyAllocated - currentUserQuantity);
+
+            if (request.Quantity > availableRemaining)
+                throw new ArgumentException("Requested quantity exceeds remaining squad availability.");
 
             if (existing != null)
             {
@@ -137,10 +167,18 @@ namespace OpsCommand.Api.Services.UserEquipments
             if (squadEquipment == null)
                 throw new ArgumentException("This equipment is not available to your squad.");
 
-            if (request.Quantity > squadEquipment.Quantity)
-                throw new ArgumentException("Requested quantity exceeds squad availability.");
-
             var existing = await _userEquipmentRepository.GetByIdAsync(userId, equipmentId);
+            if (existing == null)
+                throw new ArgumentException("User equipment entry not found.");
+
+            var alreadyAllocated = await _userEquipmentRepository
+                .GetTotalAllocatedQuantityForEquipmentAsync(user.AssignedSquadId.Value, equipmentId);
+
+            var availableRemaining = squadEquipment.Quantity - (alreadyAllocated - existing.Quantity);
+
+            if (request.Quantity > availableRemaining)
+                throw new ArgumentException("Requested quantity exceeds remaining squad availability.");
+
             if (existing == null)
                 throw new ArgumentException("User equipment entry not found.");
 

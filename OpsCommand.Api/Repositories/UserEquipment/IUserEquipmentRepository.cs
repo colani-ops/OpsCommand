@@ -9,5 +9,8 @@ namespace OpsCommand.Api.Repositories.UserEquipments
         Task AddAsync(UserEquipment userEquipment);
         Task UpdateAsync(UserEquipment userEquipment);
         Task DeleteAsync(UserEquipment userEquipment);
+
+        Task<List<UserEquipment>> GetBySquadIdAsync(int squadId);
+        Task<int> GetTotalAllocatedQuantityForEquipmentAsync(int squadId, int equipmentId);
     }
 }
