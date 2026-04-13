@@ -94,12 +94,19 @@ namespace OpsCommand.Api.Controllers
                     new { message = "Admin cannot assign the SuperAdmin role." });
             }
 
-            var updatedUser = await _userService.AdminUpdateUserAsync(id, dto);
+            try
+            {
+                var updatedUser = await _userService.AdminUpdateUserAsync(id, dto);
 
-            if (updatedUser == null)
-                return NotFound();
+                if (updatedUser == null)
+                    return NotFound();
 
-            return Ok(updatedUser);
+                return Ok(updatedUser);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
 
