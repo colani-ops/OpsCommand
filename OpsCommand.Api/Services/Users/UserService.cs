@@ -75,8 +75,8 @@ namespace OpsCommand.Api.Services.Users
             if (!allowedRoles.Contains(dto.Role))
                 throw new ArgumentException("Invalid role.");
 
-            if ((dto.Role == "Member" || dto.Role == "Commander") && dto.AssignedSquadId == null)
-                throw new ArgumentException($"{dto.Role} must be assigned to a squad.");
+            if (dto.Role == "Member" && dto.AssignedSquadId == null)
+                throw new ArgumentException("Member must be assigned to a squad.");
 
             // Role change
             var currentRoles = await _userManager.GetRolesAsync(user);
