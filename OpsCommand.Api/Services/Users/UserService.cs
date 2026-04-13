@@ -75,24 +75,35 @@ namespace OpsCommand.Api.Services.Users
             if (!allowedRoles.Contains(dto.Role))
                 throw new ArgumentException("Invalid role.");
 
-            if (dto.Role == "Member" && dto.AssignedSquadId == null)
-                throw new ArgumentException("Member must be assigned to a squad.");
-
-            // Role change
             var currentRoles = await _userManager.GetRolesAsync(user);
+            var currentPrimaryRole = currentRoles.FirstOrDefault() ?? "Recruit";
+
+            var targetRole = dto.Role;
+
+            // Auto-promote Recruit to Member when assigned to a squad,
+            // unless admin explicitly sets a higher/different role.
+            if (dto.AssignedSquadId != null &&
+                currentPrimaryRole == "Recruit" &&
+                dto.Role == "Recruit")
+            {
+                targetRole = "Member";
+            }
+
+            // Members are expected to be operational squad users when set as Member.
+            // But once someone is already Member, losing squad should not auto-demote them.
+            if (targetRole == "Member" && dto.AssignedSquadId == null && currentPrimaryRole == "Recruit")
+                throw new ArgumentException("Member must be assigned to a squad.");
 
             var removeRes = await _userManager.RemoveFromRolesAsync(user, currentRoles);
             if (!removeRes.Succeeded)
                 throw new ArgumentException(string.Join("; ", removeRes.Errors.Select(e => e.Description)));
 
-            var addRes = await _userManager.AddToRoleAsync(user, dto.Role);
+            var addRes = await _userManager.AddToRoleAsync(user, targetRole);
             if (!addRes.Succeeded)
                 throw new ArgumentException(string.Join("; ", addRes.Errors.Select(e => e.Description)));
 
-            // Squad change
             user.AssignedSquadId = dto.AssignedSquadId;
 
-            // Save user
             var updateRes = await _userManager.UpdateAsync(user);
             if (!updateRes.Succeeded)
                 throw new ArgumentException(string.Join("; ", updateRes.Errors.Select(e => e.Description)));

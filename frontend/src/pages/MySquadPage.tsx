@@ -128,6 +128,25 @@ export default function MySquadPage() {
 
       {loading && <div style={{ marginTop: 10 }}>Loading...</div>}
 
+            {!loading && !error && !squad && (
+        <div
+          style={{
+            marginTop: 14,
+            border: "1px solid #333",
+            borderRadius: 12,
+            padding: 14,
+            background: "#151515",
+            display: "grid",
+            gap: 8,
+          }}
+        >
+          <div style={{ fontSize: 18, fontWeight: 700 }}>No squad assigned</div>
+          <div style={{ opacity: 0.85 }}>
+            You're not assigned to a squad yet. Contact an Admin to be assigned to one.
+          </div>
+        </div>
+      )}
+
       {!loading && squad && (
         <>
           <div

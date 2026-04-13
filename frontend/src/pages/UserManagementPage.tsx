@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { hasRole } from "../api/auth";
 import {
   approveUser,
@@ -9,8 +9,7 @@ import {
   updateUserByAdmin,
   type UserDto,
 } from "../api/users";
-
-const ROLES = ["Recruit", "Member", "Commander", "Admin"] as const;
+import { getSquads, type SquadDto } from "../api/squads";
 
 type EditState = Record<
   string,
@@ -24,48 +23,60 @@ export default function UserManagementPage() {
   const isSuperAdmin = hasRole("SuperAdmin");
   const canManageUsers = hasRole("Admin", "SuperAdmin");
 
+  const ROLES = isSuperAdmin
+    ? (["Recruit", "Member", "Commander", "Admin", "SuperAdmin"] as const)
+    : (["Recruit", "Member", "Commander", "Admin"] as const);
+
   const [users, setUsers] = useState<UserDto[]>([]);
   const [pending, setPending] = useState<UserDto[]>([]);
+  const [squads, setSquads] = useState<SquadDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [editState, setEditState] = useState<EditState>({});
 
-  async function load() {
-    setLoading(true);
-    setErr(null);
-    try {
-      const usersData = await getUsers();
-      setUsers(usersData);
+  const load = useCallback(async () => {
+  setLoading(true);
+  setErr(null);
 
-      const initial: EditState = {};
-      for (const u of usersData) {
-        initial[u.id] = {
-          role: u.roles?.[0] ?? "Recruit",
-          assignedSquadId: u.assignedSquadId != null ? String(u.assignedSquadId) : "",
-        };
-      }
-      setEditState(initial);
+  try {
+    const [usersData, squadsData] = await Promise.all([
+      getUsers(),
+      getSquads(),
+    ]);
 
-      if (isSuperAdmin) {
-        const pendingData = await getPendingUsers();
-        setPending(pendingData);
-      }
-    } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Failed to load users.");
-    } finally {
-      setLoading(false);
+    setUsers(usersData);
+    setSquads(squadsData);
+
+    const initial: EditState = {};
+    for (const u of usersData) {
+      initial[u.id] = {
+        role: u.roles?.[0] ?? "Recruit",
+        assignedSquadId: u.assignedSquadId != null ? String(u.assignedSquadId) : "",
+      };
     }
+    setEditState(initial);
+
+    if (isSuperAdmin) {
+      const pendingData = await getPendingUsers();
+      setPending(pendingData);
+    }
+  } catch (e: unknown) {
+    setErr(e instanceof Error ? e.message : "Failed to load users.");
+  } finally {
+    setLoading(false);
   }
+}, [isSuperAdmin]);
 
   useEffect(() => {
     if (!canManageUsers) return;
     load();
-  }, []);
+  }, [canManageUsers, load]);
 
   async function onApprove(id: string) {
     setErr(null);
     setMsg(null);
+
     try {
       await approveUser(id);
       setMsg("User approved.");
@@ -97,6 +108,7 @@ export default function UserManagementPage() {
   async function onDisable(id: string) {
     setErr(null);
     setMsg(null);
+
     try {
       await disableUser(id);
       setMsg("User disabled.");
@@ -109,6 +121,7 @@ export default function UserManagementPage() {
   async function onRestore(id: string) {
     setErr(null);
     setMsg(null);
+
     try {
       await restoreUser(id);
       setMsg("User restored.");
@@ -198,37 +211,55 @@ export default function UserManagementPage() {
                   <div style={{ fontWeight: 700 }}>{u.userName}</div>
                   <div>{u.email}</div>
                   <div style={{ opacity: 0.7 }}>Current role: {u.roles.join(", ")}</div>
+                  <div style={{ opacity: 0.7 }}>
+                    Current squad:{" "}
+                    {u.assignedSquadId != null
+                      ? squads.find((s) => s.id === u.assignedSquadId)?.name ?? `#${u.assignedSquadId}`
+                      : "—"}
+                  </div>
                 </div>
 
-                <div style={{ display: "grid", gap: 10, maxWidth: 320 }}>
-                  <select
-                    value={state.role}
-                    onChange={(e) =>
-                      setEditState((prev) => ({
-                        ...prev,
-                        [u.id]: { ...state, role: e.target.value },
-                      }))
-                    }
-                    style={{ padding: 10, borderRadius: 8 }}
-                  >
-                    {ROLES.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
+                <div style={{ display: "grid", gap: 10, maxWidth: 360 }}>
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <label style={{ fontWeight: 600 }}>Role</label>
+                    <select
+                      value={state.role}
+                      onChange={(e) =>
+                        setEditState((prev) => ({
+                          ...prev,
+                          [u.id]: { ...state, role: e.target.value },
+                        }))
+                      }
+                      style={{ padding: 10, borderRadius: 8 }}
+                    >
+                      {ROLES.map((r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                  <input
-                    placeholder="Assigned Squad Id"
-                    value={state.assignedSquadId}
-                    onChange={(e) =>
-                      setEditState((prev) => ({
-                        ...prev,
-                        [u.id]: { ...state, assignedSquadId: e.target.value },
-                      }))
-                    }
-                    style={{ padding: 10, borderRadius: 8 }}
-                  />
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <label style={{ fontWeight: 600 }}>Assigned Squad</label>
+                    <select
+                      value={state.assignedSquadId}
+                      onChange={(e) =>
+                        setEditState((prev) => ({
+                          ...prev,
+                          [u.id]: { ...state, assignedSquadId: e.target.value },
+                        }))
+                      }
+                      style={{ padding: 10, borderRadius: 8 }}
+                    >
+                      <option value="">— No squad —</option>
+                      {squads.map((s) => (
+                        <option key={s.id} value={String(s.id)}>
+                          {s.name} (#{s.id})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
