@@ -1,56 +1,111 @@
 import { useState } from "react";
-import { login } from "../api/auth";
-
 import { Link, useNavigate } from "react-router-dom";
+import { login } from "../api/auth";
+import {
+  authContentStyle,
+  authFieldWrapStyle,
+  authFormStyle,
+  authInputStyle,
+  authLabelStyle,
+  authMessageStyle,
+  authOverlayStyle,
+  authPageStyle,
+  authPanelStyle,
+  authPrimaryButtonStyle,
+  authSecondaryButtonStyle,
+  authTitleBoxStyle,
+  authTitleStyle,
+} from "../styles/authStyles";
+
+const backgroundUrl = "/mainBG.png";
 
 export default function LoginPage() {
   const nav = useNavigate();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
-    setLoading(true);
+    setSubmitting(true);
+
     try {
-      await login(email, password);
+      await login({
+        email: email.trim(),
+        password,
+      });
+
       nav("/");
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Login failed.");
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   }
 
   return (
-    <div style={{ maxWidth: 420, margin: "40px auto", padding: 16 }}>
-      <h2>Login</h2>
-      <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
-        <input
-          placeholder="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          type="email"
-          required
-          style={{ padding: 10 }}
-        />
-        <input
-          placeholder="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          type="password"
-          required
-          style={{ padding: 10 }}
-        />
-        <button disabled={loading} style={{ padding: 10 }}>
-          {loading ? "Logging in..." : "Login"}
-        </button>
-        {err && <div style={{ color: "crimson" }}>{err}</div>}
-      </form>
-      <div style={{ marginTop: 12 }}>
-        <Link to="/register">Create account</Link>
+    <div
+      style={{
+        ...authPageStyle,
+        backgroundImage: `url(${backgroundUrl})`,
+      }}
+    >
+      <div style={authOverlayStyle} />
+      <div style={authContentStyle}>
+        <div style={authTitleBoxStyle}>
+          <h1 style={authTitleStyle}>Command Access</h1>
+        </div>
+
+        <div style={authPanelStyle}>
+          <form onSubmit={onSubmit} style={authFormStyle}>
+            {err && <div style={authMessageStyle}>{err}</div>}
+
+            <div style={authFieldWrapStyle}>
+              <label htmlFor="email" style={authLabelStyle}>
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="email.example@mail.com"
+                autoComplete="email"
+                style={authInputStyle}
+                required
+              />
+            </div>
+
+            <div style={authFieldWrapStyle}>
+              <label htmlFor="password" style={authLabelStyle}>
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="password"
+                autoComplete="current-password"
+                style={authInputStyle}
+                required
+              />
+            </div>
+
+            <button type="submit" style={authPrimaryButtonStyle} disabled={submitting}>
+              {submitting ? "Logging in..." : "Login"}
+            </button>
+
+            <Link to="/register" style={{ textDecoration: "none" }}>
+              <button type="button" style={authSecondaryButtonStyle}>
+                Register
+              </button>
+            </Link>
+          </form>
+        </div>
       </div>
     </div>
   );

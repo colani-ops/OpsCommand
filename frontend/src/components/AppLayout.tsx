@@ -1,12 +1,23 @@
-import React from "react";
+import type { ReactNode } from "react";
 import NavBar from "./NavBar";
+import {
+  appShellContentStyle,
+  appShellOverlayStyle,
+  appShellPageStyle,
+  pageContainerStyle,
+} from "../styles/appShellStyles";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+type AppLayoutProps = {
+  children: ReactNode;
+};
+
+export default function AppLayout({ children }: AppLayoutProps) {
   return (
-    <div style={{ minHeight: "100vh", background: "#0b0b0b", color: "white" }}>
-      <NavBar />
-      <div style={{ maxWidth: 1400, margin: "0 auto", padding: "24px 16px" }}>
-        {children}
+    <div style={appShellPageStyle}>
+      <div style={appShellOverlayStyle} />
+      <div style={appShellContentStyle}>
+        <NavBar />
+        <main style={pageContainerStyle}>{children}</main>
       </div>
     </div>
   );

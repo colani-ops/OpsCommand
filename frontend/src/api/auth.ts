@@ -10,7 +10,7 @@ export type AuthUser = {
   roles: string[];
 };
 
-type LoginResponse = {
+export type AuthResponse = {
   id: string;
   token: string;
   email: string;
@@ -18,34 +18,41 @@ type LoginResponse = {
   roles: string[];
 };
 
-type RegisterRequest = {
+export type LoginRequest = {
+  email: string;
+  password: string;
+};
+
+export type RegisterRequest = {
   email: string;
   password: string;
   userName?: string;
 };
 
-export async function login(email: string, password: string): Promise<void> {
-  const res = await apiFetch<LoginResponse>(LOGIN_PATH, {
+export async function login(body: LoginRequest) {
+  const result = await apiFetch<AuthResponse>(LOGIN_PATH, {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify(body),
   });
 
-  localStorage.setItem("token", res.token);
+  localStorage.setItem("token", result.token);
   localStorage.setItem(
-  "user",
-  JSON.stringify({
-    id: res.id,
-    email: res.email,
-    userName: res.userName,
-    roles: res.roles
-  } satisfies AuthUser)
-);
+    "user",
+    JSON.stringify({
+      id: result.id,
+      email: result.email,
+      userName: result.userName,
+      roles: result.roles,
+    } satisfies AuthUser)
+  );
+
+  return result;
 }
 
-export async function register(payload: RegisterRequest): Promise<string> {
-  return apiFetch<string>(REGISTER_PATH, {
+export async function register(body: RegisterRequest) {
+  return apiFetch<void>(REGISTER_PATH, {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
 }
 
@@ -75,7 +82,9 @@ export function getPrimaryRole(): string {
   if (!user || !user.roles?.length) return "Guest";
 
   const order = ["SuperAdmin", "Admin", "Commander", "Member", "Recruit"];
-  for (const r of order) if (user.roles.includes(r)) return r;
+  for (const r of order) {
+    if (user.roles.includes(r)) return r;
+  }
+
   return user.roles[0];
 }
-
