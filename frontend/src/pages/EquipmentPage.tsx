@@ -12,7 +12,6 @@ import {
 import { useErrorHandler } from "../hooks/useErrorHandler";
 import ErrorBanner from "../components/ErrorBanner";
 
-
 const CATEGORIES: EquipmentCategory[] = ["Primary", "Secondary", "Melee", "Utility"];
 
 type CreateForm = {
@@ -37,6 +36,10 @@ export default function EquipmentPage() {
   const [items, setItems] = useState<EquipmentDto[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"name" | "type" | "effectiveness" | "quantity">("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<CreateForm>({
     name: "",
@@ -54,6 +57,7 @@ export default function EquipmentPage() {
   const load = useCallback(async () => {
     clearError();
     setLoading(true);
+
     try {
       const data = await getEquipment();
       setItems(data);
@@ -72,6 +76,73 @@ export default function EquipmentPage() {
     () => items.find((x) => x.id === editingId) ?? null,
     [items, editingId]
   );
+
+  function getEquipmentBanner(category: string | null) {
+    switch (category) {
+      case "Primary":
+        return "/equipment-primary.png";
+      case "Secondary":
+        return "/equipment-secondary.png";
+      case "Melee":
+        return "/equipment-melee.png";
+      case "Utility":
+        return "/equipment-utility.png";
+      default:
+        return "/equipment-default.png";
+    }
+  }
+
+  function getAllocationPercent(item: EquipmentDto) {
+    if (item.quantity <= 0) return 0;
+    return Math.round((item.allocatedQuantity / item.quantity) * 100);
+  }
+
+  function toggleSort(next: "name" | "type" | "effectiveness" | "quantity") {
+    if (sortBy === next) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      return;
+    }
+
+    setSortBy(next);
+    setSortDir("asc");
+  }
+
+  const visibleItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+
+    const filtered = items.filter((item) => {
+      if (!q) return true;
+
+      return (
+        item.name.toLowerCase().includes(q) ||
+        (item.category ?? "").toLowerCase().includes(q) ||
+        (item.description ?? "").toLowerCase().includes(q)
+      );
+    });
+
+    const sorted = [...filtered].sort((a, b) => {
+      let result = 0;
+
+      switch (sortBy) {
+        case "name":
+          result = a.name.localeCompare(b.name);
+          break;
+        case "type":
+          result = (a.category ?? "").localeCompare(b.category ?? "");
+          break;
+        case "effectiveness":
+          result = a.effectiveness - b.effectiveness;
+          break;
+        case "quantity":
+          result = a.quantity - b.quantity;
+          break;
+      }
+
+      return sortDir === "asc" ? result : -result;
+    });
+
+    return sorted;
+  }, [items, search, sortBy, sortDir]);
 
   function startEdit(id: number) {
     const item = items.find((x) => x.id === id);
@@ -154,273 +225,467 @@ export default function EquipmentPage() {
     return <Navigate to="/" replace />;
   }
 
-
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <h2 style={{ marginRight: "auto" }}>Equipment</h2>
-
-        {canManage && (
-          <button
-            onClick={() => setShowCreate((v) => !v)}
-            style={{ padding: "8px 12px", borderRadius: 8 }}
-          >
-            {showCreate ? "Close" : "New Equipment"}
-          </button>
-        )}
-
-        <button onClick={load} style={{ padding: "8px 12px", borderRadius: 8 }}>
-          Refresh
-        </button>
-      </div>
-
       <ErrorBanner error={error} />
-      {loading && <div style={{ marginTop: 10 }}>Loading...</div>}
 
-      {canManage && showCreate && (
-        <form
-          onSubmit={submitCreate}
+      <div
+        style={{
+          border: "2px solid #c9a56a",
+          borderRadius: 14,
+          background: "rgba(0, 0, 0, 0.78)",
+          padding: 24,
+        }}
+      >
+        <div
           style={{
-            marginTop: 14,
-            border: "1px solid #333",
-            borderRadius: 12,
-            padding: 14,
             display: "grid",
-            gap: 10,
+            gridTemplateColumns: "220px 1fr auto auto",
+            gap: 16,
+            alignItems: "center",
+            marginBottom: 18,
           }}
         >
-          <div style={{ fontWeight: 700 }}>Create / Add Stock</div>
-
-          <input
-            value={createForm.name}
-            onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
-            placeholder="Name (unique)"
-            required
-            style={{ padding: 10, borderRadius: 8 }}
-          />
-
-          <select
-            value={createForm.category}
-            onChange={(e) =>
-              setCreateForm((f) => ({ ...f, category: e.target.value as EquipmentCategory }))
-            }
-            style={{ padding: 10, borderRadius: 8 }}
+          <h2
+            style={{
+              margin: 0,
+              color: "#f3efe6",
+              fontFamily: "monospace",
+              fontSize: 28,
+            }}
           >
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+            Equipment
+          </h2>
 
           <input
-            type="number"
-            value={createForm.quantity}
-            onChange={(e) => setCreateForm((f) => ({ ...f, quantity: Number(e.target.value) }))}
-            placeholder="Quantity to add"
-            min={0}
-            style={{ padding: 10, borderRadius: 8 }}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search..."
+            style={{
+              height: 44,
+              borderRadius: 10,
+              border: "1px solid #9d8560",
+              background: "rgba(201,165,106,0.22)",
+              color: "#f3efe6",
+              padding: "0 14px",
+              fontFamily: "monospace",
+              fontSize: 16,
+            }}
           />
 
-          <textarea
-            value={createForm.description}
-            onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
-            placeholder="Description"
-            rows={3}
-            style={{ padding: 10, borderRadius: 8 }}
-          />
-
-          <input
-            type="number"
-            value={createForm.effectiveness}
-            onChange={(e) =>
-              setCreateForm((f) => ({ ...f, effectiveness: Number(e.target.value) }))
-            }
-            placeholder="Effectiveness (1-100)"
-            min={1}
-            max={100}
-            style={{ padding: 10, borderRadius: 8 }}
-          />
-
-          <div style={{ display: "flex", gap: 10 }}>
-            <button style={{ padding: "10px 14px", borderRadius: 8 }}>Save</button>
+          {canManage && (
             <button
-              type="button"
-              onClick={() => setShowCreate(false)}
-              style={{ padding: "10px 14px", borderRadius: 8 }}
+              onClick={() => setShowCreate((v) => !v)}
+              style={toolbarButtonStyle}
             >
-              Cancel
+              {showCreate ? "Close" : "New Equipment"}
             </button>
-          </div>
-        </form>
-      )}
+          )}
 
-      {!loading && (
-        <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
-          {items.map((item) => {
-            const isEditing = editingId === item.id;
+          <button onClick={load} style={toolbarButtonStyle}>
+            Refresh
+          </button>
+        </div>
 
-            return (
-              <div
-                key={item.id}
-                style={{
-                  border: "1px solid #333",
-                  borderRadius: 12,
-                  padding: 14,
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  opacity: item.deletedAt ? 0.6 : 1,
-                }}
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            marginBottom: 16,
+            flexWrap: "wrap",
+          }}
+        >
+          <button onClick={() => toggleSort("name")} style={sortButtonStyle}>
+            Name {sortBy === "name" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+          </button>
+          <button onClick={() => toggleSort("type")} style={sortButtonStyle}>
+            Type {sortBy === "type" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+          </button>
+          <button onClick={() => toggleSort("effectiveness")} style={sortButtonStyle}>
+            Eff. {sortBy === "effectiveness" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+          </button>
+          <button onClick={() => toggleSort("quantity")} style={sortButtonStyle}>
+            Quantity {sortBy === "quantity" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+          </button>
+        </div>
+
+        {loading && <div style={{ marginTop: 10, color: "#f3efe6" }}>Loading...</div>}
+
+        {canManage && showCreate && (
+          <form
+            onSubmit={submitCreate}
+            style={{
+              marginBottom: 18,
+              border: "1px solid #9d8560",
+              borderRadius: 12,
+              padding: 14,
+              display: "grid",
+              gap: 10,
+              background: "rgba(0,0,0,0.45)",
+            }}
+          >
+            <div style={{ fontWeight: 700, color: "#f3efe6", fontFamily: "monospace" }}>
+              Create / Add Stock
+            </div>
+
+            <input
+              value={createForm.name}
+              onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder="Name (unique)"
+              required
+              style={formFieldStyle}
+            />
+
+            <select
+              value={createForm.category}
+              onChange={(e) =>
+                setCreateForm((f) => ({ ...f, category: e.target.value as EquipmentCategory }))
+              }
+              style={formFieldStyle}
+            >
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+
+            <input
+              type="number"
+              value={createForm.quantity}
+              onChange={(e) => setCreateForm((f) => ({ ...f, quantity: Number(e.target.value) }))}
+              placeholder="Quantity to add"
+              min={0}
+              style={formFieldStyle}
+            />
+
+            <textarea
+              value={createForm.description}
+              onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
+              placeholder="Description"
+              rows={3}
+              style={formFieldStyle}
+            />
+
+            <input
+              type="number"
+              value={createForm.effectiveness}
+              onChange={(e) =>
+                setCreateForm((f) => ({ ...f, effectiveness: Number(e.target.value) }))
+              }
+              placeholder="Effectiveness (1-100)"
+              min={1}
+              max={100}
+              style={formFieldStyle}
+            />
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button style={toolbarButtonStyle}>Save</button>
+              <button
+                type="button"
+                onClick={() => setShowCreate(false)}
+                style={secondaryButtonStyle}
               >
-                <div style={{ flex: 1 }}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+
+        {!loading && (
+          <div
+            style={{
+              maxHeight: "62vh",
+              overflowY: "auto",
+              display: "grid",
+              gap: 14,
+              paddingRight: 6,
+            }}
+          >
+            {visibleItems.map((item) => {
+              const isEditing = editingId === item.id;
+
+              return (
+                <div
+                  key={item.id}
+                  style={{
+                    border: "1px solid #9d8560",
+                    borderRadius: 14,
+                    background: "rgba(0,0,0,0.58)",
+                    overflow: "hidden",
+                    opacity: item.deletedAt ? 0.6 : 1,
+                    position: "relative",
+                  }}
+                >
                   {!isEditing ? (
-                    <>
-                      <div style={{ fontSize: 18, fontWeight: 700 }}>
-                        <Link
-                          to={`/equipment/${item.id}`}
-                          style={{ color: "white", textDecoration: "none" }}
-                          title="Open equipment profile"
+                    <div
+                      style={{
+                        minHeight: 170,
+                        display: "grid",
+                        gridTemplateColumns: "1fr auto",
+                        gap: 18,
+                        alignItems: "stretch",
+                        backgroundImage: `linear-gradient(rgba(0,0,0,0.58), rgba(0,0,0,0.7)), url(${getEquipmentBanner(item.category)})`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                      }}
+                    >
+                      <div style={{ padding: 14 }}>
+                        <div
+                          style={{
+                            maxWidth: 720,
+                            border: "1px solid rgba(255,255,255,0.16)",
+                            borderRadius: 12,
+                            padding: 16,
+                            background: "rgba(20,20,20,0.62)",
+                            backdropFilter: "blur(2px)",
+                          }}
                         >
-                          {item.name}
-                        </Link>{" "}
-                        <span style={{ opacity: 0.7 }}>· {item.category ?? "—"}</span>
+                          <div
+                            style={{
+                              fontSize: 24,
+                              fontWeight: 800,
+                              color: "#efb85f",
+                              fontFamily: "monospace",
+                              marginBottom: 8,
+                            }}
+                          >
+                            <Link
+                              to={`/equipment/${item.id}`}
+                              style={{ color: "inherit", textDecoration: "none" }}
+                            >
+                              {item.name}
+                            </Link>
+                          </div>
+
+                          <div style={metaLineStyle}>Category: {item.category ?? "—"}</div>
+                          <div style={metaLineStyle}>Effectiveness: {item.effectiveness}/100</div>
+                          <div style={metaLineStyle}>
+                            Stock: {item.availableQuantity} available / {item.quantity} total
+                          </div>
+                          <div style={metaLineStyle}>
+                            Allocation: {item.allocatedQuantity} allocated ({getAllocationPercent(item)}%)
+                          </div>
+
+                          {item.description && (
+                            <div
+                              style={{
+                                color: "#f3efe6",
+                                fontFamily: "monospace",
+                                fontSize: 14,
+                                marginTop: 10,
+                                whiteSpace: "pre-wrap",
+                                opacity: 0.9,
+                              }}
+                            >
+                              {item.description}
+                            </div>
+                          )}
+
+                          {item.deletedAt && (
+                            <div
+                              style={{
+                                color: "#ffb347",
+                                fontFamily: "monospace",
+                                marginTop: 8,
+                              }}
+                            >
+                              Soft-deleted
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      <div style={{ opacity: 0.85, marginTop: 6 }}>
-                        Quantity: {item.quantity}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: 14,
+                        }}
+                      >
+                        {canManage ? (
+                          <>
+                            <button
+                              onClick={() => startEdit(item.id)}
+                              style={iconActionButtonStyle}
+                              disabled={!!item.deletedAt}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => onDelete(item.id)}
+                              style={iconActionButtonStyle}
+                              disabled={!!item.deletedAt}
+                            >
+                              Delete
+                            </button>
+                          </>
+                        ) : (
+                          <span style={{ opacity: 0.6, fontSize: 14, color: "#f3efe6" }}>
+                            Read-only
+                          </span>
+                        )}
                       </div>
-
-                      {canManage && (
-                      <>
-                        <div style={{ opacity: 0.85, marginTop: 6 }}>
-                          Allocated: {item.allocatedQuantity}
-                        </div>
-
-                        <div style={{ opacity: 0.85, marginTop: 6 }}>
-                          Available: {item.availableQuantity}
-                        </div>
-                      </>
-                      )}
-
-                      <div style={{ opacity: 0.85, marginTop: 6 }}>
-                        Effectiveness: {item.effectiveness}/100
-                      </div>
-
-                      {item.description && (
-                        <div style={{ opacity: 0.8, marginTop: 6, whiteSpace: "pre-wrap" }}>
-                          {item.description}
-                        </div>
-                      )}
-
-                      {item.deletedAt && <div style={{ color: "orange" }}>Soft-deleted</div>}
-                    </>
+                    </div>
                   ) : (
-                    <>
-                      <div style={{ fontWeight: 700, marginBottom: 8 }}>
-                        Editing: {editingItem?.name ?? `Equipment #${item.id}`}
+                    <div
+                      style={{
+                        padding: 14,
+                        display: "grid",
+                        gridTemplateColumns: "1fr auto",
+                        gap: 18,
+                        alignItems: "start",
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            marginBottom: 8,
+                            color: "#f3efe6",
+                            fontFamily: "monospace",
+                          }}
+                        >
+                          Editing: {editingItem?.name ?? `Equipment #${item.id}`}
+                        </div>
+
+                        <div style={{ display: "grid", gap: 10 }}>
+                          <select
+                            value={editForm?.category ?? "Primary"}
+                            onChange={(ev) =>
+                              setEditForm((f) =>
+                                f ? { ...f, category: ev.target.value as EquipmentCategory } : f
+                              )
+                            }
+                            style={formFieldStyle}
+                          >
+                            {CATEGORIES.map((c) => (
+                              <option key={c} value={c}>
+                                {c}
+                              </option>
+                            ))}
+                          </select>
+
+                          <input
+                            type="number"
+                            value={editForm?.quantity ?? 0}
+                            onChange={(ev) =>
+                              setEditForm((f) => (f ? { ...f, quantity: Number(ev.target.value) } : f))
+                            }
+                            min={0}
+                            style={formFieldStyle}
+                          />
+
+                          <textarea
+                            value={editForm?.description ?? ""}
+                            onChange={(ev) =>
+                              setEditForm((f) => (f ? { ...f, description: ev.target.value } : f))
+                            }
+                            rows={3}
+                            placeholder="Description"
+                            style={formFieldStyle}
+                          />
+
+                          <input
+                            type="number"
+                            value={editForm?.effectiveness ?? 50}
+                            onChange={(ev) =>
+                              setEditForm((f) =>
+                                f ? { ...f, effectiveness: Number(ev.target.value) } : f
+                              )
+                            }
+                            min={1}
+                            max={100}
+                            style={formFieldStyle}
+                          />
+                        </div>
                       </div>
 
-                      <div style={{ display: "grid", gap: 10 }}>
-                        <select
-                          value={editForm?.category ?? "Primary"}
-                          onChange={(ev) =>
-                            setEditForm((f) =>
-                              f ? { ...f, category: ev.target.value as EquipmentCategory } : f
-                            )
-                          }
-                          style={{ padding: 10, borderRadius: 8 }}
-                        >
-                          {CATEGORIES.map((c) => (
-                            <option key={c} value={c}>
-                              {c}
-                            </option>
-                          ))}
-                        </select>
-
-                        <input
-                          type="number"
-                          value={editForm?.quantity ?? 0}
-                          onChange={(ev) =>
-                            setEditForm((f) => (f ? { ...f, quantity: Number(ev.target.value) } : f))
-                          }
-                          min={0}
-                          style={{ padding: 10, borderRadius: 8 }}
-                        />
-
-                        <textarea
-                          value={editForm?.description ?? ""}
-                          onChange={(ev) =>
-                            setEditForm((f) => (f ? { ...f, description: ev.target.value } : f))
-                          }
-                          rows={3}
-                          placeholder="Description"
-                          style={{ padding: 10, borderRadius: 8 }}
-                        />
-
-                        <input
-                          type="number"
-                          value={editForm?.effectiveness ?? 50}
-                          onChange={(ev) =>
-                            setEditForm((f) =>
-                              f ? { ...f, effectiveness: Number(ev.target.value) } : f
-                            )
-                          }
-                          min={1}
-                          max={100}
-                          style={{ padding: 10, borderRadius: 8 }}
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  {canManage ? (
-                    !isEditing ? (
-                      <>
-                        <button
-                          onClick={() => startEdit(item.id)}
-                          style={{ padding: "8px 12px", borderRadius: 8 }}
-                          disabled={!!item.deletedAt}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => onDelete(item.id)}
-                          style={{ padding: "8px 12px", borderRadius: 8 }}
-                          disabled={!!item.deletedAt}
-                        >
-                          Delete
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={submitEdit}
-                          style={{ padding: "8px 12px", borderRadius: 8 }}
-                        >
+                      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                        <button onClick={submitEdit} style={iconActionButtonStyle}>
                           Save
                         </button>
-                        <button
-                          onClick={cancelEdit}
-                          style={{ padding: "8px 12px", borderRadius: 8 }}
-                        >
+                        <button onClick={cancelEdit} style={iconActionButtonStyle}>
                           Cancel
                         </button>
-                      </>
-                    )
-                  ) : (
-                    <span style={{ opacity: 0.6, fontSize: 14 }}>Read-only</span>
+                      </div>
+                    </div>
                   )}
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
 
-      {!loading && !error && items.length === 0 && <div>No equipment yet.</div>}
+            {!error && visibleItems.length === 0 && (
+              <div style={{ color: "#f3efe6", fontFamily: "monospace" }}>
+                No equipment found.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
+
+const toolbarButtonStyle: React.CSSProperties = {
+  height: 44,
+  padding: "0 16px",
+  borderRadius: 10,
+  border: "1px solid #c9a56a",
+  background: "#c9a56a",
+  color: "#1d1812",
+  fontFamily: "monospace",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const secondaryButtonStyle: React.CSSProperties = {
+  height: 44,
+  padding: "0 16px",
+  borderRadius: 10,
+  border: "1px solid #9d8560",
+  background: "rgba(201,165,106,0.18)",
+  color: "#f3efe6",
+  fontFamily: "monospace",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const sortButtonStyle: React.CSSProperties = {
+  padding: "8px 14px",
+  borderRadius: 10,
+  border: "1px solid #9d8560",
+  background: "rgba(201,165,106,0.16)",
+  color: "#f3efe6",
+  fontFamily: "monospace",
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const iconActionButtonStyle: React.CSSProperties = {
+  padding: "8px 12px",
+  borderRadius: 10,
+  border: "1px solid #9d8560",
+  background: "rgba(201,165,106,0.12)",
+  color: "#f3efe6",
+  fontFamily: "monospace",
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const metaLineStyle: React.CSSProperties = {
+  color: "#d7b176",
+  fontFamily: "monospace",
+  fontSize: 16,
+  marginBottom: 4,
+};
+
+const formFieldStyle: React.CSSProperties = {
+  padding: 10,
+  borderRadius: 8,
+  border: "1px solid #9d8560",
+  background: "rgba(0,0,0,0.55)",
+  color: "#f3efe6",
+  fontFamily: "monospace",
+};

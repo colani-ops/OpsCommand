@@ -1,7 +1,8 @@
 import type { CSSProperties } from "react";
 
 export const appShellPageStyle: CSSProperties = {
-  minHeight: "100dvh",
+  minHeight: "100svh",
+  overflow: "hidden",
   position: "relative",
   backgroundImage: 'url("/mainBG.png")',
   backgroundSize: "cover",
@@ -18,7 +19,8 @@ export const appShellOverlayStyle: CSSProperties = {
 export const appShellContentStyle: CSSProperties = {
   position: "relative",
   zIndex: 1,
-  minHeight: "100dvh",
+  minHeight: "100svh",
+  overflow: "hidden",
 };
 
 export const pageContainerStyle: CSSProperties = {

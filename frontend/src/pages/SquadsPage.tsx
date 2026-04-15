@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { hasRole, getUser } from "../api/auth";
-import { /*getMe,*/ getUsers, type UserDto } from "../api/users";
+import { getUsers, type UserDto } from "../api/users";
 import {
   createSquad,
   deleteSquad,
@@ -14,8 +14,6 @@ import { useErrorHandler } from "../hooks/useErrorHandler";
 import ErrorBanner from "../components/ErrorBanner";
 
 const TYPES: SquadType[] = ["Assault", "Tactical", "Recon"];
-
-
 
 type CreateForm = {
   name: string;
@@ -31,7 +29,7 @@ type EditForm = {
 
 export default function SquadsPage() {
   const canManage = hasRole("Admin", "SuperAdmin");
-  const canAccess = hasRole(/*"Member", "Commander",*/"Admin", "SuperAdmin");
+  const canAccess = hasRole("Admin", "SuperAdmin");
 
   const currentUser = getUser();
 
@@ -39,7 +37,10 @@ export default function SquadsPage() {
   const [commanders, setCommanders] = useState<UserDto[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Create form state
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"name" | "type" | "wr" | "veterancy">("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<CreateForm>({
     name: "",
@@ -47,7 +48,6 @@ export default function SquadsPage() {
     commanderId: "",
   });
 
-  // Edit state (one squad at a time)
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
 
@@ -75,41 +75,31 @@ export default function SquadsPage() {
     load();
   }, [load]);
 
-  // helper: find squad for edit init
   const editingSquad = useMemo(
     () => items.find((x) => x.id === editingId) ?? null,
     [items, editingId]
   );
 
-  const squadNameById = useMemo(() => { 
-    const map = new Map<number, string>(); 
-      for (const s of items) map.set(s.id, s.name); 
-      return map; 
+  const squadNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const s of items) map.set(s.id, s.name);
+    return map;
   }, [items]);
 
   const assignedSquadIdByCommanderId = useMemo(() => {
-  const map = new Map<string, number>();
-  for (const s of items) {
-    if (s.commanderId) map.set(s.commanderId, s.id);
-  }
-  return map;
-}, [items]);
-
-  function commanderLabel(u: UserDto) {
-  const base = `${u.userName} (${u.email})`;
-
-  const assignedSquadId = assignedSquadIdByCommanderId.get(u.id);
-  if (assignedSquadId != null) {
-    const squadName = squadNameById.get(assignedSquadId) ?? `Squad #${assignedSquadId}`;
-    return `${base} — Assigned: ${squadName}`;
-  }
-  return `${base} — Free`;
-}
+    const map = new Map<string, number>();
+    for (const s of items) {
+      if (s.commanderId) map.set(s.commanderId, s.id);
+    }
+    return map;
+  }, [items]);
 
   const commanderNameById = useMemo(() => {
-  const map = new Map<string, string>();
-  for (const c of commanders) map.set(c.id, `${c.userName} (${c.email})`);
-  return map;
+    const map = new Map<string, string>();
+    for (const c of commanders) {
+      map.set(c.id, `${c.userName} (${c.email})`);
+    }
+    return map;
   }, [commanders]);
 
   function commanderDisplay(commanderId: string | null) {
@@ -124,6 +114,95 @@ export default function SquadsPage() {
 
     return commanderId;
   }
+
+  function commanderLabel(u: UserDto) {
+    const base = `${u.userName} (${u.email})`;
+    const assignedSquadId = assignedSquadIdByCommanderId.get(u.id);
+
+    if (assignedSquadId != null) {
+      const squadName = squadNameById.get(assignedSquadId) ?? `Squad #${assignedSquadId}`;
+      return `${base} — Assigned: ${squadName}`;
+    }
+
+    return `${base} — Free`;
+  }
+
+  function getSquadSuccessRate(s: SquadDto) {
+    if (s.missionsServed <= 0) return 0;
+    return Math.round((s.missionsWon / s.missionsServed) * 100);
+  }
+
+  function getVeterancyLabel(s: SquadDto) {
+    const served = s.missionsServed;
+
+    if (served >= 20) return "Elite";
+    if (served >= 10) return "Veteran";
+    if (served >= 5) return "Experienced";
+    if (served >= 1) return "Active";
+    return "Fresh";
+  }
+
+  function getSquadTypeImage(type: string) {
+    switch (type) {
+      case "Assault":
+        return "/assaultSquadLogo.png";
+      case "Tactical":
+        return "/tacticalSquadLogo.png";
+      case "Recon":
+        return "/reconSquadLogo.png";
+      default:
+        return "/eliteSquadLogo.png";
+    }
+  }
+
+  function toggleSort(next: "name" | "type" | "wr" | "veterancy") {
+    if (sortBy === next) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      return;
+    }
+
+    setSortBy(next);
+    setSortDir("asc");
+  }
+
+  const visibleItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+
+    const filtered = items.filter((s) => {
+      if (!q) return true;
+
+      const commander = commanderDisplay(s.commanderId).toLowerCase();
+
+      return (
+        s.name.toLowerCase().includes(q) ||
+        s.type.toLowerCase().includes(q) ||
+        commander.includes(q)
+      );
+    });
+
+    const sorted = [...filtered].sort((a, b) => {
+      let result = 0;
+
+      switch (sortBy) {
+        case "name":
+          result = a.name.localeCompare(b.name);
+          break;
+        case "type":
+          result = a.type.localeCompare(b.type);
+          break;
+        case "wr":
+          result = getSquadSuccessRate(a) - getSquadSuccessRate(b);
+          break;
+        case "veterancy":
+          result = a.missionsServed - b.missionsServed;
+          break;
+      }
+
+      return sortDir === "asc" ? result : -result;
+    });
+
+    return sorted;
+  }, [items, search, sortBy, sortDir, commanders, currentUser]);
 
   function startEdit(id: number) {
     const s = items.find((x) => x.id === id);
@@ -158,7 +237,7 @@ export default function SquadsPage() {
       setShowCreate(false);
       await load();
     } catch (e: unknown) {
-      showError(e, "Failed to load squads");
+      showError(e, "Failed to create squad");
     }
   }
 
@@ -178,7 +257,7 @@ export default function SquadsPage() {
       cancelEdit();
       await load();
     } catch (e: unknown) {
-      showError(e, "Failed to load squads");
+      showError(e, "Failed to update squad");
     }
   }
 
@@ -188,11 +267,10 @@ export default function SquadsPage() {
     clearError();
     try {
       await deleteSquad(id);
-      // if we were editing this one, exit edit mode
       if (editingId === id) cancelEdit();
       await load();
     } catch (e: unknown) {
-      showError(e, "Failed to load squads");
+      showError(e, "Failed to delete squad");
     }
   }
 
@@ -202,240 +280,396 @@ export default function SquadsPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <h2 style={{ marginRight: "auto" }}>Squads</h2>
-
-        {canManage && (
-          <button
-            onClick={() => setShowCreate((v) => !v)}
-            style={{ padding: "8px 12px", borderRadius: 8 }}
-          >
-            {showCreate ? "Close" : "New Squad"}
-          </button>
-        )}
-
-        <button onClick={load} style={{ padding: "8px 12px", borderRadius: 8 }}>
-          Refresh
-        </button>
-      </div>
-
       <ErrorBanner error={error} />
-      {loading && <div style={{ marginTop: 10 }}>Loading...</div>}
 
-      {/* CREATE FORM */}
-      {canManage && showCreate && (
-        <form
-          onSubmit={submitCreate}
+      <div
+        style={{
+          border: "2px solid #c9a56a",
+          borderRadius: 14,
+          background: "rgba(0, 0, 0, 0.78)",
+          padding: 24,
+        }}
+      >
+        <div
           style={{
-            marginTop: 14,
-            border: "1px solid #333",
-            borderRadius: 12,
-            padding: 14,
             display: "grid",
-            gap: 10,
+            gridTemplateColumns: "220px 1fr auto auto",
+            gap: 16,
+            alignItems: "center",
+            marginBottom: 18,
           }}
         >
-          <div style={{ fontWeight: 700 }}>Create Squad</div>
+          <h2
+            style={{
+              margin: 0,
+              color: "#f3efe6",
+              fontFamily: "monospace",
+              fontSize: 28,
+            }}
+          >
+            Squads
+          </h2>
 
           <input
-            value={createForm.name}
-            onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
-            placeholder="Name"
-            required
-            style={{ padding: 10, borderRadius: 8 }}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search..."
+            style={{
+              height: 44,
+              borderRadius: 10,
+              border: "1px solid #9d8560",
+              background: "rgba(201,165,106,0.22)",
+              color: "#f3efe6",
+              padding: "0 14px",
+              fontFamily: "monospace",
+              fontSize: 16,
+            }}
           />
 
-          <select
-            value={createForm.type}
-            onChange={(e) => setCreateForm((f) => ({ ...f, type: e.target.value as SquadType }))}
-            style={{ padding: 10, borderRadius: 8 }}
-          >
-            {TYPES.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={createForm.commanderId}
-            onChange={(e) => setCreateForm((f) => ({ ...f, commanderId: e.target.value }))}
-            style={{ padding: 10, borderRadius: 8 }}
-          >
-          <option value="">— Commander —</option>
-            {commanders.map((c) => (
-            <option key={c.id} value={c.id} disabled={assignedSquadIdByCommanderId.has(c.id)}>
-              {commanderLabel(c)}
-            </option>
-            ))}
-          </select>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button style={{ padding: "10px 14px", borderRadius: 8 }}>Create</button>
+          {canManage && (
             <button
-              type="button"
-              onClick={() => setShowCreate(false)}
-              style={{ padding: "10px 14px", borderRadius: 8 }}
+              onClick={() => setShowCreate((v) => !v)}
+              style={toolbarButtonStyle}
             >
-              Cancel
+              {showCreate ? "Close" : "New Squad"}
             </button>
-          </div>
-        </form>
-      )}
+          )}
 
-      {/* LIST */}
-      {!loading && (
-        <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
-          {items.map((s) => {
-            const isEditing = editingId === s.id;
+          <button onClick={load} style={toolbarButtonStyle}>
+            Refresh
+          </button>
+        </div>
 
-            return (
-              <div
-                key={s.id}
-                style={{
-                  border: "1px solid #333",
-                  borderRadius: 12,
-                  padding: 14,
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 12,
-                }}
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            marginBottom: 16,
+            flexWrap: "wrap",
+          }}
+        >
+          <button onClick={() => toggleSort("name")} style={sortButtonStyle}>
+            Name {sortBy === "name" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+          </button>
+          <button onClick={() => toggleSort("type")} style={sortButtonStyle}>
+            Type {sortBy === "type" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+          </button>
+          <button onClick={() => toggleSort("wr")} style={sortButtonStyle}>
+            WR {sortBy === "wr" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+          </button>
+          <button onClick={() => toggleSort("veterancy")} style={sortButtonStyle}>
+            Veterancy {sortBy === "veterancy" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+          </button>
+        </div>
+
+        {loading && <div style={{ marginTop: 10, color: "#f3efe6" }}>Loading...</div>}
+
+        {canManage && showCreate && (
+          <form
+            onSubmit={submitCreate}
+            style={{
+              marginBottom: 18,
+              border: "1px solid #9d8560",
+              borderRadius: 12,
+              padding: 14,
+              display: "grid",
+              gap: 10,
+              background: "rgba(0,0,0,0.45)",
+            }}
+          >
+            <div style={{ fontWeight: 700, color: "#f3efe6", fontFamily: "monospace" }}>
+              Create Squad
+            </div>
+
+            <input
+              value={createForm.name}
+              onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder="Name"
+              required
+              style={formFieldStyle}
+            />
+
+            <select
+              value={createForm.type}
+              onChange={(e) => setCreateForm((f) => ({ ...f, type: e.target.value as SquadType }))}
+              style={formFieldStyle}
+            >
+              {TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={createForm.commanderId}
+              onChange={(e) => setCreateForm((f) => ({ ...f, commanderId: e.target.value }))}
+              style={formFieldStyle}
+            >
+              <option value="">— Commander —</option>
+              {commanders.map((c) => (
+                <option key={c.id} value={c.id} disabled={assignedSquadIdByCommanderId.has(c.id)}>
+                  {commanderLabel(c)}
+                </option>
+              ))}
+            </select>
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button style={toolbarButtonStyle}>Create</button>
+              <button
+                type="button"
+                onClick={() => setShowCreate(false)}
+                style={secondaryButtonStyle}
               >
-                {/* LEFT SIDE */}
-                <div style={{ flex: 1 }}>
-                  {!isEditing ? (
-                    <>
-                      <div style={{ fontSize: 18, fontWeight: 700 }}>
-                        <Link
-                          to={`/squads/${s.id}`}
-                          style={{ color: "white", textDecoration: "none" }}
-                          title="Open squad profile"
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+
+        {!loading && (
+          <div
+            style={{
+              maxHeight: "62vh",
+              overflowY: "auto",
+              display: "grid",
+              gap: 14,
+              paddingRight: 6,
+            }}
+          >
+            {visibleItems.map((s) => {
+              const isEditing = editingId === s.id;
+
+              return (
+                <div
+                  key={s.id}
+                  style={{
+                    border: "1px solid #9d8560",
+                    borderRadius: 14,
+                    background: "rgba(0,0,0,0.58)",
+                    padding: 14,
+                    display: "grid",
+                    gridTemplateColumns: "110px 1fr auto",
+                    gap: 18,
+                    alignItems: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 96,
+                      height: 96,
+                      borderRadius: 10,
+                      border: "2px solid #b8945c",
+                      background: "rgba(255,255,255,0.06)",
+                      overflow: "hidden",
+                      display: "grid",
+                      placeItems: "center",
+                    }}
+                  >
+                    <img
+                      src={getSquadTypeImage(s.type)}
+                      alt={s.type}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    {!isEditing ? (
+                      <>
+                        <div
+                          style={{
+                            fontSize: 24,
+                            fontWeight: 800,
+                            color: "#efb85f",
+                            fontFamily: "monospace",
+                            marginBottom: 8,
+                          }}
                         >
-                          {s.name}
-                        </Link>{" "}
-                        <span style={{ opacity: 0.7 }}>· {s.type}</span>
-                      </div>
+                          <Link
+                            to={`/squads/${s.id}`}
+                            style={{ color: "inherit", textDecoration: "none" }}
+                          >
+                            {s.name}
+                          </Link>
+                        </div>
 
-                      <div style={{ opacity: 0.85, marginTop: 6 }}>
-                        Commander: {commanderDisplay(s.commanderId)}
-                      </div>
+                        <div style={metaLineStyle}>Type: {s.type}</div>
+                        <div style={metaLineStyle}>Commander: {commanderDisplay(s.commanderId)}</div>
+                        <div style={metaLineStyle}>
+                          Success Rate: {s.missionsServed > 0 ? `${getSquadSuccessRate(s)}%` : "N/A"}
+                        </div>
+                        <div style={metaLineStyle}>Veterancy: {getVeterancyLabel(s)}</div>
 
-                      <div style={{ opacity: 0.85, marginTop: 6 }}>
-                        Missions Served: {s.missionsServed}
-                      </div>
-
-                      <div style={{ opacity: 0.85 }}>
-                        Successful Missions: {s.missionsWon}
-                      </div>
-
-                      <div style={{ opacity: 0.95, fontWeight: 600 }}>
-                        Success Rate:{" "}
-                        {s.missionsServed > 0
-                        ? `${Math.round((s.missionsWon / s.missionsServed) * 100)}%`
-                        : "N/A"}
-                      </div>
-
-                      {s.deletedAt && <div style={{ color: "orange" }}>Soft-deleted</div>}
-                    </>
-                  ) : (
-                    <>
-                      <div style={{ fontWeight: 700, marginBottom: 8 }}>
-                        Editing: {editingSquad?.name ?? `Squad #${s.id}`}
-                      </div>
-
-                      <div style={{ display: "grid", gap: 10 }}>
-                        {/* Name */}
-                        <input
-                        value={editForm?.name ?? ""}
-                        onChange={(e) => setEditForm((f) => (f ? { ...f, name: e.target.value } : f))}
-                        placeholder="Name"
-                        style={{ padding: 10, borderRadius: 8 }}
-                        />
-
-                        {/* Type*/}
-                        <select
-                          value={editForm?.type ?? "Assault"}
-                          onChange={(e) =>
-                          setEditForm((f) => (f ? { ...f, type: e.target.value as SquadType } : f))
-                          }
-                          style={{ padding: 10, borderRadius: 8 }}
+                        {s.deletedAt && (
+                          <div style={{ color: "#ffb347", fontFamily: "monospace", marginTop: 6 }}>
+                            Soft-deleted
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            marginBottom: 8,
+                            color: "#f3efe6",
+                            fontFamily: "monospace",
+                          }}
                         >
-                          {TYPES.map((t) => (
-                          <option key={t} value={t}>
-                            {t}
-                          </option>
-                          ))}
-                        </select>
+                          Editing: {editingSquad?.name ?? `Squad #${s.id}`}
+                        </div>
 
-                        {/* Commander (DROPDOWN) */}
-                        <select
-                          value={editForm?.commanderId ?? ""}
-                          onChange={(e) =>
-                          setEditForm((f) => (f ? { ...f, commanderId: e.target.value } : f))
-                        }
-                        style={{ padding: 10, borderRadius: 8 }}
-                        >
-                        <option value="">— None —</option>
+                        <div style={{ display: "grid", gap: 10 }}>
+                          <input
+                            value={editForm?.name ?? ""}
+                            onChange={(e) =>
+                              setEditForm((f) => (f ? { ...f, name: e.target.value } : f))
+                            }
+                            placeholder="Name"
+                            style={formFieldStyle}
+                          />
 
-                          {commanders.map((c) => {
-                            const assignedTo = assignedSquadIdByCommanderId.get(c.id);
-                            const assignedToOtherSquad = assignedTo != null && assignedTo !== s.id;
-                             return (
+                          <select
+                            value={editForm?.type ?? "Assault"}
+                            onChange={(e) =>
+                              setEditForm((f) => (f ? { ...f, type: e.target.value as SquadType } : f))
+                            }
+                            style={formFieldStyle}
+                          >
+                            {TYPES.map((t) => (
+                              <option key={t} value={t}>
+                                {t}
+                              </option>
+                            ))}
+                          </select>
+
+                          <select
+                            value={editForm?.commanderId ?? ""}
+                            onChange={(e) =>
+                              setEditForm((f) => (f ? { ...f, commanderId: e.target.value } : f))
+                            }
+                            style={formFieldStyle}
+                          >
+                            <option value="">— None —</option>
+                            {commanders.map((c) => {
+                              const assignedTo = assignedSquadIdByCommanderId.get(c.id);
+                              const assignedToOtherSquad = assignedTo != null && assignedTo !== s.id;
+
+                              return (
                                 <option key={c.id} value={c.id} disabled={assignedToOtherSquad}>
                                   {commanderLabel(c)}
                                 </option>
                               );
                             })}
                           </select>
+                        </div>
+                      </>
+                    )}
                   </div>
-                    </>
-                  )}
-                </div>
 
-                {/* RIGHT SIDE ACTIONS */}
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  {canManage ? (
-                    !isEditing ? (
-                      <>
-                        <button
-                          onClick={() => startEdit(s.id)}
-                          style={{ padding: "8px 12px", borderRadius: 8 }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => onDelete(s.id)}
-                          style={{ padding: "8px 12px", borderRadius: 8 }}
-                        >
-                          Delete
-                        </button>
-                      </>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                    {canManage ? (
+                      !isEditing ? (
+                        <>
+                          <button onClick={() => startEdit(s.id)} style={iconActionButtonStyle}>
+                            Edit
+                          </button>
+                          <button onClick={() => onDelete(s.id)} style={iconActionButtonStyle}>
+                            Delete
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button onClick={submitEdit} style={iconActionButtonStyle}>
+                            Save
+                          </button>
+                          <button onClick={cancelEdit} style={iconActionButtonStyle}>
+                            Cancel
+                          </button>
+                        </>
+                      )
                     ) : (
-                      <>
-                        <button
-                          onClick={submitEdit}
-                          style={{ padding: "8px 12px", borderRadius: 8 }}
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={cancelEdit}
-                          style={{ padding: "8px 12px", borderRadius: 8 }}
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    )
-                  ) : (
-                    <span style={{ opacity: 0.6, fontSize: 14 }}>Read-only</span>
-                  )}
+                      <span style={{ opacity: 0.6, fontSize: 14, color: "#f3efe6" }}>Read-only</span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
 
-      {!loading && !error && items.length === 0 && <div>No squads yet.</div>}
+            {!error && visibleItems.length === 0 && (
+              <div style={{ color: "#f3efe6", fontFamily: "monospace" }}>
+                No squads found.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
+
+const toolbarButtonStyle: React.CSSProperties = {
+  height: 44,
+  padding: "0 16px",
+  borderRadius: 10,
+  border: "1px solid #c9a56a",
+  background: "#c9a56a",
+  color: "#1d1812",
+  fontFamily: "monospace",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const secondaryButtonStyle: React.CSSProperties = {
+  height: 44,
+  padding: "0 16px",
+  borderRadius: 10,
+  border: "1px solid #9d8560",
+  background: "rgba(201,165,106,0.18)",
+  color: "#f3efe6",
+  fontFamily: "monospace",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const sortButtonStyle: React.CSSProperties = {
+  padding: "8px 14px",
+  borderRadius: 10,
+  border: "1px solid #9d8560",
+  background: "rgba(201,165,106,0.16)",
+  color: "#f3efe6",
+  fontFamily: "monospace",
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const iconActionButtonStyle: React.CSSProperties = {
+  padding: "8px 12px",
+  borderRadius: 10,
+  border: "1px solid #9d8560",
+  background: "rgba(201,165,106,0.12)",
+  color: "#f3efe6",
+  fontFamily: "monospace",
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const metaLineStyle: React.CSSProperties = {
+  color: "#d7b176",
+  fontFamily: "monospace",
+  fontSize: 16,
+  marginBottom: 4,
+};
+
+const formFieldStyle: React.CSSProperties = {
+  padding: 10,
+  borderRadius: 8,
+  border: "1px solid #9d8560",
+  background: "rgba(0,0,0,0.55)",
+  color: "#f3efe6",
+  fontFamily: "monospace",
+};

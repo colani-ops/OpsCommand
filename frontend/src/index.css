@@ -17,6 +17,10 @@ body {
     background: #05070a;
 }
 
+*{
+  box-sizing: border-box;
+}
+
 #root {
   min-height: 100vh;
   width: 100%;
