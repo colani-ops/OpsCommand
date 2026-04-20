@@ -145,13 +145,13 @@ export default function SquadsPage() {
   function getSquadTypeImage(type: string) {
     switch (type) {
       case "Assault":
-        return "/assaultSquadLogo.png";
+        return "/squad-assault.png";
       case "Tactical":
-        return "/tacticalSquadLogo.png";
+        return "/squad-tactical.png";
       case "Recon":
-        return "/reconSquadLogo.png";
+        return "/squad-recon.png";
       default:
-        return "/eliteSquadLogo.png";
+        return "/squad-default.png";
     }
   }
 

@@ -1,30 +1,27 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { hasRole } from "../api/auth";
 import { Navigate } from "react-router-dom";
+import { hasRole } from "../api/auth";
 import { getUsers, type UserDto } from "../api/users";
 import {
   assignCommander,
+  activateMission,
+  cancelMission,
   createMission,
   deleteMission,
   executeMission,
-  getMissions,
   getMissionReadiness,
+  getMissions,
   type MissionDifficulty,
   type MissionDto,
   type MissionReadinessDto,
   type MissionTerrain,
   unassignCommander,
   updateMission,
-  activateMission,
-  cancelMission,
 } from "../api/missions";
 import { useErrorHandler } from "../hooks/useErrorHandler";
 import ErrorBanner from "../components/ErrorBanner";
-
 import MissionStatusBadge from "../components/MissionStatusBadge";
 import MissionMetaBadge from "../components/MissionMetaBadge";
-import MissionOutcome from "../components/MissionOutcome";
-
 
 type CreateForm = {
   name: string;
@@ -55,13 +52,13 @@ export default function MissionsPage() {
   const canManage = hasRole("Admin", "SuperAdmin");
   const canAccess = hasRole("Admin", "SuperAdmin");
 
-
-
   const [items, setItems] = useState<MissionDto[]>([]);
   const [commanders, setCommanders] = useState<UserDto[]>([]);
   const [loading, setLoading] = useState(true);
 
-
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"name" | "terrain" | "difficulty" | "status">("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<CreateForm>({
@@ -72,21 +69,16 @@ export default function MissionsPage() {
     difficulty: "Medium",
   });
 
-
-
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
 
-
-
-  const { error, showError, clearError } = useErrorHandler();
-
-
-
-  const [readinessByMissionId, setReadinessByMissionId] = useState<Record<number, MissionReadinessDto | undefined>>({});
+  const [expandedMissionId, setExpandedMissionId] = useState<number | null>(null);
+  const [readinessByMissionId, setReadinessByMissionId] = useState<
+    Record<number, MissionReadinessDto | undefined>
+  >({});
   const [loadingReadinessId, setLoadingReadinessId] = useState<number | null>(null);
 
-
+  const { error, showError, clearError } = useErrorHandler();
 
   const load = useCallback(async () => {
     clearError();
@@ -110,13 +102,18 @@ export default function MissionsPage() {
     }
   }, [canManage, clearError, showError]);
 
-
-
   useEffect(() => {
     load();
   }, [load]);
 
+  const [, setNowTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNowTick((v) => v + 1);
+    }, 1000);
 
+    return () => clearInterval(interval);
+  }, []);
 
   const commanderNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -126,29 +123,137 @@ export default function MissionsPage() {
     return map;
   }, [commanders]);
 
-
-
-  const [, setNowTick] = useState(0);
-    useEffect(() => {
-      const interval = setInterval(() => {
-        setNowTick((v) => v + 1);
-      }, 1000);
-
-      return () => clearInterval(interval);
-    }, []);
-
-
-
-  if (!canAccess) {
-    return <Navigate to="/" replace />;
-  }
-
-
-
   function commanderDisplay(commanderId: string | null) {
     if (!commanderId) return "—";
     return commanderNameById.get(commanderId) ?? commanderId;
   }
+
+  function formatMissionStatus(status: string) {
+    return status === "Active" ? "In Progress" : status;
+  }
+
+  function getMissionTerrainBanner(terrain: string | null) {
+    switch (terrain) {
+      case "Urban":
+        return "/mission-urban.png";
+      case "Plains":
+        return "/mission-plains.png";
+      case "Forest":
+        return "/mission-forest.png";
+      case "Mountain":
+        return "/mission-mountain.png";
+      default:
+        return "/mission-default.png";
+    }
+  }
+
+  function getMissionOverlay(status: string, wasSuccessful: boolean | null) {
+    if (status === "Prepared") return "rgba(120,120,120,0.20)";
+    if (status === "Planned") return "rgba(70,110,160,0.20)";
+    if (status === "Active") return "rgba(185,145,45,0.18)";
+    if (status === "Cancelled") return "rgba(120,70,70,0.24)";
+    if (status === "Completed" && wasSuccessful === true) return "rgba(60,135,70,0.20)";
+    if (status === "Completed" && wasSuccessful === false) return "rgba(150,65,65,0.22)";
+    return "rgba(0,0,0,0.28)";
+  }
+
+  function formatRemainingTime(activatedAt: string | null, durationMinutes: number | null) {
+    if (!activatedAt || durationMinutes == null) return "—";
+
+    const activated = new Date(activatedAt).getTime();
+    const readyAt = activated + durationMinutes * 60 * 1000;
+    const diffMs = readyAt - Date.now();
+
+    if (diffMs <= 0) return "Ready for execution";
+
+    const totalSeconds = Math.floor(diffMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    return `${minutes}m ${seconds}s remaining`;
+  }
+
+  function isMissionReadyForExecution(activatedAt: string | null, durationMinutes: number | null) {
+    if (!activatedAt || durationMinutes == null) return false;
+
+    const activated = new Date(activatedAt).getTime();
+    const readyAt = activated + durationMinutes * 60 * 1000;
+    return Date.now() >= readyAt;
+  }
+
+  function getMissionSummaryText(m: MissionDto) {
+    const ready = isMissionReadyForExecution(m.activatedAt, m.durationMinutes);
+
+    switch (m.status) {
+      case "Prepared":
+        return "Awaiting commander assignment.";
+      case "Planned":
+        return "Planning phase. Review readiness before activation.";
+      case "Active":
+        return ready
+          ? "Mission window complete. Ready for execution."
+          : formatRemainingTime(m.activatedAt, m.durationMinutes);
+      case "Cancelled":
+        return "Mission was cancelled.";
+      case "Completed":
+        if (m.wasSuccessful == null) return "Mission completed.";
+        return m.wasSuccessful
+          ? `Success · Snapshot ${m.successChanceSnapshot ?? "—"}%`
+          : `Failure · Snapshot ${m.successChanceSnapshot ?? "—"}%`;
+      default:
+        return "—";
+    }
+  }
+
+  function toggleSort(next: "name" | "terrain" | "difficulty" | "status") {
+    if (sortBy === next) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      return;
+    }
+
+    setSortBy(next);
+    setSortDir("asc");
+  }
+
+  const visibleItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+
+    const filtered = items.filter((m) => {
+      if (!q) return true;
+
+      return (
+        m.name.toLowerCase().includes(q) ||
+        (m.terrain ?? "").toLowerCase().includes(q) ||
+        (m.difficulty ?? "").toLowerCase().includes(q) ||
+        formatMissionStatus(m.status).toLowerCase().includes(q) ||
+        commanderDisplay(m.commanderId).toLowerCase().includes(q) ||
+        (m.notes ?? "").toLowerCase().includes(q)
+      );
+    });
+
+    const sorted = [...filtered].sort((a, b) => {
+      let result = 0;
+
+      switch (sortBy) {
+        case "name":
+          result = a.name.localeCompare(b.name);
+          break;
+        case "terrain":
+          result = (a.terrain ?? "").localeCompare(b.terrain ?? "");
+          break;
+        case "difficulty":
+          result = (a.difficulty ?? "").localeCompare(b.difficulty ?? "");
+          break;
+        case "status":
+          result = formatMissionStatus(a.status).localeCompare(formatMissionStatus(b.status));
+          break;
+      }
+
+      return sortDir === "asc" ? result : -result;
+    });
+
+    return sorted;
+  }, [items, search, sortBy, sortDir, commanders]);
 
   function startEdit(m: MissionDto) {
     setEditingId(m.id);
@@ -229,15 +334,15 @@ export default function MissionsPage() {
             notes: editForm.notes.trim() ? editForm.notes.trim() : null,
           }
         : canEditCore
-        ? {
-            name: editForm.name.trim() || null,
-            notes: editForm.notes.trim() ? editForm.notes.trim() : null,
-            terrain: editForm.terrain,
-            difficulty: editForm.difficulty,
-          }
-        : {
-            notes: editForm.notes.trim() ? editForm.notes.trim() : null,
-          };
+          ? {
+              name: editForm.name.trim() || null,
+              notes: editForm.notes.trim() ? editForm.notes.trim() : null,
+              terrain: editForm.terrain,
+              difficulty: editForm.difficulty,
+            }
+          : {
+              notes: editForm.notes.trim() ? editForm.notes.trim() : null,
+            };
 
       await updateMission(editingId, payload);
 
@@ -255,6 +360,7 @@ export default function MissionsPage() {
     try {
       await deleteMission(id);
       if (editingId === id) cancelEdit();
+      if (expandedMissionId === id) setExpandedMissionId(null);
       await load();
     } catch (e: unknown) {
       showError(e instanceof Error ? e.message : "Delete failed");
@@ -302,95 +408,154 @@ export default function MissionsPage() {
     }
   }
 
-  async function onLoadReadiness(id: number) {
-  clearError();
-  setLoadingReadinessId(id);
+  async function toggleDetails(id: number) {
+    if (expandedMissionId === id) {
+      setExpandedMissionId(null);
+      return;
+    }
 
-  try {
-    const readiness = await getMissionReadiness(id);
-    setReadinessByMissionId((prev) => ({
-      ...prev,
-      [id]: readiness,
-    }));
-  } catch (e: unknown) {
-    showError(e instanceof Error ? e.message : "Failed to load readiness");
-  } finally {
-    setLoadingReadinessId(null);
-  }
-  }
+    setExpandedMissionId(id);
 
-  function formatRemainingTime(activatedAt: string | null, durationMinutes: number | null) {
-    if (!activatedAt || durationMinutes == null) return "—";
+    const mission = items.find((x) => x.id === id);
+    if (!mission) return;
 
-  const activated = new Date(activatedAt).getTime();
-  const readyAt = activated + durationMinutes * 60 * 1000;
-  const diffMs = readyAt - Date.now();
+    if (mission.status === "Planned" && !readinessByMissionId[id]) {
+      clearError();
+      setLoadingReadinessId(id);
 
-  if (diffMs <= 0) return "Ready for execution";
-
-  const totalSeconds = Math.floor(diffMs / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-
-  return `${minutes}m ${seconds}s remaining`;
+      try {
+        const readiness = await getMissionReadiness(id);
+        setReadinessByMissionId((prev) => ({
+          ...prev,
+          [id]: readiness,
+        }));
+      } catch (e: unknown) {
+        showError(e instanceof Error ? e.message : "Failed to load readiness");
+      } finally {
+        setLoadingReadinessId(null);
+      }
+    }
   }
 
-  function isMissionReadyForExecution(activatedAt: string | null, durationMinutes: number | null) {
-  if (!activatedAt || durationMinutes == null) return false;
-
-  const activated = new Date(activatedAt).getTime();
-  const readyAt = activated + durationMinutes * 60 * 1000;
-
-  return Date.now() >= readyAt;
-}
+  if (!canAccess) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <h2 style={{ marginRight: "auto" }}>Missions</h2>
-
-        {canManage && (
-          <button onClick={() => setShowCreate((v) => !v)} style={{ padding: "8px 12px", borderRadius: 8 }}>
-            {showCreate ? "Close" : "New Mission"}
-          </button>
-        )}
-
-        <button onClick={load} style={{ padding: "8px 12px", borderRadius: 8 }}>
-          Refresh
-        </button>
-      </div>
-
       <ErrorBanner error={error} />
-      {loading && <div style={{ marginTop: 10 }}>Loading...</div>}
 
-      {canManage && showCreate && (
-        <form
-          onSubmit={submitCreate}
+      <div
+        style={{
+          border: "2px solid #c9a56a",
+          borderRadius: 14,
+          background: "rgba(0, 0, 0, 0.78)",
+          padding: 24,
+        }}
+      >
+        <div
           style={{
-            marginTop: 14,
-            border: "1px solid #333",
-            borderRadius: 12,
-            padding: 14,
             display: "grid",
-            gap: 10,
+            gridTemplateColumns: "220px 1fr auto auto",
+            gap: 16,
+            alignItems: "center",
+            marginBottom: 18,
           }}
         >
-          <div style={{ fontWeight: 700 }}>Create Mission</div>
+          <h2
+            style={{
+              margin: 0,
+              color: "#f3efe6",
+              fontFamily: "monospace",
+              fontSize: 28,
+            }}
+          >
+            Missions
+          </h2>
 
           <input
-            value={createForm.name}
-            onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
-            placeholder="Name"
-            required
-            style={{ padding: 10, borderRadius: 8 }}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search..."
+            style={{
+              height: 44,
+              borderRadius: 10,
+              border: "1px solid #9d8560",
+              background: "rgba(201,165,106,0.22)",
+              color: "#f3efe6",
+              padding: "0 14px",
+              fontFamily: "monospace",
+              fontSize: 16,
+            }}
           />
 
-          <div style={{ display: "grid", gap: 6 }}>
-            <label style={{ fontWeight: 600 }}>Commander</label>
+          {canManage && (
+            <button
+              onClick={() => setShowCreate((v) => !v)}
+              style={toolbarButtonStyle}
+            >
+              {showCreate ? "Close" : "New Mission"}
+            </button>
+          )}
+
+          <button onClick={load} style={toolbarButtonStyle}>
+            Refresh
+          </button>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            marginBottom: 16,
+            flexWrap: "wrap",
+          }}
+        >
+          <button onClick={() => toggleSort("name")} style={sortButtonStyle}>
+            Name {sortBy === "name" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+          </button>
+          <button onClick={() => toggleSort("terrain")} style={sortButtonStyle}>
+            Terrain {sortBy === "terrain" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+          </button>
+          <button onClick={() => toggleSort("difficulty")} style={sortButtonStyle}>
+            Difficulty {sortBy === "difficulty" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+          </button>
+          <button onClick={() => toggleSort("status")} style={sortButtonStyle}>
+            Status {sortBy === "status" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+          </button>
+        </div>
+
+        {loading && <div style={{ marginTop: 10, color: "#f3efe6" }}>Loading...</div>}
+
+        {canManage && showCreate && (
+          <form
+            onSubmit={submitCreate}
+            style={{
+              marginBottom: 18,
+              border: "1px solid #9d8560",
+              borderRadius: 12,
+              padding: 14,
+              display: "grid",
+              gap: 10,
+              background: "rgba(0,0,0,0.45)",
+            }}
+          >
+            <div style={{ fontWeight: 700, color: "#f3efe6", fontFamily: "monospace" }}>
+              Create Mission
+            </div>
+
+            <input
+              value={createForm.name}
+              onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder="Name"
+              required
+              style={formFieldStyle}
+            />
+
             <select
               value={createForm.commanderId}
               onChange={(e) => setCreateForm((f) => ({ ...f, commanderId: e.target.value }))}
-              style={{ padding: 10, borderRadius: 8 }}
+              style={formFieldStyle}
             >
               <option value="">— Commander (optional) —</option>
               {commanders.map((c) => (
@@ -399,14 +564,11 @@ export default function MissionsPage() {
                 </option>
               ))}
             </select>
-          </div>
 
-          <div style={{ display: "grid", gap: 6 }}>
-            <label style={{ fontWeight: 600 }}>Terrain</label>
             <select
               value={createForm.terrain}
               onChange={(e) => setCreateForm((f) => ({ ...f, terrain: e.target.value as MissionTerrain }))}
-              style={{ padding: 10, borderRadius: 8 }}
+              style={formFieldStyle}
             >
               {TERRAINS.map((t) => (
                 <option key={t} value={t}>
@@ -414,14 +576,13 @@ export default function MissionsPage() {
                 </option>
               ))}
             </select>
-          </div>
 
-          <div style={{ display: "grid", gap: 6 }}>
-            <label style={{ fontWeight: 600 }}>Difficulty</label>
             <select
               value={createForm.difficulty}
-              onChange={(e) => setCreateForm((f) => ({ ...f, difficulty: e.target.value as MissionDifficulty }))}
-              style={{ padding: 10, borderRadius: 8 }}
+              onChange={(e) =>
+                setCreateForm((f) => ({ ...f, difficulty: e.target.value as MissionDifficulty }))
+              }
+              style={formFieldStyle}
             >
               {DIFFICULTIES.map((d) => (
                 <option key={d} value={d}>
@@ -429,230 +590,316 @@ export default function MissionsPage() {
                 </option>
               ))}
             </select>
-          </div>
 
-          <textarea
-            value={createForm.notes}
-            onChange={(e) => setCreateForm((f) => ({ ...f, notes: e.target.value }))}
-            placeholder="Notes (optional)"
-            rows={3}
-            style={{ padding: 10, borderRadius: 8 }}
-          />
+            <textarea
+              value={createForm.notes}
+              onChange={(e) => setCreateForm((f) => ({ ...f, notes: e.target.value }))}
+              placeholder="Notes (optional)"
+              rows={3}
+              style={formFieldStyle}
+            />
 
-          <div style={{ display: "flex", gap: 10 }}>
-            <button style={{ padding: "10px 14px", borderRadius: 8 }}>Create</button>
-            <button type="button" onClick={() => setShowCreate(false)} style={{ padding: "10px 14px", borderRadius: 8 }}>
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
-
-      {!loading && (
-        <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
-          {items.map((m) => {
-            const isEditing = editingId === m.id;
-
-            const isCompleted = m.status === "Completed";
-            const canEditCore =
-              m.status === "Prepared" ||
-              m.status === "Planned" ||
-              m.status === "Cancelled";
-
-            const canEditNotesOnly = isCompleted || m.status === "Active";
-            const disableCoreFields = !canEditCore;
-            const showEditHint = isCompleted || m.status === "Active";
-
-            const readiness = readinessByMissionId[m.id];
-            const canPreviewReadiness =
-              m.status === "Planned";
-
-            const isReadyForExecution = isMissionReadyForExecution(m.activatedAt, m.durationMinutes);
-            
-            
-            
-            return (
-              <div
-                key={m.id}
-                style={{
-                  border: "1px solid #333",
-                  borderRadius: 12,
-                  padding: 14,
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 12,
-                }}
+            <div style={{ display: "flex", gap: 10 }}>
+              <button style={toolbarButtonStyle}>Create</button>
+              <button
+                type="button"
+                onClick={() => setShowCreate(false)}
+                style={secondaryButtonStyle}
               >
-                <div style={{ flex: 1 }}>
-                  {showEditHint && (
-                    <div style={{ color: "#bbb", fontSize: 14, marginBottom: 8 }}>
-                      {isCompleted
-                        ? "Completed missions allow notes-only editing."
-                        : "Active missions are locked for core changes. Notes can still be updated."}
-                    </div>
-                  )}
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
 
+        {!loading && (
+          <div
+            style={{
+              maxHeight: "62vh",
+              overflowY: "auto",
+              display: "grid",
+              gap: 14,
+              paddingRight: 6,
+            }}
+          >
+            {visibleItems.map((m) => {
+              const isEditing = editingId === m.id;
+              const readiness = readinessByMissionId[m.id];
+              const isReadyForExecution = isMissionReadyForExecution(m.activatedAt, m.durationMinutes);
+              const isExpanded = expandedMissionId === m.id;
+
+              const isCompleted = m.status === "Completed";
+              const canEditCore =
+                m.status === "Prepared" ||
+                m.status === "Planned" ||
+                m.status === "Cancelled";
+
+              const canEditNotesOnly = isCompleted || m.status === "Active";
+              const disableCoreFields = !canEditCore;
+
+              return (
+                <div
+                  key={m.id}
+                  style={{
+                    border: "1px solid #9d8560",
+                    borderRadius: 14,
+                    background: "rgba(0,0,0,0.58)",
+                    overflow: "hidden",
+                  }}
+                >
                   {!isEditing ? (
                     <>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <div style={{ fontSize: 18, fontWeight: 700 }}>{m.name}</div>
-                          <MissionStatusBadge status={m.status} />
-                          <MissionMetaBadge>{m.terrain ?? "No terrain"}</MissionMetaBadge>
-                          <MissionMetaBadge>{m.difficulty ?? "No difficulty"}</MissionMetaBadge>
-                      </div>
-
-                      <div style={{ opacity: 0.85, marginTop: 10 }}>
-                        Commander: {commanderDisplay(m.commanderId)}
-                      </div>
-
-                      <div style={{ opacity: 0.85 }}>SquadId: {m.squadId ?? "—"}</div>
-
-                      {m.status === "Active" && (
                       <div
                         style={{
-                          marginTop: 10,
-                          padding: 10,
-                          borderRadius: 8,
-                          background: "#1a1a1a",
-                          border: "1px solid #444",
+                          minHeight: 170,
+                          display: "grid",
+                          gridTemplateColumns: "1fr auto",
+                          gap: 18,
+                          alignItems: "stretch",
+                          backgroundImage: `linear-gradient(${getMissionOverlay(
+                            m.status,
+                            m.wasSuccessful
+                          )}, ${getMissionOverlay(m.status, m.wasSuccessful)}), url(${getMissionTerrainBanner(
+                            m.terrain
+                          )})`,
+                          backgroundSize: "cover",
+                          backgroundPosition: "center",
                         }}
                       >
-                      <div>
-                        <b>Activated At:</b> {" "}
-                        {m.activatedAt ? new Date(m.activatedAt).toLocaleString() : "—"}</div>
-                      <div>
-                        <b>Duration:</b>  {" "}
-                        {m.durationMinutes != null ? `${m.durationMinutes} min` : "—"}</div>
-                      <div>
-                        <b>Status Window:</b> {" "}
-                        {formatRemainingTime(m.activatedAt, m.durationMinutes)}</div>
-                    </div>
-                    )}
-
-                      <div style={{ opacity: 0.85, marginTop: 6 }}>
-                        Executed At: {m.executedAt ? new Date(m.executedAt).toLocaleString() : "—"}
-                      </div>
-
-                      <div style={{ opacity: 0.85 }}>
-                        Success Snapshot: {m.successChanceSnapshot != null ? `${m.successChanceSnapshot}%` : "—"}
-                      </div>
-
-                        <MissionOutcome mission={m} />
-
-                      {m.notes && (
-                        <div
-                          style={{
-                            marginTop: 10,
-                            padding: 10,
-                            borderRadius: 8,
-                            background: "#151515",
-                            border: "1px solid #2d2d2d",
-                            whiteSpace: "pre-wrap",
-                            opacity: 0.92,
-                          }}
-                        >
-                          <div style={{ fontWeight: 700, marginBottom: 6 }}>Mission Notes</div>
-                          <div>{m.notes}</div>
-                        </div>
-                      )}
-
-                      {canPreviewReadiness && (
-                        <div style={{ marginTop: 12 }}>
-                          {!readiness ? (
-                            <button
-                              onClick={() => onLoadReadiness(m.id)}
-                              disabled={loadingReadinessId === m.id}
-                              style={{ padding: "6px 10px", borderRadius: 8 }}
-                            >
-                              {loadingReadinessId === m.id ? "Loading readiness..." : "Preview Readiness"}
-                            </button>
-                          ) : (
+                        <div style={{ padding: 14 }}>
+                          <div
+                            style={{
+                              maxWidth: 760,
+                              border: "1px solid rgba(255,255,255,0.16)",
+                              borderRadius: 12,
+                              padding: 16,
+                              background: "rgba(20,20,20,0.68)",
+                              backdropFilter: "blur(2px)",
+                            }}
+                          >
                             <div
                               style={{
-                              marginTop: 10,
-                              padding: 10,
-                              borderRadius: 8,
-                              background: "#101820",
-                              border: "1px solid #2c3e50",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                flexWrap: "wrap",
+                                marginBottom: 10,
                               }}
                             >
-                              <div style={{ fontWeight: 700, marginBottom: 6 }}>
-                                Mission Readiness · {readiness.readinessLabel}
+                              <div
+                                style={{
+                                  fontSize: 24,
+                                  fontWeight: 800,
+                                  color: "#efb85f",
+                                  fontFamily: "monospace",
+                                }}
+                              >
+                                {m.name}
                               </div>
+                              <MissionStatusBadge status={m.status} />
+                              <MissionMetaBadge>{m.terrain ?? "No terrain"}</MissionMetaBadge>
+                              <MissionMetaBadge>{m.difficulty ?? "No difficulty"}</MissionMetaBadge>
+                            </div>
 
-                              <div style={{ opacity: 0.9 }}>
-                                Projected Success: {readiness.projectedSuccessChance}%
+                            <div style={metaLineStyle}>Commander: {commanderDisplay(m.commanderId)}</div>
+                            <div style={metaLineStyle}>Squad ID: {m.squadId ?? "—"}</div>
+                            <div style={metaLineStyle}>Summary: {getMissionSummaryText(m)}</div>
+                          </div>
+                        </div>
+
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                            padding: 14,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <button onClick={() => toggleDetails(m.id)} style={iconActionButtonStyle}>
+                            {isExpanded ? "Hide" : "Details"}
+                          </button>
+
+                          {canManage && (
+                            <>
+                              <button onClick={() => startEdit(m)} style={iconActionButtonStyle}>
+                                Edit
+                              </button>
+                              <button onClick={() => onDelete(m.id)} style={iconActionButtonStyle}>
+                                Delete
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {isExpanded && (
+                        <div
+                          style={{
+                            padding: 16,
+                            borderTop: "1px solid rgba(201,165,106,0.35)",
+                            background: "rgba(0,0,0,0.70)",
+                            display: "grid",
+                            gap: 14,
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "1fr 1fr",
+                              gap: 14,
+                            }}
+                          >
+                            <div style={detailsCardStyle}>
+                              <div style={detailsTitleStyle}>Mission Overview</div>
+                              <div style={detailsLineStyle}>Created At: {new Date(m.createdAt).toLocaleString()}</div>
+                              <div style={detailsLineStyle}>
+                                Activated At: {m.activatedAt ? new Date(m.activatedAt).toLocaleString() : "—"}
                               </div>
-                              <div style={{ opacity: 0.9 }}>
-                                Base Score: {readiness.baseScore}
+                              <div style={detailsLineStyle}>
+                                Duration: {m.durationMinutes != null ? `${m.durationMinutes} min` : "—"}
                               </div>
-                              <div style={{ opacity: 0.9 }}>
-                                Difficulty Modifier: {readiness.difficultyModifier}
+                              <div style={detailsLineStyle}>
+                                Executed At: {m.executedAt ? new Date(m.executedAt).toLocaleString() : "—"}
                               </div>
-                              <div style={{ opacity: 0.9 }}>
-                                Equipment Score: {readiness.equipmentScore}
+                              <div style={detailsLineStyle}>Commander: {commanderDisplay(m.commanderId)}</div>
+                              <div style={detailsLineStyle}>Squad ID: {m.squadId ?? "—"}</div>
+                            </div>
+
+                            <div style={detailsCardStyle}>
+                              <div style={detailsTitleStyle}>Outcome / Status</div>
+                              <div style={detailsLineStyle}>Status: {formatMissionStatus(m.status)}</div>
+                              <div style={detailsLineStyle}>
+                                Success Snapshot: {m.successChanceSnapshot != null ? `${m.successChanceSnapshot}%` : "—"}
                               </div>
-                              <div style={{ opacity: 0.9 }}>
-                                Final Score: {readiness.finalScore}
+                              <div style={detailsLineStyle}>
+                                Result:{" "}
+                                {m.wasSuccessful == null ? "—" : m.wasSuccessful ? "Success" : "Failure"}
                               </div>
-                              <div style={{ opacity: 0.9, marginTop: 6 }}>
-                                Recommended Focus:{" "}
-                                {readiness.recommendedCategories.length > 0
-                                ? readiness.recommendedCategories.join(", ")
-                                : "—"}
+                              {m.status === "Active" && (
+                                <div style={detailsLineStyle}>
+                                  Status Window: {formatRemainingTime(m.activatedAt, m.durationMinutes)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {m.status === "Planned" && (
+                            <div style={detailsCardStyle}>
+                              <div style={detailsTitleStyle}>Mission Readiness</div>
+
+                              {loadingReadinessId === m.id && (
+                                <div style={detailsLineStyle}>Loading readiness...</div>
+                              )}
+
+                              {!loadingReadinessId && readiness && (
+                                <>
+                                  <div style={detailsLineStyle}>
+                                    Projected Success: {readiness.projectedSuccessChance}%
+                                  </div>
+                                  <div style={detailsLineStyle}>Readiness Label: {readiness.readinessLabel}</div>
+                                  <div style={detailsLineStyle}>Base Score: {readiness.baseScore}</div>
+                                  <div style={detailsLineStyle}>
+                                    Difficulty Modifier: {readiness.difficultyModifier}
+                                  </div>
+                                  <div style={detailsLineStyle}>Equipment Score: {readiness.equipmentScore}</div>
+                                  <div style={detailsLineStyle}>Final Score: {readiness.finalScore}</div>
+                                  <div style={detailsLineStyle}>
+                                    Recommended Focus:{" "}
+                                    {readiness.recommendedCategories.length > 0
+                                      ? readiness.recommendedCategories.join(", ")
+                                      : "—"}
+                                  </div>
+                                </>
+                              )}
+
+                              {!loadingReadinessId && !readiness && (
+                                <div style={detailsLineStyle}>No readiness data available.</div>
+                              )}
+                            </div>
+                          )}
+
+                          {m.notes && (
+                            <div style={detailsCardStyle}>
+                              <div style={detailsTitleStyle}>Mission Notes</div>
+                              <div
+                                style={{
+                                  ...detailsLineStyle,
+                                  whiteSpace: "pre-wrap",
+                                }}
+                              >
+                                {m.notes}
                               </div>
                             </div>
                           )}
-                        </div>
-                      )}
 
-                      {canManage && (
-                        <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-                          {m.status === "Planned" && (
-                            <button onClick={() => onActivate(m.id)} style={{ padding: "6px 10px", borderRadius: 8 }}>
-                              Activate
-                            </button>
-                          )}
+                          {canManage && (
+                            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                              {m.status === "Planned" && (
+                                <button onClick={() => onActivate(m.id)} style={toolbarButtonStyle}>
+                                  Activate
+                                </button>
+                              )}
 
-                          {m.status === "Active" && !isReadyForExecution && (
-                            <span style={{ opacity: 0.75, fontSize: 14 }}>
-                              Execution available when timer expires.
-                          </span>
-                          )}
+                              {m.status === "Active" && !isReadyForExecution && (
+                                <span style={{ ...detailsLineStyle, alignSelf: "center" }}>
+                                  Execution available when timer expires.
+                                </span>
+                              )}
 
-                          {m.status === "Active" && isReadyForExecution && (
-                            <button onClick={() => onExecute(m.id)} style={{ padding: "6px 10px", borderRadius: 8 }}>
-                              Execute
-                            </button>
-                          )}
+                              {m.status === "Active" && isReadyForExecution && (
+                                <button onClick={() => onExecute(m.id)} style={toolbarButtonStyle}>
+                                  Execute
+                                </button>
+                              )}
 
-                          {m.status !== "Completed" && m.status !== "Cancelled" && (
-                            <button onClick={() => onCancel(m.id)} style={{ padding: "6px 10px", borderRadius: 8 }}>
-                              Cancel
-                            </button>
+                              {m.status !== "Completed" && m.status !== "Cancelled" && (
+                                <button onClick={() => onCancel(m.id)} style={secondaryButtonStyle}>
+                                  Cancel
+                                </button>
+                              )}
+                            </div>
                           )}
                         </div>
                       )}
                     </>
                   ) : (
-                    <>
-                      <div style={{ fontWeight: 700, marginBottom: 8 }}>Editing Mission #{m.id}</div>
+                    <div
+                      style={{
+                        padding: 14,
+                        display: "grid",
+                        gridTemplateColumns: "1fr auto",
+                        gap: 18,
+                        alignItems: "start",
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            marginBottom: 8,
+                            color: "#f3efe6",
+                            fontFamily: "monospace",
+                          }}
+                        >
+                          Editing Mission #{m.id}
+                        </div>
 
-                      <div style={{ display: "grid", gap: 10 }}>
-                        <input
-                          value={editForm?.name ?? ""}
-                          onChange={(e) => setEditForm((f) => (f ? { ...f, name: e.target.value } : f))}
-                          placeholder="Name"
-                          style={{ padding: 10, borderRadius: 8 }}
-                          disabled={disableCoreFields}
-                        />
+                        <div style={{ display: "grid", gap: 10 }}>
+                          <input
+                            value={editForm?.name ?? ""}
+                            onChange={(e) => setEditForm((f) => (f ? { ...f, name: e.target.value } : f))}
+                            placeholder="Name"
+                            style={formFieldStyle}
+                            disabled={disableCoreFields}
+                          />
 
-                        <div style={{ display: "grid", gap: 6 }}>
-                          <label style={{ fontWeight: 600 }}>Commander</label>
                           <select
                             value={editForm?.commanderId ?? ""}
-                            onChange={(e) => setEditForm((f) => (f ? { ...f, commanderId: e.target.value } : f))}
-                            style={{ padding: 10, borderRadius: 8 }}
+                            onChange={(e) =>
+                              setEditForm((f) => (f ? { ...f, commanderId: e.target.value } : f))
+                            }
+                            style={formFieldStyle}
                             disabled={disableCoreFields}
                           >
                             <option value="">— None —</option>
@@ -662,25 +909,22 @@ export default function MissionsPage() {
                               </option>
                             ))}
                           </select>
-                        </div>
 
-                        <textarea
-                          value={editForm?.notes ?? ""}
-                          onChange={(e) => setEditForm((f) => (f ? { ...f, notes: e.target.value } : f))}
-                          placeholder="Notes"
-                          rows={4}
-                          style={{ padding: 10, borderRadius: 8 }}
-                          disabled={!canEditCore && !canEditNotesOnly}
-                        />
+                          <textarea
+                            value={editForm?.notes ?? ""}
+                            onChange={(e) => setEditForm((f) => (f ? { ...f, notes: e.target.value } : f))}
+                            placeholder="Notes"
+                            rows={4}
+                            style={formFieldStyle}
+                            disabled={!canEditCore && !canEditNotesOnly}
+                          />
 
-                        <div style={{ display: "grid", gap: 6 }}>
-                          <label style={{ fontWeight: 600 }}>Terrain</label>
                           <select
                             value={editForm?.terrain ?? "Urban"}
                             onChange={(e) =>
                               setEditForm((f) => (f ? { ...f, terrain: e.target.value as MissionTerrain } : f))
                             }
-                            style={{ padding: 10, borderRadius: 8 }}
+                            style={formFieldStyle}
                             disabled={disableCoreFields}
                           >
                             {TERRAINS.map((t) => (
@@ -689,16 +933,13 @@ export default function MissionsPage() {
                               </option>
                             ))}
                           </select>
-                        </div>
 
-                        <div style={{ display: "grid", gap: 6 }}>
-                          <label style={{ fontWeight: 600 }}>Difficulty</label>
                           <select
                             value={editForm?.difficulty ?? "Medium"}
                             onChange={(e) =>
                               setEditForm((f) => (f ? { ...f, difficulty: e.target.value as MissionDifficulty } : f))
                             }
-                            style={{ padding: 10, borderRadius: 8 }}
+                            style={formFieldStyle}
                             disabled={disableCoreFields}
                           >
                             {DIFFICULTIES.map((d) => (
@@ -709,42 +950,113 @@ export default function MissionsPage() {
                           </select>
                         </div>
                       </div>
-                    </>
-                  )}
-                </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  {canManage ? (
-                    !isEditing ? (
-                      <>
-                        <button onClick={() => startEdit(m)} style={{ padding: "8px 12px", borderRadius: 8 }}>
-                          Edit
-                        </button>
-                        <button onClick={() => onDelete(m.id)} style={{ padding: "8px 12px", borderRadius: 8 }}>
-                          Delete
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button onClick={submitEdit} style={{ padding: "8px 12px", borderRadius: 8 }}>
+                      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                        <button onClick={submitEdit} style={iconActionButtonStyle}>
                           Save
                         </button>
-                        <button onClick={cancelEdit} style={{ padding: "8px 12px", borderRadius: 8 }}>
+                        <button onClick={cancelEdit} style={iconActionButtonStyle}>
                           Cancel
                         </button>
-                      </>
-                    )
-                  ) : (
-                    <span style={{ opacity: 0.6, fontSize: 14 }}>Read-only</span>
+                      </div>
+                    </div>
                   )}
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
 
-      {!loading && !error && items.length === 0 && <div style={{ marginTop: 14 }}>No missions yet.</div>}
+            {!error && visibleItems.length === 0 && (
+              <div style={{ color: "#f3efe6", fontFamily: "monospace" }}>
+                No missions found.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
+
+const toolbarButtonStyle: React.CSSProperties = {
+  height: 44,
+  padding: "0 16px",
+  borderRadius: 10,
+  border: "1px solid #c9a56a",
+  background: "#c9a56a",
+  color: "#1d1812",
+  fontFamily: "monospace",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const secondaryButtonStyle: React.CSSProperties = {
+  height: 44,
+  padding: "0 16px",
+  borderRadius: 10,
+  border: "1px solid #9d8560",
+  background: "rgba(201,165,106,0.18)",
+  color: "#f3efe6",
+  fontFamily: "monospace",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const sortButtonStyle: React.CSSProperties = {
+  padding: "8px 14px",
+  borderRadius: 10,
+  border: "1px solid #9d8560",
+  background: "rgba(201,165,106,0.16)",
+  color: "#f3efe6",
+  fontFamily: "monospace",
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const iconActionButtonStyle: React.CSSProperties = {
+  padding: "8px 12px",
+  borderRadius: 10,
+  border: "1px solid #9d8560",
+  background: "rgba(201,165,106,0.12)",
+  color: "#f3efe6",
+  fontFamily: "monospace",
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const formFieldStyle: React.CSSProperties = {
+  padding: 10,
+  borderRadius: 8,
+  border: "1px solid #9d8560",
+  background: "rgba(0,0,0,0.55)",
+  color: "#f3efe6",
+  fontFamily: "monospace",
+};
+
+const metaLineStyle: React.CSSProperties = {
+  color: "#d7b176",
+  fontFamily: "monospace",
+  fontSize: 16,
+  marginBottom: 4,
+};
+
+const detailsCardStyle: React.CSSProperties = {
+  border: "1px solid rgba(201,165,106,0.35)",
+  borderRadius: 12,
+  padding: 14,
+  background: "rgba(20,20,20,0.55)",
+};
+
+const detailsTitleStyle: React.CSSProperties = {
+  color: "#efb85f",
+  fontFamily: "monospace",
+  fontWeight: 800,
+  fontSize: 18,
+  marginBottom: 10,
+};
+
+const detailsLineStyle: React.CSSProperties = {
+  color: "#f3efe6",
+  fontFamily: "monospace",
+  fontSize: 14,
+  marginBottom: 6,
+};
