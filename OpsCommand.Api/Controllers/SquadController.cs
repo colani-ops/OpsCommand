@@ -51,7 +51,7 @@ namespace OpsCommand.Api.Controllers
 
         // GET api/squad/my
         [HttpGet("my")]
-        [Authorize(Roles = "Member,Commander")]
+        [Authorize(Roles = "Member,Commander,Admin,SuperAdmin")]
         public async Task<IActionResult> GetMySquad()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);

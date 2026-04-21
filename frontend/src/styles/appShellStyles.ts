@@ -6,7 +6,7 @@ export const appShellPageStyle: CSSProperties = {
   position: "relative",
   backgroundImage: 'url("/mainBG.png")',
   backgroundSize: "cover",
-  backgroundPosition: "center",
+  backgroundPosition: "50% 35%",
   backgroundRepeat: "no-repeat",
 };
 
@@ -24,9 +24,10 @@ export const appShellContentStyle: CSSProperties = {
 };
 
 export const pageContainerStyle: CSSProperties = {
-  maxWidth: 1200,
+  width: "100%",
+  maxWidth: 1720,
   margin: "0 auto",
-  padding: "28px 20px 40px",
+  padding: "28px 24px 40px",
 };
 
 export const glassCardStyle: CSSProperties = {

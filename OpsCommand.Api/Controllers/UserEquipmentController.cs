@@ -8,7 +8,7 @@ namespace OpsCommand.Api.Controllers
 {
     [ApiController]
     [Route("api/userequipment")]
-    [Authorize(Roles = "Member,Commander")]
+    [Authorize(Roles = "Member,Commander,Admin,SuperAdmin")]
     public class UserEquipmentController : ControllerBase
     {
         private readonly IUserEquipmentService _service;

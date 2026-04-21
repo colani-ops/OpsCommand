@@ -12,6 +12,7 @@ import {
 } from "../api/squads";
 import { useErrorHandler } from "../hooks/useErrorHandler";
 import ErrorBanner from "../components/ErrorBanner";
+import IconButton from "../ui/IconButton";
 
 const TYPES: SquadType[] = ["Assault", "Tactical", "Recon"];
 
@@ -327,17 +328,22 @@ export default function SquadsPage() {
           />
 
           {canManage && (
-            <button
+            <IconButton
+              iconSrc="/icons/add.png"
+              alt={showCreate ? "Close create squad form" : "Open create squad form"}
+              title={showCreate ? "Close create squad form" : "New squad"}
+              variant="transparent"
               onClick={() => setShowCreate((v) => !v)}
-              style={toolbarButtonStyle}
-            >
-              {showCreate ? "Close" : "New Squad"}
-            </button>
+            />
           )}
 
-          <button onClick={load} style={toolbarButtonStyle}>
-            Refresh
-          </button>
+            <IconButton
+              iconSrc="/icons/refresh.png"
+              alt="Refresh squads"
+              title="Refresh squads"
+              variant="transparent"
+              onClick={load}
+            />
         </div>
 
         <div
@@ -575,12 +581,20 @@ export default function SquadsPage() {
                     {canManage ? (
                       !isEditing ? (
                         <>
-                          <button onClick={() => startEdit(s.id)} style={iconActionButtonStyle}>
-                            Edit
-                          </button>
-                          <button onClick={() => onDelete(s.id)} style={iconActionButtonStyle}>
-                            Delete
-                          </button>
+<IconButton
+  iconSrc="/icons/edit.png"
+  alt="Edit squad"
+  title="Edit"
+  variant="transparent"
+  onClick={() => startEdit(s.id)}
+/>
+                          <IconButton
+                            iconSrc="/icons/delete.png"
+                            alt="Delete squad"
+                            title="Delete squad"
+                            variant="danger"
+                            onClick={() => onDelete(s.id)}
+                          />
                         </>
                       ) : (
                         <>
