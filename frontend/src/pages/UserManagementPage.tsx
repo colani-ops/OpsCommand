@@ -432,7 +432,7 @@ export default function UserManagementPage() {
                       primaryRole,
                       userIsActive
                     )}, rgba(0,0,0,0.76)), url(${getRoleBanner(primaryRole, userIsActive)})`,
-                    backgroundSize: "contain",
+                      backgroundSize: "contain",
                     backgroundPosition: "right center",
                     backgroundRepeat: "no-repeat",
                     backgroundColor: "rgba(0,0,0,0.58)",
@@ -578,18 +578,31 @@ export default function UserManagementPage() {
                         padding: 14,
                       }}
                     >
-                      <button onClick={() => onSave(u.id)} style={iconActionButtonStyle}>
-                        Save
-                      </button>
+                      <IconButton
+                        iconSrc="/icons/save.png"
+                        alt="Save"
+                        title="Save"
+                        variant="secondary"
+                        onClick={() => onSave(u.id)}
+                      />
 
                       {isSuperAdmin && (
                         <>
-                          <button onClick={() => onDisable(u.id)} style={iconActionButtonStyle}>
-                            Disable
-                          </button>
-                          <button onClick={() => onRestore(u.id)} style={iconActionButtonStyle}>
-                            Restore
-                          </button>
+                            <IconButton
+                            iconSrc="/icons/delete.png"
+                            alt="Disable"
+                            title="Disable"
+                            variant="danger"
+                            onClick={() => onDisable(u.id)} style={iconActionButtonStyle}
+                            />
+
+                          <IconButton
+                            iconSrc="/icons/refresh.png"
+                            alt="Restore"
+                            title="Restore"
+                            variant="danger"
+                            onClick={() => onRestore(u.id)} style={iconActionButtonStyle}
+                            />
                         </>
                       )}
                     </div>

@@ -2,25 +2,28 @@ import type { CSSProperties } from "react";
 
 export const appShellPageStyle: CSSProperties = {
   minHeight: "100svh",
-  overflow: "hidden",
+  overflowX: "hidden",
+  overflowY: "auto",
   position: "relative",
   backgroundImage: 'url("/mainBG.png")',
-  backgroundSize: "cover",
-  backgroundPosition: "50% 35%",
+  backgroundSize: "100% auto",
+  backgroundPosition: "center top",
   backgroundRepeat: "no-repeat",
+  backgroundColor: "#0b0d10",
+  backgroundAttachment: "fixed",
 };
 
 export const appShellOverlayStyle: CSSProperties = {
   position: "absolute",
   inset: 0,
   background: "linear-gradient(rgba(8, 10, 12, 0.68), rgba(8, 10, 12, 0.8))",
+  pointerEvents: "none",
 };
 
 export const appShellContentStyle: CSSProperties = {
   position: "relative",
   zIndex: 1,
   minHeight: "100svh",
-  overflow: "hidden",
 };
 
 export const pageContainerStyle: CSSProperties = {

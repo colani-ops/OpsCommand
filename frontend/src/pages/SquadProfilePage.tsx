@@ -9,6 +9,7 @@ import {
 } from "../api/squadEquipment";
 import { deleteSquad, getSquadProfile, type SquadProfileDto } from "../api/squads";
 import ErrorBanner from "../components/ErrorBanner";
+import IconButton from "../ui/IconButton";
 
 export default function SquadProfilePage() {
   const { id } = useParams();
@@ -216,14 +217,22 @@ function getEquipmentOverlay(category: string | null) {
             Squad Profile
           </h2>
 
-          <button onClick={load} style={toolbarButtonStyle}>
-            Refresh
-          </button>
+          <IconButton
+            iconSrc="/icons/refresh.png"
+            alt="Refresh users"
+            title="Refresh users"
+            variant="transparent"
+            onClick={load}
+          />
 
           {canManage && squad && (
-            <button onClick={onDelete} style={dangerButtonStyle}>
-              Delete
-            </button>
+            <IconButton
+              iconSrc="/icons/delete.png"
+              alt="Delete"
+              title="Delete"
+              variant="danger"
+              onClick={onDelete} style={dangerButtonStyle}
+            />
           )}
         </div>
 
@@ -549,8 +558,11 @@ function getEquipmentOverlay(category: string | null) {
                               }}
                             />
 
-                            <button
-                              type="button"
+                            <IconButton
+                              iconSrc="/icons/save.png"
+                              alt="Save"
+                              title="Save"
+                              variant="danger"
                               onClick={() =>
                                 onUpdateEquipment(
                                   item.equipmentId,
@@ -558,17 +570,17 @@ function getEquipmentOverlay(category: string | null) {
                                 )
                               }
                               style={iconActionButtonStyle}
-                            >
-                              Save
-                            </button>
+                            />
 
-                            <button
-                              type="button"
+                            <IconButton
+                              iconSrc="/icons/delete.png"
+                              alt="Remove"
+                              title="Remove"
+                              variant="danger"
                               onClick={() => onRemoveEquipment(item.equipmentId)}
                               style={iconActionButtonStyle}
-                            >
-                              Remove
-                            </button>
+                            />
+
                           </div>
                         )}
                       </div>

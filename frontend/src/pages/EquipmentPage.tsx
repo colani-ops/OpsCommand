@@ -11,6 +11,7 @@ import {
 } from "../api/equipment";
 import { useErrorHandler } from "../hooks/useErrorHandler";
 import ErrorBanner from "../components/ErrorBanner";
+import IconButton from "../ui/IconButton";
 
 const CATEGORIES: EquipmentCategory[] = ["Primary", "Secondary", "Melee", "Utility"];
 
@@ -289,17 +290,23 @@ export default function EquipmentPage() {
           />
 
           {canManage && (
-            <button
+            <IconButton
+              iconSrc="/icons/add.png"
+              alt={showCreate ? "Close create equipment form" : "Open create equipment form"}
+              title={showCreate ? "Close create equipment form" : "New equipment"}
+              variant="transparent"
               onClick={() => setShowCreate((v) => !v)}
-              style={toolbarButtonStyle}
-            >
-              {showCreate ? "Close" : "New Equipment"}
-            </button>
+            />
           )}
 
-          <button onClick={load} style={toolbarButtonStyle}>
-            Refresh
-          </button>
+          <IconButton
+            iconSrc="/icons/refresh.png"
+            alt="Refresh"
+            title="Refresh"
+            variant="transparent"
+            onClick={load}
+          />
+
         </div>
 
         <div
@@ -524,20 +531,24 @@ export default function EquipmentPage() {
                       >
                         {canManage ? (
                           <>
-                            <button
+                            <IconButton
+                              iconSrc="/icons/edit.png"
+                              alt="Edit Equipment"
+                              title="Edit Equipment"
+                              variant="transparent"
                               onClick={() => startEdit(item.id)}
                               style={iconActionButtonStyle}
                               disabled={!!item.deletedAt}
-                            >
-                              Edit
-                            </button>
-                            <button
+                            />
+                            <IconButton
+                              iconSrc="/icons/delete.png"
+                              alt="Delete Equipment"
+                              title="Delete Equipment"
+                              variant="danger"
                               onClick={() => onDelete(item.id)}
                               style={iconActionButtonStyle}
                               disabled={!!item.deletedAt}
-                            >
-                              Delete
-                            </button>
+                            />
                           </>
                         ) : (
                           <span style={{ opacity: 0.6, fontSize: 14, color: "#f3efe6" }}>

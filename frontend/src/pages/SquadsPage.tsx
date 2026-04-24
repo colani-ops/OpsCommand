@@ -581,13 +581,13 @@ export default function SquadsPage() {
                     {canManage ? (
                       !isEditing ? (
                         <>
-<IconButton
-  iconSrc="/icons/edit.png"
-  alt="Edit squad"
-  title="Edit"
-  variant="transparent"
-  onClick={() => startEdit(s.id)}
-/>
+                          <IconButton
+                            iconSrc="/icons/edit.png"
+                            alt="Edit squad"
+                            title="Edit"
+                            variant="transparent"
+                            onClick={() => startEdit(s.id)}
+                          />
                           <IconButton
                             iconSrc="/icons/delete.png"
                             alt="Delete squad"
