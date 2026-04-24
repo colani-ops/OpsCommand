@@ -83,15 +83,30 @@ export default function MySquadPage() {
   function getEquipmentBanner(category: string | null) {
     switch (category) {
       case "Primary":
-        return "/equipment-primary.png";
+        return "/banners/equipment-primary.png";
       case "Secondary":
-        return "/equipment-secondary.png";
+        return "/banners/equipment-secondary.png";
       case "Melee":
-        return "/equipment-melee.png";
+        return "/banners/equipment-melee.png";
       case "Utility":
-        return "/equipment-utility.png";
+        return "/banners/equipment-utility.png";
       default:
-        return "/equipment-default.png";
+        return "/banners/equipment-default.png";
+    }
+  }
+
+  function getEquipmentOverlay(category: string | null) {
+    switch (category) {
+      case "Primary":
+        return "rgba(12, 32, 50, 0.64)";
+      case "Secondary":
+        return "rgba(38, 20, 52, 0.64)";
+      case "Melee":
+        return "rgba(52, 22, 22, 0.64)";
+      case "Utility":
+        return "rgba(24, 48, 34, 0.62)";
+      default:
+        return "rgba(0, 0, 0, 0.60)";
     }
   }
 
@@ -361,14 +376,15 @@ export default function MySquadPage() {
                           Status: {member.isActive ? "Active" : "Disabled"}
                         </div>
                       </div>
-                        <div
-                          style={{
+
+                      <div
+                        style={{
                           border: "1px solid rgba(201,165,106,0.20)",
                           borderRadius: 12,
                           padding: 12,
                           background: "rgba(0,0,0,0.28)",
-                          }}
-                        >
+                        }}
+                      >
                         <div style={miniTitleStyle}>Equipped Summary</div>
                         <div style={detailsLineStyle}>Primary: pending backend</div>
                         <div style={detailsLineStyle}>Secondary: pending backend</div>
@@ -447,31 +463,33 @@ export default function MySquadPage() {
                     >
                       <div
                         style={{
-                          minHeight: 130,
+                          minHeight: 170,
                           display: "grid",
                           gridTemplateColumns: "1fr auto",
                           gap: 18,
                           alignItems: "stretch",
-                          backgroundImage: `linear-gradient(rgba(0,0,0,0.50), rgba(0,0,0,0.62)), url(${getEquipmentBanner(
+                          backgroundImage: `linear-gradient(${getEquipmentOverlay(
                             item.category
-                          )})`,
+                          )}, rgba(0,0,0,0.74)), url(${getEquipmentBanner(item.category)})`,
                           backgroundSize: "cover",
                           backgroundPosition: "center",
+                          backgroundRepeat: "no-repeat",
                         }}
                       >
                         <div style={{ padding: 14 }}>
                           <div
                             style={{
-                              maxWidth: 680,
+                              maxWidth: 720,
                               border: "1px solid rgba(255,255,255,0.16)",
                               borderRadius: 12,
-                              padding: 14,
-                              background: "rgba(20,20,20,0.66)",
+                              padding: 16,
+                              background: "rgba(20,20,20,0.62)",
+                              backdropFilter: "blur(2px)",
                             }}
                           >
                             <div
                               style={{
-                                fontSize: 22,
+                                fontSize: 24,
                                 fontWeight: 800,
                                 color: "#efb85f",
                                 fontFamily: "monospace",
@@ -487,8 +505,31 @@ export default function MySquadPage() {
                               </Link>
                             </div>
 
-                            <div style={detailsLineStyle}>Category: {item.category ?? "—"}</div>
-                            <div style={detailsLineStyle}>Quantity: {item.quantity}</div>
+                            <div style={metaLineStyle}>Category: {item.category ?? "—"}</div>
+                            <div style={metaLineStyle}>Squad Quantity: {item.quantity}</div>
+
+                            {"effectiveness" in item && item.effectiveness != null && (
+                              <div style={metaLineStyle}>Effectiveness: {item.effectiveness}/100</div>
+                            )}
+
+                            {"availableQuantity" in item && item.availableQuantity != null && (
+                              <div style={metaLineStyle}>Global Available: {item.availableQuantity}</div>
+                            )}
+
+                            {"description" in item && item.description && (
+                              <div
+                                style={{
+                                  color: "#f3efe6",
+                                  fontFamily: "monospace",
+                                  fontSize: 14,
+                                  marginTop: 10,
+                                  whiteSpace: "pre-wrap",
+                                  opacity: 0.9,
+                                }}
+                              >
+                                {item.description}
+                              </div>
+                            )}
                           </div>
                         </div>
 

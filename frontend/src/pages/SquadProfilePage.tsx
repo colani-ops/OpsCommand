@@ -72,20 +72,35 @@ export default function SquadProfilePage() {
     }
   }
 
-  function getEquipmentBanner(category: string | null) {
-    switch (category) {
-      case "Primary":
-        return "/equipment-primary.png";
-      case "Secondary":
-        return "/equipment-secondary.png";
-      case "Melee":
-        return "/equipment-melee.png";
-      case "Utility":
-        return "/equipment-utility.png";
-      default:
-        return "/equipment-default.png";
-    }
+function getEquipmentBanner(category: string | null) {
+  switch (category) {
+    case "Primary":
+      return "/banners/equipment-primary.png";
+    case "Secondary":
+      return "/banners/equipment-secondary.png";
+    case "Melee":
+      return "/banners/equipment-melee.png";
+    case "Utility":
+      return "/banners/equipment-utility.png";
+    default:
+      return "/banners/equipment-default.png";
   }
+}
+
+function getEquipmentOverlay(category: string | null) {
+  switch (category) {
+    case "Primary":
+      return "rgba(12, 32, 50, 0.64)";
+    case "Secondary":
+      return "rgba(38, 20, 52, 0.64)";
+    case "Melee":
+      return "rgba(52, 22, 22, 0.64)";
+    case "Utility":
+      return "rgba(24, 48, 34, 0.62)";
+    default:
+      return "rgba(0, 0, 0, 0.60)";
+  }
+}
 
   async function onDelete() {
     if (!squad) return;
@@ -468,11 +483,12 @@ export default function SquadProfilePage() {
                           gridTemplateColumns: "1fr auto",
                           gap: 18,
                           alignItems: "stretch",
-                          backgroundImage: `linear-gradient(rgba(0,0,0,0.50), rgba(0,0,0,0.62)), url(${getEquipmentBanner(
+                          backgroundImage: `linear-gradient(${getEquipmentOverlay(
                             item.category
-                          )})`,
+                          )}, rgba(0,0,0,0.74)), url(${getEquipmentBanner(item.category)})`,
                           backgroundSize: "cover",
                           backgroundPosition: "center",
+                          backgroundRepeat: "no-repeat",
                         }}
                       >
                         <div style={{ padding: 14 }}>

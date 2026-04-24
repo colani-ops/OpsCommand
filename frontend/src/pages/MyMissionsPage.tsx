@@ -39,15 +39,15 @@ function formatMissionStatus(status: string) {
 function getMissionTerrainBanner(terrain: string | null) {
   switch (terrain) {
     case "Urban":
-      return "/mission-urban.png";
+      return "/banners/mission-urban.png";
     case "Plains":
-      return "/mission-plains.png";
+      return "/banners/mission-plains.png";
     case "Forest":
-      return "/mission-forest.png";
+      return "/banners/mission-forest.png";
     case "Mountain":
-      return "/mission-mountain.png";
+      return "/banners/mission-mountain.png";
     default:
-      return "/mission-default.png";
+      return "/banners/mission-default.png";
   }
 }
 
