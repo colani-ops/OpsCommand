@@ -451,139 +451,151 @@ export default function MySquadPage() {
                 <div style={detailsLineStyle}>No equipment assigned to this squad.</div>
               ) : (
                 <div style={{ display: "grid", gap: 12 }}>
-                  {equipment.map((item) => (
-                    <div
-                      key={item.equipmentId}
-                      style={{
-                        border: "1px solid #9d8560",
-                        borderRadius: 14,
-                        overflow: "hidden",
-                        background: "rgba(0,0,0,0.58)",
-                      }}
-                    >
+                  {equipment.map((item) => {
+                    const squadEquipmentItem = item as SquadEquipmentDto & {
+                      effectiveness?: number;
+                      availableQuantity?: number;
+                      description?: string | null;
+                    };
+
+                    return (
                       <div
+                        key={item.equipmentId}
                         style={{
-                          minHeight: 170,
-                          display: "grid",
-                          gridTemplateColumns: "1fr auto",
-                          gap: 18,
-                          alignItems: "stretch",
-                          backgroundImage: `linear-gradient(${getEquipmentOverlay(
-                            item.category
-                          )}, rgba(0,0,0,0.74)), url(${getEquipmentBanner(item.category)})`,
-                          backgroundSize: "cover",
-                          backgroundPosition: "center",
-                          backgroundRepeat: "no-repeat",
+                          border: "1px solid #9d8560",
+                          borderRadius: 14,
+                          overflow: "hidden",
+                          background: "rgba(0,0,0,0.58)",
                         }}
                       >
-                        <div style={{ padding: 14 }}>
-                          <div
-                            style={{
-                              maxWidth: 720,
-                              border: "1px solid rgba(255,255,255,0.16)",
-                              borderRadius: 12,
-                              padding: 16,
-                              background: "rgba(20,20,20,0.62)",
-                              backdropFilter: "blur(2px)",
-                            }}
-                          >
+                        <div
+                          style={{
+                            minHeight: 170,
+                            display: "grid",
+                            gridTemplateColumns: "1fr auto",
+                            gap: 18,
+                            alignItems: "stretch",
+                            backgroundImage: `linear-gradient(${getEquipmentOverlay(
+                              item.category
+                            )}, rgba(0,0,0,0.74)), url(${getEquipmentBanner(item.category)})`,
+                            backgroundSize: "cover",
+                            backgroundPosition: "center",
+                            backgroundRepeat: "no-repeat",
+                          }}
+                        >
+                          <div style={{ padding: 14 }}>
                             <div
                               style={{
-                                fontSize: 24,
-                                fontWeight: 800,
-                                color: "#efb85f",
-                                fontFamily: "monospace",
-                                marginBottom: 8,
+                                maxWidth: 720,
+                                border: "1px solid rgba(255,255,255,0.16)",
+                                borderRadius: 12,
+                                padding: 16,
+                                background: "rgba(20,20,20,0.62)",
+                                backdropFilter: "blur(2px)",
                               }}
                             >
-                              <Link
-                                to={`/equipment/${item.equipmentId}`}
-                                style={{ color: "inherit", textDecoration: "none" }}
-                                title="Open equipment profile"
-                              >
-                                {item.equipmentName}
-                              </Link>
-                            </div>
-
-                            <div style={metaLineStyle}>Category: {item.category ?? "—"}</div>
-                            <div style={metaLineStyle}>Squad Quantity: {item.quantity}</div>
-
-                            {"effectiveness" in item && item.effectiveness != null && (
-                              <div style={metaLineStyle}>Effectiveness: {item.effectiveness}/100</div>
-                            )}
-
-                            {"availableQuantity" in item && item.availableQuantity != null && (
-                              <div style={metaLineStyle}>Global Available: {item.availableQuantity}</div>
-                            )}
-
-                            {"description" in item && item.description && (
                               <div
                                 style={{
-                                  color: "#f3efe6",
+                                  fontSize: 24,
+                                  fontWeight: 800,
+                                  color: "#efb85f",
                                   fontFamily: "monospace",
-                                  fontSize: 14,
-                                  marginTop: 10,
-                                  whiteSpace: "pre-wrap",
-                                  opacity: 0.9,
+                                  marginBottom: 8,
                                 }}
                               >
-                                {item.description}
+                                <Link
+                                  to={`/equipment/${item.equipmentId}`}
+                                  style={{ color: "inherit", textDecoration: "none" }}
+                                  title="Open equipment profile"
+                                >
+                                  {item.equipmentName}
+                                </Link>
                               </div>
-                            )}
-                          </div>
-                        </div>
 
-                        {canManageEquipment && currentUser && squad.commanderId === currentUser.id && (
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 8,
-                              padding: 14,
-                              flexWrap: "wrap",
-                            }}
-                          >
-                            <input
-                              type="number"
-                              min={1}
-                              value={editQuantities[item.equipmentId] ?? item.quantity}
-                              onChange={(e) =>
-                                setEditQuantities((prev) => ({
-                                  ...prev,
-                                  [item.equipmentId]: Number(e.target.value),
-                                }))
-                              }
+                              <div style={metaLineStyle}>Category: {item.category ?? "—"}</div>
+                              <div style={metaLineStyle}>Squad Quantity: {item.quantity}</div>
+
+                              {squadEquipmentItem.effectiveness != null && (
+                                <div style={metaLineStyle}>
+                                  Effectiveness: {squadEquipmentItem.effectiveness}/100
+                                </div>
+                              )}
+
+                              {squadEquipmentItem.availableQuantity != null && (
+                                <div style={metaLineStyle}>
+                                  Global Available: {squadEquipmentItem.availableQuantity}
+                                </div>
+                              )}
+
+                              {squadEquipmentItem.description && (
+                                <div
+                                  style={{
+                                    color: "#f3efe6",
+                                    fontFamily: "monospace",
+                                    fontSize: 14,
+                                    marginTop: 10,
+                                    whiteSpace: "pre-wrap",
+                                    opacity: 0.9,
+                                  }}
+                                >
+                                  {squadEquipmentItem.description}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {canManageEquipment && currentUser && squad.commanderId === currentUser.id && (
+                            <div
                               style={{
-                                width: 80,
-                                ...formFieldStyle,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                padding: 14,
+                                flexWrap: "wrap",
                               }}
-                            />
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                onUpdateQuantity(
-                                  item.equipmentId,
-                                  editQuantities[item.equipmentId] ?? item.quantity
-                                )
-                              }
-                              style={iconActionButtonStyle}
                             >
-                              Save
-                            </button>
+                              <input
+                                type="number"
+                                min={1}
+                                value={editQuantities[item.equipmentId] ?? item.quantity}
+                                onChange={(e) =>
+                                  setEditQuantities((prev) => ({
+                                    ...prev,
+                                    [item.equipmentId]: Number(e.target.value),
+                                  }))
+                                }
+                                style={{
+                                  width: 80,
+                                  ...formFieldStyle,
+                                }}
+                              />
 
-                            <button
-                              type="button"
-                              onClick={() => onDeleteEquipment(item.equipmentId)}
-                              style={iconActionButtonStyle}
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        )}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  onUpdateQuantity(
+                                    item.equipmentId,
+                                    editQuantities[item.equipmentId] ?? item.quantity
+                                  )
+                                }
+                                style={iconActionButtonStyle}
+                              >
+                                Save
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => onDeleteEquipment(item.equipmentId)}
+                                style={iconActionButtonStyle}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

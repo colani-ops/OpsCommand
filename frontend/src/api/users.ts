@@ -6,6 +6,7 @@ export type UserDto = {
   userName: string;
   assignedSquadId: number | null;
   roles: string[];
+  isActive?: boolean;
 };
 
 export type UserProfileDto = {
