@@ -1,7 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { getUser } from "../api/auth";
-import { getMe } from "../api/users";
+import {
+  changeMyPassword,
+  deleteMyProfileImage,
+  getMe,
+  resolveUserImageUrl,
+  updateMe,
+  uploadMyProfileImage,
+  type UserDto,
+} from "../api/users";
 import { getSquad, type SquadDto } from "../api/squads";
 import {
   addMyUserEquipment,
@@ -59,13 +67,19 @@ function getEquipmentBanner(category?: string | null) {
 }
 
 export default function MyProfilePage() {
-  const user = useMemo(() => getUser(), []);
+  const authUser = useMemo(() => getUser(), []);
   const { error, showError, clearError } = useErrorHandler();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const [me, setMe] = useState<UserDto | null>(null);
   const [assignedSquadId, setAssignedSquadId] = useState<number | null>(null);
   const [squad, setSquad] = useState<SquadDto | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [savingEquipment, setSavingEquipment] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const [availableEquipment, setAvailableEquipment] = useState<UserEquipmentDto[]>([]);
   const [myEquipment, setMyEquipment] = useState<UserEquipmentDto[]>([]);
@@ -73,6 +87,17 @@ export default function MyProfilePage() {
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<number | "">("");
   const [newQuantity, setNewQuantity] = useState<number>(1);
   const [editQuantities, setEditQuantities] = useState<Record<number, number>>({});
+
+  const [profileForm, setProfileForm] = useState({
+    userName: "",
+    email: "",
+  });
+
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
 
   const loadEquipmentData = useCallback(async () => {
     const [available, mine] = await Promise.all([
@@ -82,13 +107,11 @@ export default function MyProfilePage() {
 
     setAvailableEquipment(available);
     setMyEquipment(mine);
-    setEditQuantities(
-      Object.fromEntries(mine.map((item) => [item.equipmentId, item.quantity]))
-    );
+    setEditQuantities(Object.fromEntries(mine.map((item) => [item.equipmentId, item.quantity])));
   }, []);
 
   const loadProfileData = useCallback(async () => {
-    if (!user) {
+    if (!authUser) {
       setLoadingProfile(false);
       return;
     }
@@ -97,9 +120,14 @@ export default function MyProfilePage() {
     clearError();
 
     try {
-      const me = await getMe();
-      const squadId = me.assignedSquadId ?? null;
+      const meData = await getMe();
+      setMe(meData);
+      setProfileForm({
+        userName: meData.userName ?? "",
+        email: meData.email ?? "",
+      });
 
+      const squadId = meData.assignedSquadId ?? null;
       setAssignedSquadId(squadId);
 
       if (!squadId) {
@@ -115,6 +143,7 @@ export default function MyProfilePage() {
       await loadEquipmentData();
     } catch (e: unknown) {
       showError(e);
+      setMe(null);
       setAssignedSquadId(null);
       setSquad(null);
       setAvailableEquipment([]);
@@ -122,11 +151,74 @@ export default function MyProfilePage() {
     } finally {
       setLoadingProfile(false);
     }
-  }, [user, clearError, showError, loadEquipmentData]);
+  }, [authUser, clearError, showError, loadEquipmentData]);
 
   useEffect(() => {
     loadProfileData();
   }, [loadProfileData]);
+
+  async function onSaveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    clearError();
+    setSuccessMsg(null);
+
+    try {
+      setSavingProfile(true);
+
+      const updated = await updateMe({
+        userName: profileForm.userName.trim(),
+        email: profileForm.email.trim(),
+      });
+
+      setMe(updated);
+      setProfileForm({
+        userName: updated.userName ?? "",
+        email: updated.email ?? "",
+      });
+      setSuccessMsg("Profile updated.");
+    } catch (e: unknown) {
+      showError(e);
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
+  async function onChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    clearError();
+    setSuccessMsg(null);
+
+    if (!passwordForm.currentPassword || !passwordForm.newPassword) {
+      showError(new Error("Fill in current and new password."));
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      showError(new Error("New password and confirmation do not match."));
+      return;
+    }
+
+    try {
+      setChangingPassword(true);
+
+      await changeMyPassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
+
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+
+      setSuccessMsg("Password changed.");
+    } catch (e: unknown) {
+      showError(e);
+    } finally {
+      setChangingPassword(false);
+    }
+  }
 
   async function onAddMyEquipment(e: React.FormEvent) {
     e.preventDefault();
@@ -181,11 +273,55 @@ export default function MyProfilePage() {
     }
   }
 
-  if (!user) {
+  async function onUploadProfileImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      clearError();
+      setSuccessMsg(null);
+      setUploadingImage(true);
+
+      await uploadMyProfileImage(file);
+      await loadProfileData();
+      setSuccessMsg("Profile image updated.");
+    } catch (e: unknown) {
+      showError(e);
+    } finally {
+      setUploadingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }
+
+  async function onRemoveProfileImage() {
+    if (!confirm("Remove your profile image?")) return;
+
+    try {
+      clearError();
+      setSuccessMsg(null);
+      setUploadingImage(true);
+
+      await deleteMyProfileImage();
+      await loadProfileData();
+      setSuccessMsg("Profile image removed.");
+    } catch (e: unknown) {
+      showError(e);
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
+  if (!authUser) {
     return <div style={{ color: "#f3efe6", fontFamily: "monospace" }}>No user loaded.</div>;
   }
 
-  const roleLabel = getPrimaryRoleLabel(user.roles);
+  const roleLabel = getPrimaryRoleLabel(me?.roles ?? authUser.roles);
+  const displayName = me?.userName ?? authUser.userName;
+  const displayEmail = me?.email ?? authUser.email;
+  const profileImageUrl = resolveUserImageUrl(me?.profileImageUrl);
+
   const squadSuccessRate =
     squad && squad.missionsServed > 0
       ? `${Math.round((squad.missionsWon / squad.missionsServed) * 100)}%`
@@ -196,6 +332,18 @@ export default function MyProfilePage() {
   return (
     <div>
       <ErrorBanner error={error} />
+
+      {successMsg && (
+        <div
+          style={{
+            marginBottom: 12,
+            color: "lightgreen",
+            fontFamily: "monospace",
+          }}
+        >
+          {successMsg}
+        </div>
+      )}
 
       <div
         style={{
@@ -242,6 +390,7 @@ export default function MyProfilePage() {
                 borderRadius: "50%",
                 border: "3px solid rgba(255,255,255,0.22)",
                 background: "rgba(220,220,220,0.82)",
+                overflow: "hidden",
                 display: "grid",
                 placeItems: "center",
                 fontSize: 64,
@@ -249,20 +398,177 @@ export default function MyProfilePage() {
                 margin: "0 auto",
               }}
             >
-              ◉
+              {profileImageUrl ? (
+                <img
+                  src={profileImageUrl}
+                  alt={displayName ?? "Profile"}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                  }}
+                />
+              ) : (
+                "◉"
+              )}
             </div>
 
-            <div style={{ display: "grid", gap: 8 }}>
-              <div style={heroTitleStyle}>{user.userName}</div>
-              <div style={metaLineStyle}>Email: {user.email}</div>
-              <div style={metaLineStyle}>Role: {roleLabel}</div>
-              <div style={metaLineStyle}>
-                Missions Served: {squad?.missionsServed ?? 0}
-              </div>
-              <div style={metaLineStyle}>
-                Veterancy: {squad ? squadVeterancy : "No squad history"}
+            <div style={{ display: "grid", gap: 12 }}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".jpg,.jpeg,.png,.webp"
+                onChange={onUploadProfileImage}
+                style={{ display: "none" }}
+              />
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "start",
+                  gap: 16,
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ display: "grid", gap: 8 }}>
+                  <div style={heroTitleStyle}>{displayName}</div>
+                  <div style={metaLineStyle}>Email: {displayEmail}</div>
+                  <div style={metaLineStyle}>Role: {roleLabel}</div>
+                  <div style={metaLineStyle}>Missions Served: {squad?.missionsServed ?? 0}</div>
+                  <div style={metaLineStyle}>
+                    Veterancy: {squad ? squadVeterancy : "No squad history"}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    flexWrap: "wrap",
+                    justifyContent: "flex-end",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    style={smallActionButtonStyle}
+                    disabled={uploadingImage}
+                  >
+                    {uploadingImage ? "Uploading..." : "Upload"}
+                  </button>
+
+                  {profileImageUrl && (
+                    <button
+                      type="button"
+                      onClick={onRemoveProfileImage}
+                      style={smallDangerButtonStyle}
+                      disabled={uploadingImage}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 18,
+            }}
+          >
+            <form
+              onSubmit={onSaveProfile}
+              style={{
+                border: "1px solid rgba(201,165,106,0.35)",
+                borderRadius: 12,
+                padding: 16,
+                background: "rgba(20,20,20,0.52)",
+                display: "grid",
+                gap: 12,
+              }}
+            >
+              <div style={detailsTitleStyle}>Edit Profile</div>
+
+              <input
+                value={profileForm.userName}
+                onChange={(e) =>
+                  setProfileForm((prev) => ({ ...prev, userName: e.target.value }))
+                }
+                placeholder="Username"
+                style={formFieldStyle}
+                disabled={savingProfile}
+              />
+
+              <input
+                value={profileForm.email}
+                onChange={(e) =>
+                  setProfileForm((prev) => ({ ...prev, email: e.target.value }))
+                }
+                placeholder="Email"
+                type="email"
+                style={formFieldStyle}
+                disabled={savingProfile}
+              />
+
+              <button type="submit" style={toolbarButtonStyle} disabled={savingProfile}>
+                {savingProfile ? "Saving..." : "Save Profile"}
+              </button>
+            </form>
+
+            <form
+              onSubmit={onChangePassword}
+              style={{
+                border: "1px solid rgba(201,165,106,0.35)",
+                borderRadius: 12,
+                padding: 16,
+                background: "rgba(20,20,20,0.52)",
+                display: "grid",
+                gap: 12,
+              }}
+            >
+              <div style={detailsTitleStyle}>Change Password</div>
+
+              <input
+                value={passwordForm.currentPassword}
+                onChange={(e) =>
+                  setPasswordForm((prev) => ({ ...prev, currentPassword: e.target.value }))
+                }
+                placeholder="Current password"
+                type="password"
+                style={formFieldStyle}
+                disabled={changingPassword}
+              />
+
+              <input
+                value={passwordForm.newPassword}
+                onChange={(e) =>
+                  setPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))
+                }
+                placeholder="New password"
+                type="password"
+                style={formFieldStyle}
+                disabled={changingPassword}
+              />
+
+              <input
+                value={passwordForm.confirmPassword}
+                onChange={(e) =>
+                  setPasswordForm((prev) => ({ ...prev, confirmPassword: e.target.value }))
+                }
+                placeholder="Confirm new password"
+                type="password"
+                style={formFieldStyle}
+                disabled={changingPassword}
+              />
+
+              <button type="submit" style={toolbarButtonStyle} disabled={changingPassword}>
+                {changingPassword ? "Changing..." : "Change Password"}
+              </button>
+            </form>
           </div>
 
           <div
@@ -310,15 +616,9 @@ export default function MyProfilePage() {
                     : "No squad assigned"}
               </div>
 
-              <div style={detailsLineStyle}>
-                Squad Type: {squad?.type ?? "—"}
-              </div>
-              <div style={detailsLineStyle}>
-                Commander: {squad?.commanderId ?? "—"}
-              </div>
-              <div style={detailsLineStyle}>
-                Success Rate: {squad ? squadSuccessRate : "—"}
-              </div>
+              <div style={detailsLineStyle}>Squad Type: {squad?.type ?? "—"}</div>
+              <div style={detailsLineStyle}>Commander: {squad?.commanderId ?? "—"}</div>
+              <div style={detailsLineStyle}>Success Rate: {squad ? squadSuccessRate : "—"}</div>
               <div style={detailsLineStyle}>
                 Veterancy Status: {squad ? squadVeterancy : "—"}
               </div>
@@ -375,7 +675,8 @@ export default function MyProfilePage() {
                   <option value="">— Select equipment —</option>
                   {availableEquipment.map((eq) => (
                     <option key={eq.equipmentId} value={eq.equipmentId}>
-                      {eq.equipmentName} {eq.category ? `(${eq.category})` : ""} · Available: {eq.quantity}
+                      {eq.equipmentName} {eq.category ? `(${eq.category})` : ""} · Available:{" "}
+                      {eq.quantity}
                     </option>
                   ))}
                 </select>
@@ -389,10 +690,7 @@ export default function MyProfilePage() {
                   disabled={savingEquipment}
                 />
 
-                <button
-                  style={toolbarButtonStyle}
-                  disabled={savingEquipment}
-                >
+                <button style={toolbarButtonStyle} disabled={savingEquipment}>
                   {savingEquipment ? "Saving..." : "Add To Loadout"}
                 </button>
               </form>
@@ -559,6 +857,28 @@ const iconActionButtonStyle: React.CSSProperties = {
   borderRadius: 10,
   border: "1px solid #9d8560",
   background: "rgba(201,165,106,0.12)",
+  color: "#f3efe6",
+  fontFamily: "monospace",
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const smallActionButtonStyle: React.CSSProperties = {
+  padding: "8px 12px",
+  borderRadius: 10,
+  border: "1px solid #9d8560",
+  background: "rgba(201,165,106,0.16)",
+  color: "#f3efe6",
+  fontFamily: "monospace",
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const smallDangerButtonStyle: React.CSSProperties = {
+  padding: "8px 12px",
+  borderRadius: 10,
+  border: "1px solid #9d8560",
+  background: "rgba(150,55,55,0.28)",
   color: "#f3efe6",
   fontFamily: "monospace",
   fontWeight: 700,

@@ -19,8 +19,9 @@ namespace OpsCommand.Api.Models.Squads
         public int MissionsWon { get; set; }
         public double SuccessRate { get; set; }
 
-        public List<SquadEquipmentResponseDto> Equipment { get; set; } = new();
+        public string? BannerImageUrl { get; set; }
 
+        public List<SquadEquipmentResponseDto> Equipment { get; set; } = new();
         public List<SquadMemberDto> Members { get; set; } = new();
     }
 }

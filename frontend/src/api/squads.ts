@@ -1,4 +1,5 @@
 import { apiFetch } from "./api";
+import { resolveUserImageUrl } from "./users";
 
 export type SquadType = "Assault" | "Tactical" | "Recon";
 
@@ -12,6 +13,7 @@ export type SquadDto = {
   deletedAt: string | null;
   missionsServed: number;
   missionsWon: number;
+  bannerImageUrl?: string | null;
 };
 
 export type SquadMemberDto = {
@@ -20,6 +22,7 @@ export type SquadMemberDto = {
   userName: string | null;
   role: string;
   isActive: boolean;
+  profileImageUrl?: string | null;
 };
 
 export type MySquadDto = {
@@ -31,6 +34,7 @@ export type MySquadDto = {
   missionsServed: number;
   missionsWon: number;
   successRate: number;
+  bannerImageUrl?: string | null;
   members: SquadMemberDto[];
 };
 
@@ -46,6 +50,7 @@ export type SquadProfileDto = {
   missionsServed: number;
   missionsWon: number;
   successRate: number;
+  bannerImageUrl?: string | null;
   equipment: SquadEquipmentDto[];
   members: SquadMemberDto[];
 };
@@ -139,4 +144,8 @@ export function deleteSquadEquipment(squadId: number, equipmentId: number) {
   return apiFetch<void>(`/api/squad/${squadId}/equipment/${equipmentId}`, {
     method: "DELETE",
   });
+}
+
+export function resolveSquadMemberImageUrl(path?: string | null) {
+  return resolveUserImageUrl(path);
 }

@@ -1,17 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Metadata.Ecma335;
-using System.Text;
-using System.Threading.Tasks;
-using System.Security.Claims;
-
-
+﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpsCommand.Api.Domain.Entities;
-using OpsCommand.Api.Models.Squads;
 using OpsCommand.Api.Services.Squads;
+using OpsCommand.Api.Models.Squads;
 
 namespace OpsCommand.Api.Controllers
 {
@@ -27,9 +18,6 @@ namespace OpsCommand.Api.Controllers
             _squadService = squadService;
         }
 
-
-
-        //GET api/squad
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -37,7 +25,6 @@ namespace OpsCommand.Api.Controllers
             return Ok(squads);
         }
 
-        //GET api/squad/id
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -49,7 +36,6 @@ namespace OpsCommand.Api.Controllers
             return Ok(squad);
         }
 
-        // GET api/squad/my
         [HttpGet("my")]
         [Authorize(Roles = "Member,Commander,Admin,SuperAdmin")]
         public async Task<IActionResult> GetMySquad()
@@ -63,19 +49,27 @@ namespace OpsCommand.Api.Controllers
             return Ok(squad);
         }
 
-        // GET api/squad/{id}/profile
         [HttpGet("{id}/profile")]
-        [Authorize(Roles = "Admin,SuperAdmin")]
+        [Authorize(Roles = "Admin,SuperAdmin,Commander")]
         public async Task<IActionResult> GetProfile(int id)
         {
             var squad = await _squadService.GetProfileByIdAsync(id);
             if (squad == null)
                 return NotFound();
 
+            if (User.IsInRole("Admin") || User.IsInRole("SuperAdmin"))
+                return Ok(squad);
+
+            var callerUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(callerUserId))
+                return Unauthorized();
+
+            if (squad.CommanderId != callerUserId)
+                return Forbid();
+
             return Ok(squad);
         }
 
-        //POST api/squad
         [HttpPost]
         [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult> Create([FromBody] SquadCreateDto dto)
@@ -91,7 +85,6 @@ namespace OpsCommand.Api.Controllers
             }
         }
 
-        //PUT api/squad/{id}
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult> Update(int id, [FromBody] SquadUpdateDto dto)
@@ -108,10 +101,9 @@ namespace OpsCommand.Api.Controllers
             }
         }
 
-        // DELETE api/squad{id}
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin,SuperAdmin")]
-        public async Task<IActionResult>Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
             var success = await _squadService.DeleteAsync(id);
             if (!success)

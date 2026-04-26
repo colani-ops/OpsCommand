@@ -6,6 +6,7 @@ import {
   disableUser,
   getPendingUsers,
   getUsers,
+  resolveUserImageUrl,
   restoreUser,
   updateUserByAdmin,
   type UserDto,
@@ -327,82 +328,106 @@ export default function UserManagementPage() {
               <div style={emptyPanelStyle}>No pending users.</div>
             ) : (
               <div style={{ display: "grid", gap: 12 }}>
-                {pending.map((u) => (
-                  <div
-                    key={u.id}
-                    style={{
-                      border: "1px solid #9d8560",
-                      borderRadius: 14,
-                      overflow: "hidden",
-                      backgroundImage:
-                        "linear-gradient(rgba(62,46,18,0.62), rgba(0,0,0,0.76)), url(/banners/user-default.png)",
-                      backgroundSize: "contain",
-                      backgroundPosition: "right center",
-                      backgroundRepeat: "no-repeat",
-                      backgroundColor: "rgba(0,0,0,0.58)",
-                    }}
-                  >
+                {pending.map((u) => {
+                  const pendingProfileImageUrl = resolveUserImageUrl(u.profileImageUrl);
+
+                  return (
                     <div
+                      key={u.id}
                       style={{
-                        minHeight: 150,
-                        display: "grid",
-                        gridTemplateColumns: "110px 1fr auto",
-                        gap: 18,
-                        alignItems: "center",
-                        padding: 14,
+                        border: "1px solid #9d8560",
+                        borderRadius: 14,
+                        overflow: "hidden",
+                        backgroundImage:
+                          "linear-gradient(rgba(62,46,18,0.62), rgba(0,0,0,0.76)), url(/banners/user-default.png)",
+                        backgroundSize: "contain",
+                        backgroundPosition: "right center",
+                        backgroundRepeat: "no-repeat",
+                        backgroundColor: "rgba(0,0,0,0.58)",
                       }}
                     >
                       <div
                         style={{
-                          width: 96,
-                          height: 96,
-                          borderRadius: "50%",
-                          border: "2px solid rgba(255,255,255,0.18)",
-                          background: "rgba(220,220,220,0.92)",
+                          minHeight: 150,
                           display: "grid",
-                          placeItems: "center",
-                          fontSize: 36,
-                          color: "#666",
-                        }}
-                      >
-                        ◉
-                      </div>
-
-                      <div
-                        style={{
-                          maxWidth: 760,
-                          border: "1px solid rgba(255,255,255,0.16)",
-                          borderRadius: 12,
-                          padding: 16,
-                          background: "rgba(20,20,20,0.62)",
-                          backdropFilter: "blur(2px)",
+                          gridTemplateColumns: "110px 1fr auto",
+                          gap: 18,
+                          alignItems: "center",
+                          padding: 14,
                         }}
                       >
                         <div
                           style={{
-                            fontSize: 24,
-                            fontWeight: 800,
-                            color: "#efb85f",
-                            fontFamily: "monospace",
-                            marginBottom: 8,
+                            width: 96,
+                            height: 96,
+                            borderRadius: "50%",
+                            border: "2px solid rgba(255,255,255,0.18)",
+                            background: "rgba(220,220,220,0.92)",
+                            display: "grid",
+                            placeItems: "center",
+                            fontSize: 36,
+                            color: "#666",
+                            overflow: "hidden",
                           }}
                         >
-                          {u.userName ?? u.email}
+                          {pendingProfileImageUrl ? (
+                            <img
+                              src={pendingProfileImageUrl}
+                              alt={u.userName ?? u.email}
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                              }}
+                            />
+                          ) : (
+                            "◉"
+                          )}
                         </div>
 
-                        <div style={metaLineStyle}>Email: {u.email}</div>
-                        <div style={metaLineStyle}>Role: {u.roles.join(", ")}</div>
-                        <div style={metaLineStyle}>Status: Pending approval</div>
-                      </div>
+                        <div
+                          style={{
+                            maxWidth: 760,
+                            border: "1px solid rgba(255,255,255,0.16)",
+                            borderRadius: 12,
+                            padding: 16,
+                            background: "rgba(20,20,20,0.62)",
+                            backdropFilter: "blur(2px)",
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: 24,
+                              fontWeight: 800,
+                              color: "#efb85f",
+                              fontFamily: "monospace",
+                              marginBottom: 8,
+                            }}
+                          >
+                            {u.userName ?? u.email}
+                          </div>
 
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 14 }}>
-                        <button onClick={() => onApprove(u.id)} style={toolbarButtonStyle}>
-                          Approve
-                        </button>
+                          <div style={metaLineStyle}>Email: {u.email}</div>
+                          <div style={metaLineStyle}>Role: {u.roles.join(", ")}</div>
+                          <div style={metaLineStyle}>Status: Pending approval</div>
+                        </div>
+
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                            padding: 14,
+                          }}
+                        >
+                          <button onClick={() => onApprove(u.id)} style={toolbarButtonStyle}>
+                            Approve
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </section>
@@ -420,6 +445,7 @@ export default function UserManagementPage() {
 
               const primaryRole = getPrimaryRole(u);
               const userIsActive = u.isActive ?? true;
+              const profileImageUrl = resolveUserImageUrl(u.profileImageUrl);
 
               return (
                 <div
@@ -432,7 +458,7 @@ export default function UserManagementPage() {
                       primaryRole,
                       userIsActive
                     )}, rgba(0,0,0,0.76)), url(${getRoleBanner(primaryRole, userIsActive)})`,
-                      backgroundSize: "contain",
+                    backgroundSize: "contain",
                     backgroundPosition: "right center",
                     backgroundRepeat: "no-repeat",
                     backgroundColor: "rgba(0,0,0,0.58)",
@@ -463,7 +489,19 @@ export default function UserManagementPage() {
                         overflow: "hidden",
                       }}
                     >
-                      ◉
+                      {profileImageUrl ? (
+                        <img
+                          src={profileImageUrl}
+                          alt={u.userName ?? u.email}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                        />
+                      ) : (
+                        "◉"
+                      )}
                     </div>
 
                     <div
@@ -588,21 +626,23 @@ export default function UserManagementPage() {
 
                       {isSuperAdmin && (
                         <>
-                            <IconButton
+                          <IconButton
                             iconSrc="/icons/delete.png"
                             alt="Disable"
                             title="Disable"
                             variant="danger"
-                            onClick={() => onDisable(u.id)} style={iconActionButtonStyle}
-                            />
+                            onClick={() => onDisable(u.id)}
+                            style={iconActionButtonStyle}
+                          />
 
                           <IconButton
                             iconSrc="/icons/refresh.png"
                             alt="Restore"
                             title="Restore"
                             variant="danger"
-                            onClick={() => onRestore(u.id)} style={iconActionButtonStyle}
-                            />
+                            onClick={() => onRestore(u.id)}
+                            style={iconActionButtonStyle}
+                          />
                         </>
                       )}
                     </div>

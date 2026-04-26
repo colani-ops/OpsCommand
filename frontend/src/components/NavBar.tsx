@@ -1,15 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { getUser, getPrimaryRole, hasRole, logout } from "../api/auth";
+import { getPrimaryRole, getUser, hasRole, logout } from "../api/auth";
+import { getMe, resolveUserImageUrl } from "../api/users";
 
 export default function NavBar() {
   const nav = useNavigate();
   const location = useLocation();
 
-  const user = getUser();
-  const role = getPrimaryRole();
+  const authUser = getUser();
+  const authRole = getPrimaryRole();
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [navUserName, setNavUserName] = useState(authUser?.userName ?? "User");
+  const [navRole, setNavRole] = useState(authRole);
+  const [navProfileImageUrl, setNavProfileImageUrl] = useState<string | null>(null);
+
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const canSeeSquads = hasRole("Admin", "SuperAdmin");
@@ -19,6 +24,25 @@ export default function NavBar() {
 
   const canSeeMySquad = hasRole("Member", "Commander");
   const canSeeMyMissions = hasRole("Member", "Commander");
+
+  useEffect(() => {
+    async function loadNavUser() {
+      try {
+        const me = await getMe();
+        setNavUserName(me.userName ?? authUser?.userName ?? "User");
+        setNavProfileImageUrl(resolveUserImageUrl(me.profileImageUrl));
+      } catch {
+        setNavUserName(authUser?.userName ?? "User");
+        setNavProfileImageUrl(null);
+      }
+    }
+
+    loadNavUser();
+  }, [location.pathname, authUser?.userName]);
+
+  useEffect(() => {
+    setNavRole(authRole);
+  }, [authRole]);
 
   useEffect(() => {
     function onDocumentClick(e: MouseEvent) {
@@ -40,6 +64,7 @@ export default function NavBar() {
   function closeMenu() {
     setMenuOpen(false);
   }
+
   function navLinkStyle(isActive: boolean): React.CSSProperties {
     return {
       color: isActive ? "#efb85f" : "#e8c17a",
@@ -159,9 +184,22 @@ export default function NavBar() {
                 fontSize: 28,
                 color: "#666",
                 flexShrink: 0,
+                overflow: "hidden",
               }}
             >
-              ◉
+              {navProfileImageUrl ? (
+                <img
+                  src={navProfileImageUrl}
+                  alt={navUserName}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                  }}
+                />
+              ) : (
+                "◉"
+              )}
             </div>
 
             <div
@@ -173,8 +211,8 @@ export default function NavBar() {
                 lineHeight: 1.15,
               }}
             >
-              <span style={{ fontWeight: 700 }}>{user?.userName ?? "User"}</span>
-              <span style={{ fontSize: 13, opacity: 0.9 }}>{role}</span>
+              <span style={{ fontWeight: 700 }}>{navUserName}</span>
+              <span style={{ fontSize: 13, opacity: 0.9 }}>{navRole}</span>
             </div>
           </button>
 
@@ -204,17 +242,21 @@ export default function NavBar() {
               </Link>
 
               {canSeeMySquad && (
-                <Link to="/my-squad"                 
-                style={{ textDecoration: "none", display: "grid" }}
-                onClick={closeMenu}>
+                <Link
+                  to="/my-squad"
+                  style={{ textDecoration: "none", display: "grid" }}
+                  onClick={closeMenu}
+                >
                   <button style={menuButtonStyleSecondary(true)}>My Squad</button>
                 </Link>
               )}
 
               {canSeeMyMissions && (
-                <Link to="/my-missions" 
-                style={{ textDecoration: "none", display: "grid" }}
-                onClick={closeMenu}>
+                <Link
+                  to="/my-missions"
+                  style={{ textDecoration: "none", display: "grid" }}
+                  onClick={closeMenu}
+                >
                   <button style={menuButtonStyleSecondary(true)}>My Missions</button>
                 </Link>
               )}

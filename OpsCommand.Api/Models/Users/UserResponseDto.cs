@@ -13,6 +13,7 @@ namespace OpsCommand.Api.Models.Users
         public string? UserName { get; set; }
         public int? AssignedSquadId { get; set; }
         public IList<string> Roles { get; set; } = new List<string>();
-        //public bool IsActive { get; set; }
+        public bool IsActive { get; set; }
+        public string? ProfileImageUrl { get; set; }
     }
 }

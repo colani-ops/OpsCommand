@@ -2,7 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { hasRole } from "../api/auth";
 import { getSquad, type SquadDto } from "../api/squads";
-import { getUserProfile, type UserProfileDto } from "../api/users";
+import {
+  getUserProfile,
+  resolveUserImageUrl,
+  type UserProfileDto,
+} from "../api/users";
 import ErrorBanner from "../components/ErrorBanner";
 
 function getVeterancyLabel(missionsServed: number) {
@@ -83,6 +87,8 @@ export default function UserProfilePage() {
 
   const squadVeterancy = squad ? getVeterancyLabel(squad.missionsServed) : "—";
 
+  const profileImageUrl = resolveUserImageUrl(user?.profileImageUrl);
+
   return (
     <div>
       <ErrorBanner error={err} />
@@ -151,6 +157,7 @@ export default function UserProfilePage() {
                   borderRadius: "50%",
                   border: "3px solid rgba(255,255,255,0.22)",
                   background: "rgba(220,220,220,0.82)",
+                  overflow: "hidden",
                   display: "grid",
                   placeItems: "center",
                   fontSize: 64,
@@ -158,7 +165,19 @@ export default function UserProfilePage() {
                   margin: "0 auto",
                 }}
               >
-                ◉
+                {profileImageUrl ? (
+                  <img
+                    src={profileImageUrl}
+                    alt={user.userName ?? user.email}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                ) : (
+                  "◉"
+                )}
               </div>
 
               <div style={{ display: "grid", gap: 8 }}>

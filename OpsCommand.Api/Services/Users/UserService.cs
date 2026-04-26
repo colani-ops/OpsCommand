@@ -3,11 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using OpsCommand.Api.Domain.Entities;
 using OpsCommand.Api.Models.Users;
 using OpsCommand.Api.Repositories.Users;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace OpsCommand.Api.Services.Users
 {
@@ -22,7 +17,10 @@ namespace OpsCommand.Api.Services.Users
             _userManager = userManager;
         }
 
-
+        private async Task<bool> GetIsActiveAsync(ApplicationUser user)
+        {
+            return !await _userManager.IsLockedOutAsync(user);
+        }
 
         public async Task<IEnumerable<UserResponseDto>> GetAllAsync()
         {
@@ -41,7 +39,8 @@ namespace OpsCommand.Api.Services.Users
                     UserName = user.UserName,
                     AssignedSquadId = user.AssignedSquadId,
                     Roles = roles,
-                    //IsActive = user.IsActive
+                    IsActive = await GetIsActiveAsync(user),
+                    ProfileImageUrl = user.ProfileImageUrl
                 });
             }
 
@@ -62,7 +61,9 @@ namespace OpsCommand.Api.Services.Users
                 Email = user.Email ?? string.Empty,
                 UserName = user.UserName,
                 AssignedSquadId = user.AssignedSquadId,
-                Roles = roles
+                Roles = roles,
+                IsActive = await GetIsActiveAsync(user),
+                ProfileImageUrl = user.ProfileImageUrl
             };
         }
 
@@ -80,8 +81,6 @@ namespace OpsCommand.Api.Services.Users
 
             var targetRole = dto.Role;
 
-            // Auto-promote Recruit to Member when assigned to a squad,
-            // unless admin explicitly sets a higher/different role.
             if (dto.AssignedSquadId != null &&
                 currentPrimaryRole == "Recruit" &&
                 dto.Role == "Recruit")
@@ -89,8 +88,6 @@ namespace OpsCommand.Api.Services.Users
                 targetRole = "Member";
             }
 
-            // Members are expected to be operational squad users when set as Member.
-            // But once someone is already Member, losing squad should not auto-demote them.
             if (targetRole == "Member" && dto.AssignedSquadId == null && currentPrimaryRole == "Recruit")
                 throw new ArgumentException("Member must be assigned to a squad.");
 
@@ -116,7 +113,9 @@ namespace OpsCommand.Api.Services.Users
                 Email = user.Email ?? string.Empty,
                 UserName = user.UserName,
                 AssignedSquadId = user.AssignedSquadId,
-                Roles = roles
+                Roles = roles,
+                IsActive = await GetIsActiveAsync(user),
+                ProfileImageUrl = user.ProfileImageUrl
             };
         }
 
@@ -146,7 +145,6 @@ namespace OpsCommand.Api.Services.Users
             }
 
             var roles = await _userManager.GetRolesAsync(targetUser);
-
             string? primaryRole = roles.FirstOrDefault();
 
             return new UserProfileResponseDto
@@ -156,19 +154,17 @@ namespace OpsCommand.Api.Services.Users
                 UserName = targetUser.UserName,
                 AssignedSquadId = targetUser.AssignedSquadId,
                 PrimaryRole = primaryRole,
-                IsActive = !await _userManager.IsLockedOutAsync(targetUser)
+                IsActive = await GetIsActiveAsync(targetUser),
+                ProfileImageUrl = targetUser.ProfileImageUrl
             };
         }
 
-
-
-        public async Task<UserResponseDto?> UpdateMeAsync (string userId, UpdateMeDto dto) {
-
+        public async Task<UserResponseDto?> UpdateMeAsync(string userId, UpdateMeDto dto)
+        {
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
                 return null;
 
-            //Apply changes
             if (!string.IsNullOrWhiteSpace(dto.UserName))
             {
                 await _userManager.SetUserNameAsync(user, dto.UserName);
@@ -182,7 +178,7 @@ namespace OpsCommand.Api.Services.Users
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
             {
-                return null; //Kasnije možda error?
+                return null;
             }
 
             var roles = await _userManager.GetRolesAsync(user);
@@ -191,16 +187,18 @@ namespace OpsCommand.Api.Services.Users
             {
                 Id = user.Id,
                 UserName = user.UserName,
-                Email = user.Email,
+                Email = user.Email ?? string.Empty,
                 Roles = roles,
-                AssignedSquadId = user.AssignedSquadId
+                AssignedSquadId = user.AssignedSquadId,
+                IsActive = await GetIsActiveAsync(user),
+                ProfileImageUrl = user.ProfileImageUrl
             };
         }
 
         public async Task<bool> ChangeMyPasswordAsync(string userId, ChangePasswordDto dto)
         {
             var user = await _userManager.FindByIdAsync(userId);
-            if(user == null)
+            if (user == null)
             {
                 return false;
             }
@@ -214,8 +212,6 @@ namespace OpsCommand.Api.Services.Users
 
             return result.Succeeded;
         }
-
-
 
         public async Task<IEnumerable<UserResponseDto>> GetPendingAsync()
         {
@@ -236,7 +232,8 @@ namespace OpsCommand.Api.Services.Users
                     UserName = user.UserName,
                     AssignedSquadId = user.AssignedSquadId,
                     Roles = roles,
-                    //IsActive = user.IsActive
+                    IsActive = await GetIsActiveAsync(user),
+                    ProfileImageUrl = user.ProfileImageUrl
                 });
             }
 
@@ -276,6 +273,5 @@ namespace OpsCommand.Api.Services.Users
             await _userManager.SetLockoutEnabledAsync(user, false);
             return true;
         }
-
     }
 }

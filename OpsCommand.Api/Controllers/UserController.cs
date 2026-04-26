@@ -13,6 +13,9 @@ using OpsCommand.Api.Services.Users;
 using Microsoft.AspNetCore.Identity;
 using OpsCommand.Api.Domain.Entities;
 
+using Microsoft.AspNetCore.Http;
+using System.IO;
+
 namespace OpsCommand.Api.Controllers
 {
     [ApiController]
@@ -253,6 +256,94 @@ namespace OpsCommand.Api.Controllers
         {
             var done = await _userService.ApproveUserAsync(id);
             if (!done) return NotFound();
+            return NoContent();
+        }
+
+
+
+        [HttpPost("me/profile-image")]
+        [Authorize]
+        [RequestSizeLimit(10_000_000)]
+        public async Task<IActionResult> UploadMyProfileImage(IFormFile file)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            if (file == null || file.Length == 0)
+                return BadRequest(new { message = "No file uploaded." });
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+
+            if (!allowedExtensions.Contains(extension))
+                return BadRequest(new { message = "Only .jpg, .jpeg, .png and .webp files are allowed." });
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return NotFound();
+
+            var uploadsRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "users");
+            Directory.CreateDirectory(uploadsRoot);
+
+            if (!string.IsNullOrWhiteSpace(user.ProfileImageUrl))
+            {
+                var oldRelativePath = user.ProfileImageUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+                var oldAbsolutePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", oldRelativePath.Replace("wwwroot" + Path.DirectorySeparatorChar, ""));
+                if (System.IO.File.Exists(oldAbsolutePath))
+                {
+                    System.IO.File.Delete(oldAbsolutePath);
+                }
+            }
+
+            var fileName = $"{userId}_{Guid.NewGuid():N}{extension}";
+            var absolutePath = Path.Combine(uploadsRoot, fileName);
+
+            await using (var stream = new FileStream(absolutePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            user.ProfileImageUrl = $"/uploads/users/{fileName}";
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+                return BadRequest(new { message = "Failed to save profile image." });
+
+            return Ok(new { profileImageUrl = user.ProfileImageUrl });
+        }
+
+
+
+        [HttpDelete("me/profile-image")]
+        [Authorize]
+        public async Task<IActionResult> DeleteMyProfileImage()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return NotFound();
+
+            if (!string.IsNullOrWhiteSpace(user.ProfileImageUrl))
+            {
+                var relativePath = user.ProfileImageUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+                var absolutePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", relativePath);
+
+                if (System.IO.File.Exists(absolutePath))
+                {
+                    System.IO.File.Delete(absolutePath);
+                }
+            }
+
+            user.ProfileImageUrl = null;
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+                return BadRequest(new { message = "Failed to remove profile image." });
+
             return NoContent();
         }
     }

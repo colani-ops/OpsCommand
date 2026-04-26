@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { getUser, hasRole } from "../api/auth";
+import { resolveUserImageUrl } from "../api/users";
 import { getEquipment, type EquipmentDto } from "../api/equipment";
 import {
   addSquadEquipment,
@@ -15,8 +16,10 @@ export default function SquadProfilePage() {
   const { id } = useParams();
   const nav = useNavigate();
 
-  const canAccess = hasRole("Admin", "SuperAdmin");
-  const canManage = hasRole("Admin", "SuperAdmin");
+  const currentUser = getUser();
+
+  const isAdmin = hasRole("Admin", "SuperAdmin");
+  const isCommander = hasRole("Commander");
 
   const [squad, setSquad] = useState<SquadProfileDto | null>(null);
   const [globalEquipment, setGlobalEquipment] = useState<EquipmentDto[]>([]);
@@ -28,7 +31,11 @@ export default function SquadProfilePage() {
   const [newQuantity, setNewQuantity] = useState<number>(1);
   const [editQuantities, setEditQuantities] = useState<Record<number, number>>({});
 
-  const currentUser = getUser();
+  const canAccess =
+    isAdmin || (isCommander && squad?.commanderId != null && squad.commanderId === currentUser?.id);
+
+  const canManage =
+    isAdmin || (isCommander && squad?.commanderId != null && squad.commanderId === currentUser?.id);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -56,7 +63,7 @@ export default function SquadProfilePage() {
     load();
   }, [load]);
 
-  if (!canAccess) {
+  if (!loading && !canAccess) {
     return <Navigate to="/" replace />;
   }
 
@@ -73,35 +80,35 @@ export default function SquadProfilePage() {
     }
   }
 
-function getEquipmentBanner(category: string | null) {
-  switch (category) {
-    case "Primary":
-      return "/banners/equipment-primary.png";
-    case "Secondary":
-      return "/banners/equipment-secondary.png";
-    case "Melee":
-      return "/banners/equipment-melee.png";
-    case "Utility":
-      return "/banners/equipment-utility.png";
-    default:
-      return "/banners/equipment-default.png";
+  function getEquipmentBanner(category: string | null) {
+    switch (category) {
+      case "Primary":
+        return "/banners/equipment-primary.png";
+      case "Secondary":
+        return "/banners/equipment-secondary.png";
+      case "Melee":
+        return "/banners/equipment-melee.png";
+      case "Utility":
+        return "/banners/equipment-utility.png";
+      default:
+        return "/banners/equipment-default.png";
+    }
   }
-}
 
-function getEquipmentOverlay(category: string | null) {
-  switch (category) {
-    case "Primary":
-      return "rgba(12, 32, 50, 0.64)";
-    case "Secondary":
-      return "rgba(38, 20, 52, 0.64)";
-    case "Melee":
-      return "rgba(52, 22, 22, 0.64)";
-    case "Utility":
-      return "rgba(24, 48, 34, 0.62)";
-    default:
-      return "rgba(0, 0, 0, 0.60)";
+  function getEquipmentOverlay(category: string | null) {
+    switch (category) {
+      case "Primary":
+        return "rgba(12, 32, 50, 0.64)";
+      case "Secondary":
+        return "rgba(38, 20, 52, 0.64)";
+      case "Melee":
+        return "rgba(52, 22, 22, 0.64)";
+      case "Utility":
+        return "rgba(24, 48, 34, 0.62)";
+      default:
+        return "rgba(0, 0, 0, 0.60)";
+    }
   }
-}
 
   async function onDelete() {
     if (!squad) return;
@@ -219,8 +226,8 @@ function getEquipmentOverlay(category: string | null) {
 
           <IconButton
             iconSrc="/icons/refresh.png"
-            alt="Refresh users"
-            title="Refresh users"
+            alt="Refresh squad"
+            title="Refresh squad"
             variant="transparent"
             onClick={load}
           />
@@ -231,7 +238,8 @@ function getEquipmentOverlay(category: string | null) {
               alt="Delete"
               title="Delete"
               variant="danger"
-              onClick={onDelete} style={dangerButtonStyle}
+              onClick={onDelete}
+              style={dangerButtonStyle}
             />
           )}
         </div>
@@ -346,77 +354,94 @@ function getEquipmentOverlay(category: string | null) {
                 <div style={detailsLineStyle}>No members assigned to this squad.</div>
               ) : (
                 <div style={{ display: "grid", gap: 12 }}>
-                  {squad.members.map((member) => (
-                    <div
-                      key={member.id}
-                      style={{
-                        border: "1px solid rgba(255,255,255,0.16)",
-                        borderRadius: 12,
-                        padding: 16,
-                        background: "rgba(20,20,20,0.72)",
-                        display: "grid",
-                        gridTemplateColumns: "110px 1fr 280px",
-                        gap: 16,
-                        alignItems: "center",
-                      }}
-                    >
+                  {squad.members.map((member) => {
+                    const memberImageUrl = resolveUserImageUrl(member.profileImageUrl);
+
+                    return (
                       <div
+                        key={member.id}
                         style={{
-                          width: 88,
-                          height: 88,
-                          borderRadius: "50%",
-                          border: "2px solid rgba(255,255,255,0.18)",
-                          background: "rgba(220,220,220,0.92)",
+                          border: "1px solid rgba(255,255,255,0.16)",
+                          borderRadius: 12,
+                          padding: 16,
+                          background: "rgba(20,20,20,0.72)",
                           display: "grid",
-                          placeItems: "center",
-                          fontSize: 34,
-                          color: "#666",
+                          gridTemplateColumns: "110px 1fr 280px",
+                          gap: 16,
+                          alignItems: "center",
                         }}
                       >
-                        ◉
-                      </div>
-
-                      <div>
                         <div
                           style={{
-                            fontWeight: 800,
-                            fontSize: 22,
-                            fontFamily: "monospace",
-                            color: "#efb85f",
-                            marginBottom: 8,
+                            width: 88,
+                            height: 88,
+                            borderRadius: "50%",
+                            border: "2px solid rgba(255,255,255,0.18)",
+                            background: "rgba(220,220,220,0.92)",
+                            display: "grid",
+                            placeItems: "center",
+                            fontSize: 34,
+                            color: "#666",
+                            overflow: "hidden",
                           }}
                         >
-                          <Link
-                            to={member.id === currentUser?.id ? "/my-profile" : `/users/${member.id}`}
-                            style={{ color: "inherit", textDecoration: "none" }}
+                          {memberImageUrl ? (
+                            <img
+                              src={memberImageUrl}
+                              alt={member.userName ?? member.email}
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                              }}
+                            />
+                          ) : (
+                            "◉"
+                          )}
+                        </div>
+
+                        <div>
+                          <div
+                            style={{
+                              fontWeight: 800,
+                              fontSize: 22,
+                              fontFamily: "monospace",
+                              color: "#efb85f",
+                              marginBottom: 8,
+                            }}
                           >
-                            {member.userName ?? member.email}
-                          </Link>
+                            <Link
+                              to={member.id === currentUser?.id ? "/my-profile" : `/users/${member.id}`}
+                              style={{ color: "inherit", textDecoration: "none" }}
+                            >
+                              {member.userName ?? member.email}
+                            </Link>
+                          </div>
+
+                          <div style={detailsLineStyle}>Email: {member.email}</div>
+                          <div style={detailsLineStyle}>Role: {member.role}</div>
+                          <div style={detailsLineStyle}>
+                            Status: {member.isActive ? "Active" : "Disabled"}
+                          </div>
                         </div>
 
-                        <div style={detailsLineStyle}>Email: {member.email}</div>
-                        <div style={detailsLineStyle}>Role: {member.role}</div>
-                        <div style={detailsLineStyle}>
-                          Status: {member.isActive ? "Active" : "Disabled"}
+                        <div
+                          style={{
+                            border: "1px solid rgba(201,165,106,0.20)",
+                            borderRadius: 12,
+                            padding: 12,
+                            background: "rgba(0,0,0,0.28)",
+                          }}
+                        >
+                          <div style={miniTitleStyle}>Equipped Summary</div>
+                          <div style={detailsLineStyle}>Primary: pending backend</div>
+                          <div style={detailsLineStyle}>Secondary: pending backend</div>
+                          <div style={detailsLineStyle}>Melee: pending backend</div>
+                          <div style={detailsLineStyle}>Utility: pending backend</div>
                         </div>
                       </div>
-
-                      <div
-                        style={{
-                          border: "1px solid rgba(201,165,106,0.20)",
-                          borderRadius: 12,
-                          padding: 12,
-                          background: "rgba(0,0,0,0.28)",
-                        }}
-                      >
-                        <div style={miniTitleStyle}>Equipped Summary</div>
-                        <div style={detailsLineStyle}>Primary: pending backend</div>
-                        <div style={detailsLineStyle}>Secondary: pending backend</div>
-                        <div style={detailsLineStyle}>Melee: pending backend</div>
-                        <div style={detailsLineStyle}>Utility: pending backend</div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -580,7 +605,6 @@ function getEquipmentOverlay(category: string | null) {
                               onClick={() => onRemoveEquipment(item.equipmentId)}
                               style={iconActionButtonStyle}
                             />
-
                           </div>
                         )}
                       </div>

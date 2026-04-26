@@ -8,5 +8,6 @@
         public int? AssignedSquadId { get; set; }
         public string? PrimaryRole { get; set; }
         public bool IsActive { get; set; }
+        public string? ProfileImageUrl { get; set; }
     }
 }

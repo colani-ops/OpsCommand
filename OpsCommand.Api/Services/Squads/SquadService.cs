@@ -9,20 +9,23 @@ using OpsCommand.Api.Models.SquadEquipment;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace OpsCommand.Api.Services.Squads
 {
-
-
     public class SquadService : ISquadService
     {
         private readonly ISquadRepository _squadRepository;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IMissionRepository _missionRepository;
-        public SquadService(ISquadRepository squadRepository, UserManager<ApplicationUser> userManager, IMissionRepository missionRepository,ISquadEquipmentRepository squadEquipmentRepository)
-        { 
+        private readonly ISquadEquipmentRepository _squadEquipmentRepository;
+
+        public SquadService(
+            ISquadRepository squadRepository,
+            UserManager<ApplicationUser> userManager,
+            IMissionRepository missionRepository,
+            ISquadEquipmentRepository squadEquipmentRepository)
+        {
             _squadRepository = squadRepository;
             _userManager = userManager;
             _missionRepository = missionRepository;
@@ -30,15 +33,11 @@ namespace OpsCommand.Api.Services.Squads
         }
 
         private static readonly string[] AllowedTypes =
-            [
-                "Assault",
-                "Tactical",
-                "Recon"
-            ];
-
-        private readonly ISquadEquipmentRepository _squadEquipmentRepository;
-
-
+        [
+            "Assault",
+            "Tactical",
+            "Recon"
+        ];
 
         public async Task<IEnumerable<SquadResponseDto>> GetAllAsync()
         {
@@ -54,13 +53,13 @@ namespace OpsCommand.Api.Services.Squads
                     Name = squad.Name,
                     Type = squad.Type,
                     CommanderId = squad.CommanderId,
-                    //IsDeployed = squad.IsDeployed,
                     CreatedAt = squad.CreatedAt,
                     DeletedAt = squad.DeletedAt,
                     MissionsServed = squad.MissionsServed,
                     MissionsWon = squad.MissionsWon
                 });
             }
+
             return result;
         }
 
@@ -73,20 +72,17 @@ namespace OpsCommand.Api.Services.Squads
                 return null;
             }
 
-            var result = new SquadResponseDto
+            return new SquadResponseDto
             {
                 Id = squad.Id,
                 Name = squad.Name,
                 Type = squad.Type,
                 CommanderId = squad.CommanderId,
-                //IsDeployed = squad.IsDeployed,
                 CreatedAt = squad.CreatedAt,
                 DeletedAt = squad.DeletedAt,
                 MissionsServed = squad.MissionsServed,
                 MissionsWon = squad.MissionsWon
             };
-
-            return result;
         }
 
         public async Task<SquadProfileResponseDto?> GetProfileByIdAsync(int id)
@@ -118,8 +114,8 @@ namespace OpsCommand.Api.Services.Squads
             }).ToList();
 
             var squadUsers = await _userManager.Users
-            .Where(u => u.AssignedSquadId == id)
-            .ToListAsync();
+                .Where(u => u.AssignedSquadId == id)
+                .ToListAsync();
 
             var memberDtos = new List<SquadMemberDto>();
 
@@ -134,7 +130,8 @@ namespace OpsCommand.Api.Services.Squads
                     Email = user.Email ?? string.Empty,
                     UserName = user.UserName,
                     Role = primaryRole,
-                    IsActive = !await _userManager.IsLockedOutAsync(user)
+                    IsActive = !await _userManager.IsLockedOutAsync(user),
+                    ProfileImageUrl = user.ProfileImageUrl
                 });
             }
 
@@ -155,6 +152,7 @@ namespace OpsCommand.Api.Services.Squads
                 MissionsServed = squad.MissionsServed,
                 MissionsWon = squad.MissionsWon,
                 SuccessRate = successRate,
+                BannerImageUrl = squad.BannerImageUrl,
                 Equipment = equipmentDtos,
                 Members = memberDtos
             };
@@ -190,7 +188,8 @@ namespace OpsCommand.Api.Services.Squads
                     Email = memberUser.Email ?? string.Empty,
                     UserName = memberUser.UserName,
                     Role = primaryRole,
-                    IsActive = !await _userManager.IsLockedOutAsync(memberUser)
+                    IsActive = !await _userManager.IsLockedOutAsync(memberUser),
+                    ProfileImageUrl = memberUser.ProfileImageUrl
                 });
             }
 
@@ -209,11 +208,6 @@ namespace OpsCommand.Api.Services.Squads
                     commanderName = $"{commander.UserName} ({commander.Email})";
                 }
             }
-
-            memberDtos = memberDtos
-                .GroupBy(m => m.Id)
-                .Select(g => g.First())
-                .ToList();
 
             var successRate = squad.MissionsServed > 0
                 ? Math.Round((double)squad.MissionsWon / squad.MissionsServed * 100, 2)
@@ -240,7 +234,7 @@ namespace OpsCommand.Api.Services.Squads
                 var commander = await _userManager.FindByIdAsync(dto.CommanderId);
 
                 if (commander == null)
-                    throw new ArgumentException("Commander user not found.");                
+                    throw new ArgumentException("Commander user not found.");
 
                 var isCommander = await _userManager.IsInRoleAsync(commander, "Commander");
 
@@ -251,7 +245,6 @@ namespace OpsCommand.Api.Services.Squads
 
                 if (existing != null)
                     throw new ArgumentException($"Commander is already assigned to squad '{existing.Name}' (Id {existing.Id}).");
-                
 
                 if (await _userManager.IsLockedOutAsync(commander))
                     throw new ArgumentException("Commander is inactive");
@@ -259,9 +252,9 @@ namespace OpsCommand.Api.Services.Squads
 
             if (!AllowedTypes.Contains(dto.Type))
             {
-                throw new ArgumentException("Invalid squad type. ALlowed : Assault, Tactical, Recon");
+                throw new ArgumentException("Invalid squad type. Allowed: Assault, Tactical, Recon");
             }
-            
+
             var squad = new Squad
             {
                 Name = dto.Name,
@@ -307,7 +300,6 @@ namespace OpsCommand.Api.Services.Squads
 
             var oldCommanderId = squad.CommanderId;
 
-            //Name / Type
             if (!string.IsNullOrWhiteSpace(dto.Name))
                 squad.Name = dto.Name;
 
@@ -319,7 +311,6 @@ namespace OpsCommand.Api.Services.Squads
                 squad.Type = dto.Type;
             }
 
-            //CommanderId (PUT semantics: null = clear)
             var commanderId = string.IsNullOrWhiteSpace(dto.CommanderId) ? null : dto.CommanderId;
 
             if (oldCommanderId != null && oldCommanderId != commanderId)
@@ -349,21 +340,17 @@ namespace OpsCommand.Api.Services.Squads
             }
             else
             {
-                // commander user must exist
                 var commanderUser = await _userManager.FindByIdAsync(commanderId);
                 if (commanderUser == null)
                     throw new ArgumentException("Commander user not found.");
 
-                // must have Commander role
                 var isCommander = await _userManager.IsInRoleAsync(commanderUser, "Commander");
                 if (!isCommander)
                     throw new ArgumentException("User is not eligible to be a commander.");
 
-                // must be active (not locked out)
                 if (await _userManager.IsLockedOutAsync(commanderUser))
                     throw new ArgumentException("Commander is inactive.");
 
-                // must not already be assigned as commander to another squad
                 var existing = await _squadRepository.GetActiveSquadByCommanderIdAsync(commanderId, excludeSquadId: id);
                 if (existing != null)
                     throw new ArgumentException($"Commander is already assigned to squad '{existing.Name}' (Id {existing.Id}).");
@@ -406,7 +393,7 @@ namespace OpsCommand.Api.Services.Squads
             };
         }
 
-        public async Task<bool>DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(int id)
         {
             var squad = await _squadRepository.GetByIdAsync(id);
             if (squad == null)
