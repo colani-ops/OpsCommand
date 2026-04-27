@@ -1,18 +1,23 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { getUser, hasRole } from "../api/auth";
+import { resolveUserImageUrl } from "../api/users";
 import { getEquipment, type EquipmentDto } from "../api/equipment";
 import {
   addSquadEquipment,
   deleteSquadEquipment,
   getMySquad,
   getSquadEquipment,
+  removeSquadBanner,
+  resolveSquadBannerUrl,
   updateSquadEquipment,
+  uploadSquadBanner,
   type MySquadDto,
   type SquadEquipmentDto,
 } from "../api/squads";
 import { useErrorHandler } from "../hooks/useErrorHandler";
 import ErrorBanner from "../components/ErrorBanner";
+import IconButton from "../ui/IconButton";
 
 export default function MySquadPage() {
   const canAccess = hasRole("Member", "Commander");
@@ -27,6 +32,9 @@ export default function MySquadPage() {
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<number | "">("");
   const [newQuantity, setNewQuantity] = useState<number>(1);
   const [editQuantities, setEditQuantities] = useState<Record<number, number>>({});
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
 
   const { error, showError, clearError } = useErrorHandler();
 
@@ -78,6 +86,14 @@ export default function MySquadPage() {
       default:
         return "/squad-default.png";
     }
+  }
+
+  function getSquadBannerImage() {
+    if (squad?.bannerImageUrl) {
+      return resolveSquadBannerUrl(squad.bannerImageUrl) ?? getSquadTypeImage(squad.type);
+    }
+
+    return getSquadTypeImage(squad?.type ?? null);
   }
 
   function getEquipmentBanner(category: string | null) {
@@ -157,6 +173,45 @@ export default function MySquadPage() {
     }
   }
 
+  async function onUploadBanner(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !squad) return;
+
+    try {
+      clearError();
+      setUploadingBanner(true);
+
+      await uploadSquadBanner(squad.id, file);
+      await load();
+    } catch (e) {
+      showError(e);
+    } finally {
+      setUploadingBanner(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }
+
+  async function onRemoveBanner() {
+    if (!squad) return;
+    if (!confirm("Remove squad banner and revert to default?")) return;
+
+    try {
+      clearError();
+      setUploadingBanner(true);
+
+      await removeSquadBanner(squad.id);
+      await load();
+    } catch (e) {
+      showError(e);
+    } finally {
+      setUploadingBanner(false);
+    }
+  }
+
+  const canManageBanner = canManageEquipment && currentUser && squad?.commanderId === currentUser.id;
+
   return (
     <div>
       <ErrorBanner error={error} />
@@ -189,9 +244,13 @@ export default function MySquadPage() {
             My Squad
           </h2>
 
-          <button onClick={load} style={toolbarButtonStyle}>
-            Refresh
-          </button>
+          <IconButton
+            iconSrc="/icons/refresh.png"
+            alt="Refresh squads"
+            title="Refresh squads"
+            variant="transparent"
+            onClick={load}
+            />
         </div>
 
         {loading && <div style={{ marginTop: 10, color: "#f3efe6" }}>Loading...</div>}
@@ -242,9 +301,7 @@ export default function MySquadPage() {
                   gap: 18,
                   padding: 18,
                   alignItems: "start",
-                  backgroundImage: `linear-gradient(rgba(0,0,0,0.34), rgba(0,0,0,0.52)), url(${getSquadTypeImage(
-                    squad.type
-                  )})`,
+                  backgroundImage: `linear-gradient(rgba(0,0,0,0.34), rgba(0,0,0,0.52)), url(${getSquadBannerImage()})`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                 }}
@@ -302,6 +359,47 @@ export default function MySquadPage() {
                   <div style={metaLineStyle}>
                     Success Rate: {squad.missionsServed > 0 ? `${squad.successRate}%` : "N/A"}
                   </div>
+
+                  {canManageBanner && (
+                    <>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.webp"
+                        onChange={onUploadBanner}
+                        style={{ display: "none" }}
+                      />
+
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 10,
+                          flexWrap: "wrap",
+                          marginTop: 12,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          style={iconActionButtonStyle}
+                          disabled={uploadingBanner}
+                        >
+                          {uploadingBanner ? "Uploading..." : "Upload Banner"}
+                        </button>
+
+                        {squad.bannerImageUrl && (
+                          <button
+                            type="button"
+                            onClick={onRemoveBanner}
+                            style={iconActionButtonStyle}
+                            disabled={uploadingBanner}
+                          >
+                            Remove Banner
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -321,78 +419,95 @@ export default function MySquadPage() {
                 <div style={detailsLineStyle}>No members assigned to this squad.</div>
               ) : (
                 <div style={{ display: "grid", gap: 12 }}>
-                  {squad.members.map((member) => (
-                    <div
-                      key={member.id}
-                      style={{
-                        border: "1px solid rgba(255,255,255,0.16)",
-                        borderRadius: 12,
-                        padding: 16,
-                        background: "rgba(20,20,20,0.72)",
-                        display: "grid",
-                        gridTemplateColumns: "110px 1fr 280px",
-                        gap: 16,
-                        alignItems: "center",
-                      }}
-                    >
+                  {squad.members.map((member) => {
+                    const memberImageUrl = resolveUserImageUrl(member.profileImageUrl);
+
+                    return (
                       <div
+                        key={member.id}
                         style={{
-                          width: 88,
-                          height: 88,
-                          borderRadius: "50%",
-                          border: "2px solid rgba(255,255,255,0.18)",
-                          background: "rgba(220,220,220,0.92)",
+                          border: "1px solid rgba(255,255,255,0.16)",
+                          borderRadius: 12,
+                          padding: 16,
+                          background: "rgba(20,20,20,0.72)",
                           display: "grid",
-                          placeItems: "center",
-                          fontSize: 34,
-                          color: "#666",
+                          gridTemplateColumns: "110px 1fr 280px",
+                          gap: 16,
+                          alignItems: "center",
                         }}
                       >
-                        ◉
-                      </div>
-
-                      <div>
                         <div
                           style={{
-                            fontWeight: 800,
-                            fontSize: 22,
-                            fontFamily: "monospace",
-                            color: "#efb85f",
-                            marginBottom: 8,
+                            width: 88,
+                            height: 88,
+                            borderRadius: "50%",
+                            border: "2px solid rgba(255,255,255,0.18)",
+                            background: "rgba(220,220,220,0.92)",
+                            display: "grid",
+                            placeItems: "center",
+                            fontSize: 34,
+                            color: "#666",
+                            overflow: "hidden",
                           }}
                         >
-                          <Link
-                            to={member.id === currentUser?.id ? "/my-profile" : `/users/${member.id}`}
-                            style={{ color: "inherit", textDecoration: "none" }}
-                            title={member.id === currentUser?.id ? "Open my profile" : "Open user profile"}
+                          {memberImageUrl ? (
+                            <img
+                              src={memberImageUrl}
+                              alt={member.userName ?? member.email}
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                              }}
+                            />
+                          ) : (
+                            "◉"
+                          )}
+                        </div>
+
+                        <div>
+                          <div
+                            style={{
+                              fontWeight: 800,
+                              fontSize: 22,
+                              fontFamily: "monospace",
+                              color: "#efb85f",
+                              marginBottom: 8,
+                            }}
                           >
-                            {member.userName ?? member.email}
-                          </Link>
+                            <Link
+                              to={member.id === currentUser?.id ? "/my-profile" : `/users/${member.id}`}
+                              style={{ color: "inherit", textDecoration: "none" }}
+                              title={member.id === currentUser?.id ? "Open my profile" : "Open user profile"}
+                            >
+                              {member.userName ?? member.email}
+                            </Link>
+                          </div>
+
+                          <div style={detailsLineStyle}>Email: {member.email}</div>
+                          <div style={detailsLineStyle}>Role: {member.role}</div>
+                          <div style={detailsLineStyle}>
+                            Status: {member.isActive ? "Active" : "Disabled"}
+                          </div>
                         </div>
 
-                        <div style={detailsLineStyle}>Email: {member.email}</div>
-                        <div style={detailsLineStyle}>Role: {member.role}</div>
-                        <div style={detailsLineStyle}>
-                          Status: {member.isActive ? "Active" : "Disabled"}
+                        <div
+                          style={{
+                            border: "1px solid rgba(201,165,106,0.20)",
+                            borderRadius: 12,
+                            padding: 12,
+                            background: "rgba(0,0,0,0.28)",
+                          }}
+                        >
+                          <div style={miniTitleStyle}>Equipped Summary</div>
+                          <div style={detailsLineStyle}>Primary: pending backend</div>
+                          <div style={detailsLineStyle}>Secondary: pending backend</div>
+                          <div style={detailsLineStyle}>Melee: pending backend</div>
+                          <div style={detailsLineStyle}>Utility: pending backend</div>
                         </div>
                       </div>
-
-                      <div
-                        style={{
-                          border: "1px solid rgba(201,165,106,0.20)",
-                          borderRadius: 12,
-                          padding: 12,
-                          background: "rgba(0,0,0,0.28)",
-                        }}
-                      >
-                        <div style={miniTitleStyle}>Equipped Summary</div>
-                        <div style={detailsLineStyle}>Primary: pending backend</div>
-                        <div style={detailsLineStyle}>Secondary: pending backend</div>
-                        <div style={detailsLineStyle}>Melee: pending backend</div>
-                        <div style={detailsLineStyle}>Utility: pending backend</div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

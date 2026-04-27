@@ -20,6 +20,17 @@ namespace OpsCommand.Api.Repositories.Squads
             _context = context;
         }
 
+
+        public async Task<List<Squad>> GetAllActiveSquadsByCommanderIdAsync(string commanderId)
+        {
+            return await _context.Squads
+                .Where(s => s.DeletedAt == null)
+                .Where(s => s.CommanderId == commanderId)
+                .ToListAsync();
+        }
+
+
+
         public async Task<IEnumerable<Squad>> GetAllAsync()
         {
 
@@ -62,6 +73,5 @@ namespace OpsCommand.Api.Repositories.Squads
                 .Where(s => excludeSquadId == null || s.Id != excludeSquadId.Value)
                 .FirstOrDefaultAsync();
         }
-
     }
 }

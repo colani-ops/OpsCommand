@@ -149,3 +149,27 @@ export function deleteSquadEquipment(squadId: number, equipmentId: number) {
 export function resolveSquadMemberImageUrl(path?: string | null) {
   return resolveUserImageUrl(path);
 }
+
+export function uploadSquadBanner(id: number, file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return apiFetch<SquadDto>(`/api/squad/${id}/banner`, {
+    method: "PUT",
+    body: formData,
+  });
+}
+
+export function removeSquadBanner(id: number) {
+  return apiFetch<SquadDto>(`/api/squad/${id}/banner`, {
+    method: "DELETE",
+  });
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
+
+export function resolveSquadBannerUrl(path?: string | null) {
+  if (!path) return null;
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  return `${API_BASE_URL}${path}`;
+}

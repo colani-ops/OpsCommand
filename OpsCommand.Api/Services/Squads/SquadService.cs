@@ -1,15 +1,17 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using OpsCommand.Api.Domain.Entities;
+using OpsCommand.Api.Models.SquadEquipment;
 using OpsCommand.Api.Models.Squads;
 using OpsCommand.Api.Repositories.Missions;
-using OpsCommand.Api.Repositories.Squads;
 using OpsCommand.Api.Repositories.SquadEquipments;
-using OpsCommand.Api.Models.SquadEquipment;
+using OpsCommand.Api.Repositories.Squads;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using System.IO;
 
 namespace OpsCommand.Api.Services.Squads
 {
@@ -39,50 +41,99 @@ namespace OpsCommand.Api.Services.Squads
             "Recon"
         ];
 
-        public async Task<IEnumerable<SquadResponseDto>> GetAllAsync()
+        private static SquadResponseDto MapToSquadDto(Squad squad)
         {
-            var squads = await _squadRepository.GetAllAsync();
-
-            var result = new List<SquadResponseDto>();
-
-            foreach (var squad in squads)
-            {
-                result.Add(new SquadResponseDto
-                {
-                    Id = squad.Id,
-                    Name = squad.Name,
-                    Type = squad.Type,
-                    CommanderId = squad.CommanderId,
-                    CreatedAt = squad.CreatedAt,
-                    DeletedAt = squad.DeletedAt,
-                    MissionsServed = squad.MissionsServed,
-                    MissionsWon = squad.MissionsWon
-                });
-            }
-
-            return result;
-        }
-
-        public async Task<SquadResponseDto?> GetByIdAsync(int id)
-        {
-            var squad = await _squadRepository.GetByIdAsync(id);
-
-            if (squad == null)
-            {
-                return null;
-            }
-
             return new SquadResponseDto
             {
                 Id = squad.Id,
                 Name = squad.Name,
                 Type = squad.Type,
                 CommanderId = squad.CommanderId,
+                IsActive = squad.DeletedAt == null,
+                BannerImageUrl = squad.BannerImageUrl,
                 CreatedAt = squad.CreatedAt,
                 DeletedAt = squad.DeletedAt,
                 MissionsServed = squad.MissionsServed,
                 MissionsWon = squad.MissionsWon
             };
+        }
+
+
+
+        private static readonly string[] AllowedImageExtensions = [".jpg", ".jpeg", ".png", ".webp"];
+
+        private static void ValidateImageFile(IFormFile file)
+        {
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+
+            if (!AllowedImageExtensions.Contains(ext))
+                throw new ArgumentException("Allowed image formats: .jpg, .jpeg, .png, .webp");
+
+            if (file.Length > 5 * 1024 * 1024)
+                throw new ArgumentException("Image is too large. Maximum size is 5 MB.");
+        }
+
+        private static string EnsureUploadsRoot()
+        {
+            var uploadsRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "squads");
+            Directory.CreateDirectory(uploadsRoot);
+            return uploadsRoot;
+        }
+
+        private static string BuildPublicBannerPath(string fileName)
+        {
+            return $"/uploads/squads/{fileName}";
+        }
+
+
+
+
+        private async Task<string?> GetCommanderDisplayNameAsync(string? commanderId)
+        {
+            if (string.IsNullOrWhiteSpace(commanderId))
+                return null;
+
+            var commander = await _userManager.FindByIdAsync(commanderId);
+            if (commander == null)
+                return null;
+
+            return $"{commander.UserName} ({commander.Email})";
+        }
+
+        private async Task<SquadMemberDto> MapToSquadMemberDtoAsync(ApplicationUser user)
+        {
+            var roles = await _userManager.GetRolesAsync(user);
+            var primaryRole = roles.FirstOrDefault() ?? "Unknown";
+
+            return new SquadMemberDto
+            {
+                Id = user.Id,
+                Email = user.Email ?? string.Empty,
+                UserName = user.UserName,
+                Role = primaryRole,
+                IsActive = !await _userManager.IsLockedOutAsync(user),
+                ProfileImageUrl = user.ProfileImageUrl
+            };
+        }
+
+        private static double CalculateSuccessRate(Squad squad)
+        {
+            if (squad.MissionsServed <= 0)
+                return 0;
+
+            return Math.Round((double)squad.MissionsWon / squad.MissionsServed * 100, 2);
+        }
+
+        public async Task<IEnumerable<SquadResponseDto>> GetAllAsync()
+        {
+            var squads = await _squadRepository.GetAllAsync();
+            return squads.Select(MapToSquadDto).ToList();
+        }
+
+        public async Task<SquadResponseDto?> GetByIdAsync(int id)
+        {
+            var squad = await _squadRepository.GetByIdAsync(id);
+            return squad == null ? null : MapToSquadDto(squad);
         }
 
         public async Task<SquadProfileResponseDto?> GetProfileByIdAsync(int id)
@@ -91,19 +142,9 @@ namespace OpsCommand.Api.Services.Squads
             if (squad == null)
                 return null;
 
-            string? commanderName = null;
-
-            if (!string.IsNullOrWhiteSpace(squad.CommanderId))
-            {
-                var commander = await _userManager.FindByIdAsync(squad.CommanderId);
-                if (commander != null)
-                {
-                    commanderName = $"{commander.UserName} ({commander.Email})";
-                }
-            }
+            var commanderName = await GetCommanderDisplayNameAsync(squad.CommanderId);
 
             var equipment = await _squadEquipmentRepository.GetBySquadIdAsync(id);
-
             var equipmentDtos = equipment.Select(se => new SquadEquipmentResponseDto
             {
                 SquadId = se.SquadId,
@@ -118,26 +159,10 @@ namespace OpsCommand.Api.Services.Squads
                 .ToListAsync();
 
             var memberDtos = new List<SquadMemberDto>();
-
             foreach (var user in squadUsers)
             {
-                var roles = await _userManager.GetRolesAsync(user);
-                var primaryRole = roles.FirstOrDefault() ?? "Unknown";
-
-                memberDtos.Add(new SquadMemberDto
-                {
-                    Id = user.Id,
-                    Email = user.Email ?? string.Empty,
-                    UserName = user.UserName,
-                    Role = primaryRole,
-                    IsActive = !await _userManager.IsLockedOutAsync(user),
-                    ProfileImageUrl = user.ProfileImageUrl
-                });
+                memberDtos.Add(await MapToSquadMemberDtoAsync(user));
             }
-
-            var successRate = squad.MissionsServed > 0
-                ? Math.Round((double)squad.MissionsWon / squad.MissionsServed * 100, 2)
-                : 0;
 
             return new SquadProfileResponseDto
             {
@@ -151,7 +176,7 @@ namespace OpsCommand.Api.Services.Squads
                 DeletedAt = squad.DeletedAt,
                 MissionsServed = squad.MissionsServed,
                 MissionsWon = squad.MissionsWon,
-                SuccessRate = successRate,
+                SuccessRate = CalculateSuccessRate(squad),
                 BannerImageUrl = squad.BannerImageUrl,
                 Equipment = equipmentDtos,
                 Members = memberDtos
@@ -161,10 +186,7 @@ namespace OpsCommand.Api.Services.Squads
         public async Task<MySquadResponseDto?> GetMySquadAsync(string userId)
         {
             var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
-                return null;
-
-            if (user.AssignedSquadId == null)
+            if (user == null || user.AssignedSquadId == null)
                 return null;
 
             var squad = await _squadRepository.GetByIdAsync(user.AssignedSquadId.Value);
@@ -176,21 +198,9 @@ namespace OpsCommand.Api.Services.Squads
                 .ToListAsync();
 
             var memberDtos = new List<SquadMemberDto>();
-
             foreach (var memberUser in squadUsers)
             {
-                var roles = await _userManager.GetRolesAsync(memberUser);
-                var primaryRole = roles.FirstOrDefault() ?? "Unknown";
-
-                memberDtos.Add(new SquadMemberDto
-                {
-                    Id = memberUser.Id,
-                    Email = memberUser.Email ?? string.Empty,
-                    UserName = memberUser.UserName,
-                    Role = primaryRole,
-                    IsActive = !await _userManager.IsLockedOutAsync(memberUser),
-                    ProfileImageUrl = memberUser.ProfileImageUrl
-                });
+                memberDtos.Add(await MapToSquadMemberDtoAsync(memberUser));
             }
 
             memberDtos = memberDtos
@@ -198,31 +208,19 @@ namespace OpsCommand.Api.Services.Squads
                 .Select(g => g.First())
                 .ToList();
 
-            string? commanderName = null;
-
-            if (!string.IsNullOrWhiteSpace(squad.CommanderId))
-            {
-                var commander = await _userManager.FindByIdAsync(squad.CommanderId);
-                if (commander != null)
-                {
-                    commanderName = $"{commander.UserName} ({commander.Email})";
-                }
-            }
-
-            var successRate = squad.MissionsServed > 0
-                ? Math.Round((double)squad.MissionsWon / squad.MissionsServed * 100, 2)
-                : 0;
+            var commanderName = await GetCommanderDisplayNameAsync(squad.CommanderId);
 
             return new MySquadResponseDto
             {
                 Id = squad.Id,
                 Name = squad.Name,
-                Type = squad.Type,
+                Type = squad.Type ?? "Unknown",
                 CommanderId = squad.CommanderId,
                 CommanderName = commanderName,
                 MissionsServed = squad.MissionsServed,
                 MissionsWon = squad.MissionsWon,
-                SuccessRate = successRate,
+                SuccessRate = CalculateSuccessRate(squad),
+                BannerImageUrl = squad.BannerImageUrl,
                 Members = memberDtos
             };
         }
@@ -237,12 +235,10 @@ namespace OpsCommand.Api.Services.Squads
                     throw new ArgumentException("Commander user not found.");
 
                 var isCommander = await _userManager.IsInRoleAsync(commander, "Commander");
-
                 if (!isCommander)
                     throw new ArgumentException("User is not eligible to be a commander.");
 
                 var existing = await _squadRepository.GetActiveSquadByCommanderIdAsync(dto.CommanderId);
-
                 if (existing != null)
                     throw new ArgumentException($"Commander is already assigned to squad '{existing.Name}' (Id {existing.Id}).");
 
@@ -251,9 +247,7 @@ namespace OpsCommand.Api.Services.Squads
             }
 
             if (!AllowedTypes.Contains(dto.Type))
-            {
                 throw new ArgumentException("Invalid squad type. Allowed: Assault, Tactical, Recon");
-            }
 
             var squad = new Squad
             {
@@ -280,23 +274,14 @@ namespace OpsCommand.Api.Services.Squads
                     throw new ArgumentException(string.Join("; ", updateCommanderRes.Errors.Select(e => e.Description)));
             }
 
-            return new SquadResponseDto
-            {
-                Id = squad.Id,
-                Name = squad.Name,
-                Type = squad.Type,
-                CommanderId = squad.CommanderId,
-                CreatedAt = squad.CreatedAt,
-                DeletedAt = squad.DeletedAt,
-                MissionsServed = squad.MissionsServed,
-                MissionsWon = squad.MissionsWon
-            };
+            return MapToSquadDto(squad);
         }
 
         public async Task<SquadResponseDto?> UpdateAsync(int id, SquadUpdateDto dto)
         {
             var squad = await _squadRepository.GetByIdAsync(id);
-            if (squad == null) return null;
+            if (squad == null)
+                return null;
 
             var oldCommanderId = squad.CommanderId;
 
@@ -322,20 +307,20 @@ namespace OpsCommand.Api.Services.Squads
                     throw new ArgumentException("Cannot change or remove squad commander while they have open missions for this squad.");
             }
 
+            if (oldCommanderId != null && oldCommanderId != commanderId)
+            {
+                var oldCommander = await _userManager.FindByIdAsync(oldCommanderId);
+                if (oldCommander != null && oldCommander.AssignedSquadId == squad.Id)
+                {
+                    oldCommander.AssignedSquadId = null;
+                    var oldUpdateRes = await _userManager.UpdateAsync(oldCommander);
+                    if (!oldUpdateRes.Succeeded)
+                        throw new ArgumentException(string.Join("; ", oldUpdateRes.Errors.Select(e => e.Description)));
+                }
+            }
+
             if (commanderId == null)
             {
-                if (oldCommanderId != null)
-                {
-                    var oldCommander = await _userManager.FindByIdAsync(oldCommanderId);
-                    if (oldCommander != null && oldCommander.AssignedSquadId == squad.Id)
-                    {
-                        oldCommander.AssignedSquadId = null;
-                        var oldUpdateRes = await _userManager.UpdateAsync(oldCommander);
-                        if (!oldUpdateRes.Succeeded)
-                            throw new ArgumentException(string.Join("; ", oldUpdateRes.Errors.Select(e => e.Description)));
-                    }
-                }
-
                 squad.CommanderId = null;
             }
             else
@@ -351,23 +336,18 @@ namespace OpsCommand.Api.Services.Squads
                 if (await _userManager.IsLockedOutAsync(commanderUser))
                     throw new ArgumentException("Commander is inactive.");
 
-                var existing = await _squadRepository.GetActiveSquadByCommanderIdAsync(commanderId, excludeSquadId: id);
-                if (existing != null)
-                    throw new ArgumentException($"Commander is already assigned to squad '{existing.Name}' (Id {existing.Id}).");
+                var existingSquads = await _squadRepository.GetAllActiveSquadsByCommanderIdAsync(commanderId);
 
-                squad.CommanderId = commanderId;
-
-                if (oldCommanderId != null && oldCommanderId != commanderId)
+                foreach (var existingSquad in existingSquads)
                 {
-                    var oldCommander = await _userManager.FindByIdAsync(oldCommanderId);
-                    if (oldCommander != null && oldCommander.AssignedSquadId == squad.Id)
+                    if (existingSquad.Id != id)
                     {
-                        oldCommander.AssignedSquadId = null;
-                        var oldUpdateRes = await _userManager.UpdateAsync(oldCommander);
-                        if (!oldUpdateRes.Succeeded)
-                            throw new ArgumentException(string.Join("; ", oldUpdateRes.Errors.Select(e => e.Description)));
+                        existingSquad.CommanderId = null;
+                        await _squadRepository.UpdateAsync(existingSquad);
                     }
                 }
+
+                squad.CommanderId = commanderId;
 
                 if (commanderUser.AssignedSquadId != squad.Id)
                 {
@@ -380,17 +360,7 @@ namespace OpsCommand.Api.Services.Squads
 
             await _squadRepository.UpdateAsync(squad);
 
-            return new SquadResponseDto
-            {
-                Id = squad.Id,
-                Name = squad.Name,
-                Type = squad.Type,
-                CommanderId = squad.CommanderId,
-                CreatedAt = squad.CreatedAt,
-                DeletedAt = squad.DeletedAt,
-                MissionsServed = squad.MissionsServed,
-                MissionsWon = squad.MissionsWon
-            };
+            return MapToSquadDto(squad);
         }
 
         public async Task<bool> DeleteAsync(int id)
@@ -418,6 +388,66 @@ namespace OpsCommand.Api.Services.Squads
 
             await _squadRepository.DeleteAsync(squad);
             return true;
+        }
+
+
+
+        public async Task<SquadResponseDto?> UploadBannerAsync(int id, IFormFile file)
+        {
+            var squad = await _squadRepository.GetByIdAsync(id);
+            if (squad == null)
+                return null;
+
+            ValidateImageFile(file);
+
+            var uploadsRoot = EnsureUploadsRoot();
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            var fileName = $"squad_{id}_{Guid.NewGuid():N}{ext}";
+            var fullPath = Path.Combine(uploadsRoot, fileName);
+
+            await using (var stream = new FileStream(fullPath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            if (!string.IsNullOrWhiteSpace(squad.BannerImageUrl))
+            {
+                var oldRelative = squad.BannerImageUrl.TrimStart('/').Replace("/", Path.DirectorySeparatorChar.ToString());
+                var oldFullPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", oldRelative);
+
+                if (File.Exists(oldFullPath))
+                {
+                    File.Delete(oldFullPath);
+                }
+            }
+
+            squad.BannerImageUrl = BuildPublicBannerPath(fileName);
+            await _squadRepository.UpdateAsync(squad);
+
+            return MapToSquadDto(squad);
+        }
+
+        public async Task<SquadResponseDto?> RemoveBannerAsync(int id)
+        {
+            var squad = await _squadRepository.GetByIdAsync(id);
+            if (squad == null)
+                return null;
+
+            if (!string.IsNullOrWhiteSpace(squad.BannerImageUrl))
+            {
+                var oldRelative = squad.BannerImageUrl.TrimStart('/').Replace("/", Path.DirectorySeparatorChar.ToString());
+                var oldFullPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", oldRelative);
+
+                if (File.Exists(oldFullPath))
+                {
+                    File.Delete(oldFullPath);
+                }
+            }
+
+            squad.BannerImageUrl = null;
+            await _squadRepository.UpdateAsync(squad);
+
+            return MapToSquadDto(squad);
         }
     }
 }

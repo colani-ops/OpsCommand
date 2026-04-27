@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpsCommand.Api.Services.Squads;
 using OpsCommand.Api.Models.Squads;
+using Microsoft.AspNetCore.Http;
 
 namespace OpsCommand.Api.Controllers
 {
@@ -17,6 +18,34 @@ namespace OpsCommand.Api.Controllers
         {
             _squadService = squadService;
         }
+
+
+
+        private bool CallerCanManageSquad(SquadProfileResponseDto squad)
+        {
+            if (User.IsInRole("Admin") || User.IsInRole("SuperAdmin"))
+                return true;
+
+            if (!User.IsInRole("Commander"))
+                return false;
+
+            var callerUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(callerUserId))
+                return false;
+
+            return squad.CommanderId == callerUserId;
+        }
+
+        private async Task<SquadProfileResponseDto?> GetManagedSquadOrNull(int id)
+        {
+            var squad = await _squadService.GetProfileByIdAsync(id);
+            if (squad == null)
+                return null;
+
+            return CallerCanManageSquad(squad) ? squad : null;
+        }
+
+
 
         [HttpGet]
         public async Task<IActionResult> GetAll()
@@ -68,6 +97,46 @@ namespace OpsCommand.Api.Controllers
                 return Forbid();
 
             return Ok(squad);
+        }
+
+        [HttpPut("{id}/banner")]
+        [Authorize(Roles = "Admin,SuperAdmin,Commander")]
+        public async Task<IActionResult> UploadBanner(int id, IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { message = "No file uploaded." });
+
+            var managedSquad = await GetManagedSquadOrNull(id);
+            if (managedSquad == null)
+                return Forbid();
+
+            try
+            {
+                var updated = await _squadService.UploadBannerAsync(id, file);
+                if (updated == null)
+                    return NotFound();
+
+                return Ok(updated);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpDelete("{id}/banner")]
+        [Authorize(Roles = "Admin,SuperAdmin,Commander")]
+        public async Task<IActionResult> RemoveBanner(int id)
+        {
+            var managedSquad = await GetManagedSquadOrNull(id);
+            if (managedSquad == null)
+                return Forbid();
+
+            var updated = await _squadService.RemoveBannerAsync(id);
+            if (updated == null)
+                return NotFound();
+
+            return Ok(updated);
         }
 
         [HttpPost]

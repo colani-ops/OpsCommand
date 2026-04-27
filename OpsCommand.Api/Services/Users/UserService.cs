@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OpsCommand.Api.Domain.Entities;
 using OpsCommand.Api.Models.Users;
 using OpsCommand.Api.Repositories.Users;
+using OpsCommand.Api.Repositories.Squads;
 
 namespace OpsCommand.Api.Services.Users
 {
@@ -10,17 +11,83 @@ namespace OpsCommand.Api.Services.Users
     {
         private readonly IUserRepository _userRepository;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ISquadRepository _squadRepository;
 
-        public UserService(IUserRepository userRepository, UserManager<ApplicationUser> userManager)
+        public UserService(
+            IUserRepository userRepository,
+            UserManager<ApplicationUser> userManager,
+            ISquadRepository squadRepository)
         {
             _userRepository = userRepository;
             _userManager = userManager;
+            _squadRepository = squadRepository;
         }
 
         private async Task<bool> GetIsActiveAsync(ApplicationUser user)
         {
             return !await _userManager.IsLockedOutAsync(user);
         }
+
+
+        private async Task SyncCommanderStateAsync(ApplicationUser user, string targetRole, int? targetSquadId)
+        {
+            var allCommandedSquads = await _squadRepository.GetAllActiveSquadsByCommanderIdAsync(user.Id);
+
+            if (targetRole != "Commander")
+            {
+                foreach (var commandedSquad in allCommandedSquads)
+                {
+                    commandedSquad.CommanderId = null;
+                    await _squadRepository.UpdateAsync(commandedSquad);
+                }
+
+                return;
+            }
+
+            if (targetSquadId == null)
+                throw new ArgumentException("Commander must be assigned to a squad.");
+
+            var targetSquad = await _squadRepository.GetByIdAsync(targetSquadId.Value);
+            if (targetSquad == null)
+                throw new ArgumentException("Assigned squad not found.");
+
+            if (!string.IsNullOrWhiteSpace(targetSquad.CommanderId) && targetSquad.CommanderId != user.Id)
+                throw new ArgumentException("Target squad already has a different commander.");
+
+            foreach (var commandedSquad in allCommandedSquads)
+            {
+                if (commandedSquad.Id != targetSquad.Id)
+                {
+                    commandedSquad.CommanderId = null;
+                    await _squadRepository.UpdateAsync(commandedSquad);
+                }
+            }
+
+            if (targetSquad.CommanderId != user.Id)
+            {
+                targetSquad.CommanderId = user.Id;
+                await _squadRepository.UpdateAsync(targetSquad);
+            }
+        }
+
+        private async Task CleanupOldSquadMembershipAsync(ApplicationUser user, int? oldAssignedSquadId, int? newAssignedSquadId)
+        {
+            if (oldAssignedSquadId == null || oldAssignedSquadId == newAssignedSquadId)
+                return;
+
+            var allCommandedSquads = await _squadRepository.GetAllActiveSquadsByCommanderIdAsync(user.Id);
+
+            foreach (var commandedSquad in allCommandedSquads)
+            {
+                if (commandedSquad.Id == oldAssignedSquadId && commandedSquad.Id != newAssignedSquadId)
+                {
+                    commandedSquad.CommanderId = null;
+                    await _squadRepository.UpdateAsync(commandedSquad);
+                }
+            }
+        }
+
+
 
         public async Task<IEnumerable<UserResponseDto>> GetAllAsync()
         {
@@ -80,17 +147,23 @@ namespace OpsCommand.Api.Services.Users
             var currentPrimaryRole = currentRoles.FirstOrDefault() ?? "Recruit";
 
             var targetRole = dto.Role;
+            var oldAssignedSquadId = user.AssignedSquadId;
+            var newAssignedSquadId = dto.AssignedSquadId;
 
-            if (dto.AssignedSquadId != null &&
+            if (newAssignedSquadId != null &&
                 currentPrimaryRole == "Recruit" &&
                 dto.Role == "Recruit")
             {
                 targetRole = "Member";
             }
 
-            if (targetRole == "Member" && dto.AssignedSquadId == null && currentPrimaryRole == "Recruit")
+            if (targetRole == "Member" && newAssignedSquadId == null && currentPrimaryRole == "Recruit")
                 throw new ArgumentException("Member must be assigned to a squad.");
 
+            if (targetRole == "Commander" && newAssignedSquadId == null)
+                throw new ArgumentException("Commander must be assigned to a squad.");
+
+            // role update
             var removeRes = await _userManager.RemoveFromRolesAsync(user, currentRoles);
             if (!removeRes.Succeeded)
                 throw new ArgumentException(string.Join("; ", removeRes.Errors.Select(e => e.Description)));
@@ -99,11 +172,16 @@ namespace OpsCommand.Api.Services.Users
             if (!addRes.Succeeded)
                 throw new ArgumentException(string.Join("; ", addRes.Errors.Select(e => e.Description)));
 
-            user.AssignedSquadId = dto.AssignedSquadId;
+            // squad membership na useru
+            user.AssignedSquadId = newAssignedSquadId;
 
             var updateRes = await _userManager.UpdateAsync(user);
             if (!updateRes.Succeeded)
                 throw new ArgumentException(string.Join("; ", updateRes.Errors.Select(e => e.Description)));
+
+            // sinkronizacija Squad.CommanderId <-> User.AssignedSquadId
+            await CleanupOldSquadMembershipAsync(user, oldAssignedSquadId, newAssignedSquadId);
+            await SyncCommanderStateAsync(user, targetRole, newAssignedSquadId);
 
             var roles = await _userManager.GetRolesAsync(user);
 

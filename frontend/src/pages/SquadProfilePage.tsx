@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { getUser, hasRole } from "../api/auth";
 import { resolveUserImageUrl } from "../api/users";
@@ -8,7 +8,14 @@ import {
   deleteSquadEquipment,
   updateSquadEquipment,
 } from "../api/squadEquipment";
-import { deleteSquad, getSquadProfile, type SquadProfileDto } from "../api/squads";
+import {
+  deleteSquad,
+  getSquadProfile,
+  removeSquadBanner,
+  resolveSquadBannerUrl,
+  uploadSquadBanner,
+  type SquadProfileDto,
+} from "../api/squads";
 import ErrorBanner from "../components/ErrorBanner";
 import IconButton from "../ui/IconButton";
 
@@ -30,6 +37,9 @@ export default function SquadProfilePage() {
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<number | "">("");
   const [newQuantity, setNewQuantity] = useState<number>(1);
   const [editQuantities, setEditQuantities] = useState<Record<number, number>>({});
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
 
   const canAccess =
     isAdmin || (isCommander && squad?.commanderId != null && squad.commanderId === currentUser?.id);
@@ -78,6 +88,14 @@ export default function SquadProfilePage() {
       default:
         return "/squad-default.png";
     }
+  }
+
+  function getSquadBannerImage() {
+    if (squad?.bannerImageUrl) {
+      return resolveSquadBannerUrl(squad.bannerImageUrl) ?? getSquadTypeImage(squad.type);
+    }
+
+    return getSquadTypeImage(squad?.type ?? null);
   }
 
   function getEquipmentBanner(category: string | null) {
@@ -178,6 +196,47 @@ export default function SquadProfilePage() {
     }
   }
 
+  async function onUploadBanner(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !squad) return;
+
+    setErr(null);
+    setMsg(null);
+
+    try {
+      setUploadingBanner(true);
+      await uploadSquadBanner(squad.id, file);
+      setMsg("Squad banner updated.");
+      await load();
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Failed to upload squad banner");
+    } finally {
+      setUploadingBanner(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }
+
+  async function onRemoveBanner() {
+    if (!squad) return;
+    if (!confirm("Remove squad banner and revert to default?")) return;
+
+    setErr(null);
+    setMsg(null);
+
+    try {
+      setUploadingBanner(true);
+      await removeSquadBanner(squad.id);
+      setMsg("Squad banner removed.");
+      await load();
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Failed to remove squad banner");
+    } finally {
+      setUploadingBanner(false);
+    }
+  }
+
   const alreadyAssignedIds = new Set(squad?.equipment.map((e) => e.equipmentId) ?? []);
   const addableEquipment = globalEquipment.filter((e) => !alreadyAssignedIds.has(e.id));
 
@@ -269,9 +328,7 @@ export default function SquadProfilePage() {
                   gap: 18,
                   padding: 18,
                   alignItems: "start",
-                  backgroundImage: `linear-gradient(rgba(0,0,0,0.34), rgba(0,0,0,0.52)), url(${getSquadTypeImage(
-                    squad.type
-                  )})`,
+                  backgroundImage: `linear-gradient(rgba(0,0,0,0.34), rgba(0,0,0,0.52)), url(${getSquadBannerImage()})`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                 }}
@@ -335,6 +392,47 @@ export default function SquadProfilePage() {
                   <div style={metaLineStyle}>
                     Success Rate: {squad.missionsServed > 0 ? `${squad.successRate}%` : "N/A"}
                   </div>
+
+                  {canManage && (
+                    <>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.webp"
+                        onChange={onUploadBanner}
+                        style={{ display: "none" }}
+                      />
+
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 10,
+                          flexWrap: "wrap",
+                          marginTop: 12,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          style={iconActionButtonStyle}
+                          disabled={uploadingBanner}
+                        >
+                          {uploadingBanner ? "Uploading..." : "Upload Banner"}
+                        </button>
+
+                        {squad.bannerImageUrl && (
+                          <button
+                            type="button"
+                            onClick={onRemoveBanner}
+                            style={iconActionButtonStyle}
+                            disabled={uploadingBanner}
+                          >
+                            Remove Banner
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 
 namespace OpsCommand.Api.Services.Squads
 {
@@ -20,5 +21,8 @@ namespace OpsCommand.Api.Services.Squads
         Task<bool> DeleteAsync(int id);
 
         Task<SquadProfileResponseDto?> GetProfileByIdAsync(int id);
+
+        Task<SquadResponseDto?> UploadBannerAsync(int id, IFormFile file);
+        Task<SquadResponseDto?> RemoveBannerAsync(int id);
     }
 }

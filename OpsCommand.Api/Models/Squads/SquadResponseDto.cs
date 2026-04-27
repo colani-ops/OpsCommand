@@ -14,6 +14,8 @@ namespace OpsCommand.Api.Models.Squads
         public string? CommanderId { get; set; } //UserId - connect to applicationUser
         public bool IsActive { get; set; } = true;
 
+        public string? BannerImageUrl { get; set; }
+
         //public bool IsDeployed { get; set; } = false;
 
         public DateTime CreatedAt { get; set; }

@@ -18,5 +18,7 @@ namespace OpsCommand.Api.Repositories.Squads
         Task UpdateAsync(Squad squad);
         Task DeleteAsync(Squad squad);
         Task<Squad?> GetActiveSquadByCommanderIdAsync(string commanderId, int? excludeSquadId = null);
+
+        Task<List<Squad>> GetAllActiveSquadsByCommanderIdAsync(string commanderId);
     }
 }

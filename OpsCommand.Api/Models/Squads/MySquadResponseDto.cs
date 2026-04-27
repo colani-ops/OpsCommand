@@ -14,6 +14,8 @@
 
         public double SuccessRate { get; set; }
 
+        public string? BannerImageUrl { get; set; }
+
         public List<SquadMemberDto> Members { get; set; } = new();
     }
 }
