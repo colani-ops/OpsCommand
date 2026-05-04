@@ -3,27 +3,42 @@ import { Navigate } from "react-router-dom";
 import { hasRole } from "../api/auth";
 import { getUsers, type UserDto } from "../api/users";
 import {
-  assignCommander,
   activateMission,
+  assignCommander,
   cancelMission,
   createMission,
   deleteMission,
   executeMission,
   getMissionReadiness,
   getMissions,
+  unassignCommander,
+  updateMission,
   type MissionDifficulty,
   type MissionDto,
   type MissionReadinessDto,
   type MissionTerrain,
-  unassignCommander,
-  updateMission,
 } from "../api/missions";
 import { useErrorHandler } from "../hooks/useErrorHandler";
 import ErrorBanner from "../components/ErrorBanner";
-import MissionStatusBadge from "../components/MissionStatusBadge";
 import MissionMetaBadge from "../components/MissionMetaBadge";
+import MissionStatusBadge from "../components/MissionStatusBadge";
 import IconButton from "../ui/IconButton";
 import LoadingScreen from "../components/LoadingScreen";
+import {
+  detailsCardStyle,
+  detailsLineStyle,
+  detailsTitleStyle,
+  formFieldStyle,
+  metaLineStyle,
+  pageContentScrollStyle,
+  pageTitleStyleShared,
+  panelStyle,
+  searchInputStyle,
+  secondaryButtonStyle,
+  sectionPanelStyle,
+  sortButtonStyle,
+  toolbarButtonStyle,
+} from "../styles/uiStyles";
 
 type CreateForm = {
   name: string;
@@ -59,7 +74,9 @@ export default function MissionsPage() {
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<"name" | "terrain" | "difficulty" | "status">("name");
+  const [sortBy, setSortBy] = useState<
+    "name" | "terrain" | "difficulty" | "status"
+  >("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const [showCreate, setShowCreate] = useState(false);
@@ -74,11 +91,15 @@ export default function MissionsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
 
-  const [expandedMissionId, setExpandedMissionId] = useState<number | null>(null);
+  const [expandedMissionId, setExpandedMissionId] = useState<number | null>(
+    null,
+  );
   const [readinessByMissionId, setReadinessByMissionId] = useState<
     Record<number, MissionReadinessDto | undefined>
   >({});
-  const [loadingReadinessId, setLoadingReadinessId] = useState<number | null>(null);
+  const [loadingReadinessId, setLoadingReadinessId] = useState<number | null>(
+    null,
+  );
 
   const { error, showError, clearError } = useErrorHandler();
 
@@ -125,10 +146,13 @@ export default function MissionsPage() {
     return map;
   }, [commanders]);
 
-  function commanderDisplay(commanderId: string | null) {
-    if (!commanderId) return "—";
-    return commanderNameById.get(commanderId) ?? commanderId;
-  }
+  const commanderDisplay = useCallback(
+    (commanderId: string | null) => {
+      if (!commanderId) return "—";
+      return commanderNameById.get(commanderId) ?? commanderId;
+    },
+    [commanderNameById],
+  );
 
   function formatMissionStatus(status: string) {
     return status === "Active" ? "In Progress" : status;
@@ -154,12 +178,17 @@ export default function MissionsPage() {
     if (status === "Planned") return "rgba(70,110,160,0.18)";
     if (status === "Active") return "rgba(185,145,45,0.16)";
     if (status === "Cancelled") return "rgba(120,70,70,0.20)";
-    if (status === "Completed" && wasSuccessful === true) return "rgba(60,135,70,0.16)";
-    if (status === "Completed" && wasSuccessful === false) return "rgba(150,65,65,0.18)";
+    if (status === "Completed" && wasSuccessful === true)
+      return "rgba(60,135,70,0.16)";
+    if (status === "Completed" && wasSuccessful === false)
+      return "rgba(150,65,65,0.18)";
     return "rgba(0,0,0,0.26)";
   }
 
-  function formatRemainingTime(activatedAt: string | null, durationMinutes: number | null) {
+  function formatRemainingTime(
+    activatedAt: string | null,
+    durationMinutes: number | null,
+  ) {
     if (!activatedAt || durationMinutes == null) return "—";
 
     const activated = new Date(activatedAt).getTime();
@@ -175,7 +204,10 @@ export default function MissionsPage() {
     return `${minutes}m ${seconds}s remaining`;
   }
 
-  function isMissionReadyForExecution(activatedAt: string | null, durationMinutes: number | null) {
+  function isMissionReadyForExecution(
+    activatedAt: string | null,
+    durationMinutes: number | null,
+  ) {
     if (!activatedAt || durationMinutes == null) return false;
 
     const activated = new Date(activatedAt).getTime();
@@ -246,8 +278,7 @@ export default function MissionsPage() {
     const filtered = items.filter((m) => {
       if (!q) return true;
 
-      const commander =
-        (m.commanderId ? commanderNameById.get(m.commanderId) ?? m.commanderId : "—").toLowerCase();
+      const commander = commanderDisplay(m.commanderId).toLowerCase();
 
       return (
         m.name.toLowerCase().includes(q) ||
@@ -273,7 +304,9 @@ export default function MissionsPage() {
           result = (a.difficulty ?? "").localeCompare(b.difficulty ?? "");
           break;
         case "status":
-          result = formatMissionStatus(a.status).localeCompare(formatMissionStatus(b.status));
+          result = formatMissionStatus(a.status).localeCompare(
+            formatMissionStatus(b.status),
+          );
           break;
       }
 
@@ -281,7 +314,7 @@ export default function MissionsPage() {
     });
 
     return sorted;
-  }, [items, search, sortBy, sortDir, commanderNameById]);
+  }, [items, search, sortBy, sortDir, commanderDisplay]);
 
   function startEdit(m: MissionDto) {
     setEditingId(m.id);
@@ -305,7 +338,9 @@ export default function MissionsPage() {
 
     const payload = {
       name: createForm.name.trim(),
-      commanderId: createForm.commanderId.trim() ? createForm.commanderId.trim() : null,
+      commanderId: createForm.commanderId.trim()
+        ? createForm.commanderId.trim()
+        : null,
       notes: createForm.notes.trim() ? createForm.notes.trim() : null,
       terrain: createForm.terrain,
       difficulty: createForm.difficulty,
@@ -346,7 +381,9 @@ export default function MissionsPage() {
         currentMission.status === "Planned" ||
         currentMission.status === "Cancelled";
 
-      const desiredCommander = editForm.commanderId.trim() ? editForm.commanderId.trim() : null;
+      const desiredCommander = editForm.commanderId.trim()
+        ? editForm.commanderId.trim()
+        : null;
       const currentCommander = currentMission.commanderId ?? null;
 
       if (canChangeCommander && desiredCommander !== currentCommander) {
@@ -475,12 +512,10 @@ export default function MissionsPage() {
 
       <div
         style={{
+          ...panelStyle,
           width: "100%",
-          border: "2px solid #c9a56a",
-          borderRadius: 14,
-          background: "rgba(0, 0, 0, 0.78)",
-          padding: 28,
           boxSizing: "border-box",
+          padding: 28,
         }}
       >
         <div
@@ -492,37 +527,23 @@ export default function MissionsPage() {
             marginBottom: 18,
           }}
         >
-          <h2
-            style={{
-              margin: 0,
-              color: "#f3efe6",
-              fontFamily: "monospace",
-              fontSize: 28,
-            }}
-          >
-            Missions
-          </h2>
+          <h2 style={pageTitleStyleShared}>Missions</h2>
 
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search..."
-            style={{
-              height: 44,
-              borderRadius: 10,
-              border: "1px solid #9d8560",
-              background: "rgba(201,165,106,0.22)",
-              color: "#f3efe6",
-              padding: "0 14px",
-              fontFamily: "monospace",
-              fontSize: 16,
-            }}
+            style={searchInputStyle}
           />
 
           {canManage && (
             <IconButton
               iconSrc="/icons/add.png"
-              alt={showCreate ? "Close create mission form" : "Open create mission form"}
+              alt={
+                showCreate
+                  ? "Close create mission form"
+                  : "Open create mission form"
+              }
               title={showCreate ? "Close create mission form" : "New mission"}
               variant="transparent"
               onClick={() => setShowCreate((v) => !v)}
@@ -549,14 +570,23 @@ export default function MissionsPage() {
           <button onClick={() => toggleSort("name")} style={sortButtonStyle}>
             Name {sortBy === "name" ? (sortDir === "asc" ? "▲" : "▼") : ""}
           </button>
-          <button onClick={() => toggleSort("terrain")} style={sortButtonStyle}>
-            Terrain {sortBy === "terrain" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+          <button
+            onClick={() => toggleSort("terrain")}
+            style={sortButtonStyle}
+          >
+            Terrain{" "}
+            {sortBy === "terrain" ? (sortDir === "asc" ? "▲" : "▼") : ""}
           </button>
-          <button onClick={() => toggleSort("difficulty")} style={sortButtonStyle}>
-            Difficulty {sortBy === "difficulty" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+          <button
+            onClick={() => toggleSort("difficulty")}
+            style={sortButtonStyle}
+          >
+            Difficulty{" "}
+            {sortBy === "difficulty" ? (sortDir === "asc" ? "▲" : "▼") : ""}
           </button>
           <button onClick={() => toggleSort("status")} style={sortButtonStyle}>
-            Status {sortBy === "status" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+            Status{" "}
+            {sortBy === "status" ? (sortDir === "asc" ? "▲" : "▼") : ""}
           </button>
         </div>
 
@@ -565,23 +595,23 @@ export default function MissionsPage() {
         {canManage && showCreate && (
           <form
             onSubmit={submitCreate}
-            style={{
-              marginBottom: 18,
-              border: "1px solid #9d8560",
-              borderRadius: 12,
-              padding: 14,
-              display: "grid",
-              gap: 10,
-              background: "rgba(0,0,0,0.45)",
-            }}
+            style={{ ...sectionPanelStyle, marginBottom: 18 }}
           >
-            <div style={{ fontWeight: 700, color: "#f3efe6", fontFamily: "monospace" }}>
+            <div
+              style={{
+                fontWeight: 700,
+                color: "#f3efe6",
+                fontFamily: "monospace",
+              }}
+            >
               Create Mission
             </div>
 
             <input
               value={createForm.name}
-              onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+              onChange={(e) =>
+                setCreateForm((f) => ({ ...f, name: e.target.value }))
+              }
               placeholder="Name"
               required
               style={formFieldStyle}
@@ -589,7 +619,9 @@ export default function MissionsPage() {
 
             <select
               value={createForm.commanderId}
-              onChange={(e) => setCreateForm((f) => ({ ...f, commanderId: e.target.value }))}
+              onChange={(e) =>
+                setCreateForm((f) => ({ ...f, commanderId: e.target.value }))
+              }
               style={formFieldStyle}
             >
               <option value="">— Commander (optional) —</option>
@@ -602,7 +634,12 @@ export default function MissionsPage() {
 
             <select
               value={createForm.terrain}
-              onChange={(e) => setCreateForm((f) => ({ ...f, terrain: e.target.value as MissionTerrain }))}
+              onChange={(e) =>
+                setCreateForm((f) => ({
+                  ...f,
+                  terrain: e.target.value as MissionTerrain,
+                }))
+              }
               style={formFieldStyle}
             >
               {TERRAINS.map((t) => (
@@ -615,7 +652,10 @@ export default function MissionsPage() {
             <select
               value={createForm.difficulty}
               onChange={(e) =>
-                setCreateForm((f) => ({ ...f, difficulty: e.target.value as MissionDifficulty }))
+                setCreateForm((f) => ({
+                  ...f,
+                  difficulty: e.target.value as MissionDifficulty,
+                }))
               }
               style={formFieldStyle}
             >
@@ -628,7 +668,9 @@ export default function MissionsPage() {
 
             <textarea
               value={createForm.notes}
-              onChange={(e) => setCreateForm((f) => ({ ...f, notes: e.target.value }))}
+              onChange={(e) =>
+                setCreateForm((f) => ({ ...f, notes: e.target.value }))
+              }
               placeholder="Notes (optional)"
               rows={3}
               style={formFieldStyle}
@@ -648,19 +690,14 @@ export default function MissionsPage() {
         )}
 
         {!loading && (
-          <div
-            style={{
-              maxHeight: "68vh",
-              overflowY: "auto",
-              display: "grid",
-              gap: 16,
-              paddingRight: 6,
-            }}
-          >
+          <div style={pageContentScrollStyle}>
             {visibleItems.map((m) => {
               const isEditing = editingId === m.id;
               const readiness = readinessByMissionId[m.id];
-              const isReadyForExecution = isMissionReadyForExecution(m.activatedAt, m.durationMinutes);
+              const isReadyForExecution = isMissionReadyForExecution(
+                m.activatedAt,
+                m.durationMinutes,
+              );
               const isExpanded = expandedMissionId === m.id;
 
               const isCompleted = m.status === "Completed";
@@ -681,9 +718,9 @@ export default function MissionsPage() {
                     overflow: "hidden",
                     backgroundImage: `linear-gradient(${getMissionOverlay(
                       m.status,
-                      m.wasSuccessful
+                      m.wasSuccessful,
                     )}, ${getMissionOverlay(m.status, m.wasSuccessful)}), url(${getMissionTerrainBanner(
-                      m.terrain
+                      m.terrain,
                     )})`,
                     backgroundSize: "cover",
                     backgroundPosition: "center",
@@ -693,7 +730,9 @@ export default function MissionsPage() {
                 >
                   <div
                     style={{
-                      background: isExpanded ? "rgba(0,0,0,0.18)" : "rgba(0,0,0,0.08)",
+                      background: isExpanded
+                        ? "rgba(0,0,0,0.18)"
+                        : "rgba(0,0,0,0.08)",
                       backdropFilter: "blur(1.2px)",
                       transition: "all 220ms ease",
                     }}
@@ -743,13 +782,23 @@ export default function MissionsPage() {
 
                                 <MissionStatusBadge status={m.status} />
                                 {renderOutcomeBadge(m)}
-                                <MissionMetaBadge>{m.terrain ?? "No terrain"}</MissionMetaBadge>
-                                <MissionMetaBadge>{m.difficulty ?? "No difficulty"}</MissionMetaBadge>
+                                <MissionMetaBadge>
+                                  {m.terrain ?? "No terrain"}
+                                </MissionMetaBadge>
+                                <MissionMetaBadge>
+                                  {m.difficulty ?? "No difficulty"}
+                                </MissionMetaBadge>
                               </div>
 
-                              <div style={metaLineStyle}>Commander: {commanderDisplay(m.commanderId)}</div>
-                              <div style={metaLineStyle}>Squad ID: {m.squadId ?? "—"}</div>
-                              <div style={metaLineStyle}>Summary: {getMissionSummaryText(m)}</div>
+                              <div style={metaLineStyle}>
+                                Commander: {commanderDisplay(m.commanderId)}
+                              </div>
+                              <div style={metaLineStyle}>
+                                Squad ID: {m.squadId ?? "—"}
+                              </div>
+                              <div style={metaLineStyle}>
+                                Summary: {getMissionSummaryText(m)}
+                              </div>
                             </div>
                           </div>
 
@@ -765,7 +814,9 @@ export default function MissionsPage() {
                             <IconButton
                               iconSrc="/icons/details.png"
                               alt={isExpanded ? "Hide details" : "Show details"}
-                              title={isExpanded ? "Hide details" : "Show details"}
+                              title={
+                                isExpanded ? "Hide details" : "Show details"
+                              }
                               variant="secondary"
                               onClick={() => toggleDetails(m.id)}
                             />
@@ -811,35 +862,67 @@ export default function MissionsPage() {
                               }}
                             >
                               <div style={detailsCardStyle}>
-                                <div style={detailsTitleStyle}>Mission Overview</div>
-                                <div style={detailsLineStyle}>
-                                  Created At: {new Date(m.createdAt).toLocaleString()}
+                                <div style={detailsTitleStyle}>
+                                  Mission Overview
                                 </div>
                                 <div style={detailsLineStyle}>
-                                  Activated At: {m.activatedAt ? new Date(m.activatedAt).toLocaleString() : "—"}
+                                  Created At:{" "}
+                                  {new Date(m.createdAt).toLocaleString()}
                                 </div>
                                 <div style={detailsLineStyle}>
-                                  Duration: {m.durationMinutes != null ? `${m.durationMinutes} min` : "—"}
+                                  Activated At:{" "}
+                                  {m.activatedAt
+                                    ? new Date(m.activatedAt).toLocaleString()
+                                    : "—"}
                                 </div>
                                 <div style={detailsLineStyle}>
-                                  Executed At: {m.executedAt ? new Date(m.executedAt).toLocaleString() : "—"}
+                                  Duration:{" "}
+                                  {m.durationMinutes != null
+                                    ? `${m.durationMinutes} min`
+                                    : "—"}
                                 </div>
-                                <div style={detailsLineStyle}>Commander: {commanderDisplay(m.commanderId)}</div>
-                                <div style={detailsLineStyle}>Squad ID: {m.squadId ?? "—"}</div>
+                                <div style={detailsLineStyle}>
+                                  Executed At:{" "}
+                                  {m.executedAt
+                                    ? new Date(m.executedAt).toLocaleString()
+                                    : "—"}
+                                </div>
+                                <div style={detailsLineStyle}>
+                                  Commander: {commanderDisplay(m.commanderId)}
+                                </div>
+                                <div style={detailsLineStyle}>
+                                  Squad ID: {m.squadId ?? "—"}
+                                </div>
                               </div>
 
                               <div style={detailsCardStyle}>
-                                <div style={detailsTitleStyle}>Outcome / Status</div>
-                                <div style={detailsLineStyle}>Status: {formatMissionStatus(m.status)}</div>
-                                <div style={detailsLineStyle}>
-                                  Success Snapshot: {m.successChanceSnapshot != null ? `${m.successChanceSnapshot}%` : "—"}
+                                <div style={detailsTitleStyle}>
+                                  Outcome / Status
                                 </div>
                                 <div style={detailsLineStyle}>
-                                  Result: {m.wasSuccessful == null ? "—" : m.wasSuccessful ? "Success" : "Failure"}
+                                  Status: {formatMissionStatus(m.status)}
+                                </div>
+                                <div style={detailsLineStyle}>
+                                  Success Snapshot:{" "}
+                                  {m.successChanceSnapshot != null
+                                    ? `${m.successChanceSnapshot}%`
+                                    : "—"}
+                                </div>
+                                <div style={detailsLineStyle}>
+                                  Result:{" "}
+                                  {m.wasSuccessful == null
+                                    ? "—"
+                                    : m.wasSuccessful
+                                      ? "Success"
+                                      : "Failure"}
                                 </div>
                                 {m.status === "Active" && (
                                   <div style={detailsLineStyle}>
-                                    Status Window: {formatRemainingTime(m.activatedAt, m.durationMinutes)}
+                                    Status Window:{" "}
+                                    {formatRemainingTime(
+                                      m.activatedAt,
+                                      m.durationMinutes,
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -847,44 +930,64 @@ export default function MissionsPage() {
 
                             {m.status === "Planned" && (
                               <div style={detailsCardStyle}>
-                                <div style={detailsTitleStyle}>Mission Readiness</div>
+                                <div style={detailsTitleStyle}>
+                                  Mission Readiness
+                                </div>
 
                                 {loadingReadinessId === m.id && (
-                                  <div style={detailsLineStyle}>Loading readiness...</div>
+                                  <div style={detailsLineStyle}>
+                                    Loading readiness...
+                                  </div>
                                 )}
 
                                 {!loadingReadinessId && readiness && (
                                   <>
                                     <div style={detailsLineStyle}>
-                                      Projected Success: {readiness.projectedSuccessChance}%
+                                      Projected Success:{" "}
+                                      {readiness.projectedSuccessChance}%
                                     </div>
                                     <div style={detailsLineStyle}>
-                                      Readiness Label: {readiness.readinessLabel}
+                                      Readiness Label:{" "}
+                                      {readiness.readinessLabel}
                                     </div>
-                                    <div style={detailsLineStyle}>Base Score: {readiness.baseScore}</div>
                                     <div style={detailsLineStyle}>
-                                      Difficulty Modifier: {readiness.difficultyModifier}
+                                      Base Score: {readiness.baseScore}
                                     </div>
-                                    <div style={detailsLineStyle}>Equipment Score: {readiness.equipmentScore}</div>
-                                    <div style={detailsLineStyle}>Final Score: {readiness.finalScore}</div>
+                                    <div style={detailsLineStyle}>
+                                      Difficulty Modifier:{" "}
+                                      {readiness.difficultyModifier}
+                                    </div>
+                                    <div style={detailsLineStyle}>
+                                      Equipment Score:{" "}
+                                      {readiness.equipmentScore}
+                                    </div>
+                                    <div style={detailsLineStyle}>
+                                      Final Score: {readiness.finalScore}
+                                    </div>
                                     <div style={detailsLineStyle}>
                                       Recommended Focus:{" "}
                                       {readiness.recommendedCategories.length > 0
-                                        ? readiness.recommendedCategories.join(", ")
+                                        ? readiness.recommendedCategories.join(
+                                            ", ",
+                                          )
                                         : "—"}
                                     </div>
                                   </>
                                 )}
 
                                 {!loadingReadinessId && !readiness && (
-                                  <div style={detailsLineStyle}>No readiness data available.</div>
+                                  <div style={detailsLineStyle}>
+                                    No readiness data available.
+                                  </div>
                                 )}
                               </div>
                             )}
 
                             {m.notes && (
                               <div style={detailsCardStyle}>
-                                <div style={detailsTitleStyle}>Mission Notes</div>
+                                <div style={detailsTitleStyle}>
+                                  Mission Notes
+                                </div>
                                 <div
                                   style={{
                                     ...detailsLineStyle,
@@ -897,30 +1000,56 @@ export default function MissionsPage() {
                             )}
 
                             {canManage && (
-                              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: 10,
+                                  flexWrap: "wrap",
+                                }}
+                              >
                                 {m.status === "Planned" && (
-                                  <button onClick={() => onActivate(m.id)} style={toolbarButtonStyle}>
+                                  <button
+                                    type="button"
+                                    onClick={() => onActivate(m.id)}
+                                    style={toolbarButtonStyle}
+                                  >
                                     Activate
                                   </button>
                                 )}
 
-                                {m.status === "Active" && !isReadyForExecution && (
-                                  <span style={{ ...detailsLineStyle, alignSelf: "center" }}>
-                                    Execution available when timer expires.
-                                  </span>
-                                )}
+                                {m.status === "Active" &&
+                                  !isReadyForExecution && (
+                                    <span
+                                      style={{
+                                        ...detailsLineStyle,
+                                        alignSelf: "center",
+                                      }}
+                                    >
+                                      Execution available when timer expires.
+                                    </span>
+                                  )}
 
-                                {m.status === "Active" && isReadyForExecution && (
-                                  <button onClick={() => onExecute(m.id)} style={toolbarButtonStyle}>
-                                    Execute
-                                  </button>
-                                )}
+                                {m.status === "Active" &&
+                                  isReadyForExecution && (
+                                    <button
+                                      type="button"
+                                      onClick={() => onExecute(m.id)}
+                                      style={toolbarButtonStyle}
+                                    >
+                                      Execute
+                                    </button>
+                                  )}
 
-                                {m.status !== "Completed" && m.status !== "Cancelled" && (
-                                  <button onClick={() => onCancel(m.id)} style={secondaryButtonStyle}>
-                                    Cancel
-                                  </button>
-                                )}
+                                {m.status !== "Completed" &&
+                                  m.status !== "Cancelled" && (
+                                    <button
+                                      type="button"
+                                      onClick={() => onCancel(m.id)}
+                                      style={secondaryButtonStyle}
+                                    >
+                                      Cancel
+                                    </button>
+                                  )}
                               </div>
                             )}
                           </div>
@@ -953,7 +1082,9 @@ export default function MissionsPage() {
                             <input
                               value={editForm?.name ?? ""}
                               onChange={(e) =>
-                                setEditForm((f) => (f ? { ...f, name: e.target.value } : f))
+                                setEditForm((f) =>
+                                  f ? { ...f, name: e.target.value } : f,
+                                )
                               }
                               placeholder="Name"
                               style={formFieldStyle}
@@ -963,7 +1094,11 @@ export default function MissionsPage() {
                             <select
                               value={editForm?.commanderId ?? ""}
                               onChange={(e) =>
-                                setEditForm((f) => (f ? { ...f, commanderId: e.target.value } : f))
+                                setEditForm((f) =>
+                                  f
+                                    ? { ...f, commanderId: e.target.value }
+                                    : f,
+                                )
                               }
                               style={formFieldStyle}
                               disabled={disableCoreFields}
@@ -979,7 +1114,9 @@ export default function MissionsPage() {
                             <textarea
                               value={editForm?.notes ?? ""}
                               onChange={(e) =>
-                                setEditForm((f) => (f ? { ...f, notes: e.target.value } : f))
+                                setEditForm((f) =>
+                                  f ? { ...f, notes: e.target.value } : f,
+                                )
                               }
                               placeholder="Notes"
                               rows={4}
@@ -991,7 +1128,13 @@ export default function MissionsPage() {
                               value={editForm?.terrain ?? "Urban"}
                               onChange={(e) =>
                                 setEditForm((f) =>
-                                  f ? { ...f, terrain: e.target.value as MissionTerrain } : f
+                                  f
+                                    ? {
+                                        ...f,
+                                        terrain: e.target
+                                          .value as MissionTerrain,
+                                      }
+                                    : f,
                                 )
                               }
                               style={formFieldStyle}
@@ -1008,7 +1151,13 @@ export default function MissionsPage() {
                               value={editForm?.difficulty ?? "Medium"}
                               onChange={(e) =>
                                 setEditForm((f) =>
-                                  f ? { ...f, difficulty: e.target.value as MissionDifficulty } : f
+                                  f
+                                    ? {
+                                        ...f,
+                                        difficulty: e.target
+                                          .value as MissionDifficulty,
+                                      }
+                                    : f,
                                 )
                               }
                               style={formFieldStyle}
@@ -1023,20 +1172,27 @@ export default function MissionsPage() {
                           </div>
                         </div>
 
-                        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-<IconButton
-  label="Save"
-  title="Save"
-  variant="secondary"
-  onClick={submitEdit}
-/>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 10,
+                            alignItems: "center",
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <IconButton
+                            label="Save"
+                            title="Save"
+                            variant="secondary"
+                            onClick={submitEdit}
+                          />
 
-<IconButton
-  label="Cancel"
-  title="Cancel"
-  variant="secondary"
-  onClick={cancelEdit}
-/>
+                          <IconButton
+                            label="Cancel"
+                            title="Cancel"
+                            variant="secondary"
+                            onClick={cancelEdit}
+                          />
                         </div>
                       </div>
                     )}
@@ -1056,76 +1212,3 @@ export default function MissionsPage() {
     </div>
   );
 }
-
-const toolbarButtonStyle: React.CSSProperties = {
-  height: 44,
-  padding: "0 16px",
-  borderRadius: 10,
-  border: "1px solid #c9a56a",
-  background: "#c9a56a",
-  color: "#1d1812",
-  fontFamily: "monospace",
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const secondaryButtonStyle: React.CSSProperties = {
-  height: 44,
-  padding: "0 16px",
-  borderRadius: 10,
-  border: "1px solid #9d8560",
-  background: "rgba(201,165,106,0.18)",
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const sortButtonStyle: React.CSSProperties = {
-  padding: "8px 14px",
-  borderRadius: 10,
-  border: "1px solid #9d8560",
-  background: "rgba(201,165,106,0.16)",
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const formFieldStyle: React.CSSProperties = {
-  padding: 10,
-  borderRadius: 8,
-  border: "1px solid #9d8560",
-  background: "rgba(0,0,0,0.55)",
-  color: "#f3efe6",
-  fontFamily: "monospace",
-};
-
-const metaLineStyle: React.CSSProperties = {
-  color: "#d7b176",
-  fontFamily: "monospace",
-  fontSize: 16,
-  marginBottom: 4,
-};
-
-const detailsCardStyle: React.CSSProperties = {
-  border: "1px solid rgba(201,165,106,0.35)",
-  borderRadius: 12,
-  padding: 14,
-  background: "rgba(20,20,20,0.55)",
-};
-
-const detailsTitleStyle: React.CSSProperties = {
-  color: "#efb85f",
-  fontFamily: "monospace",
-  fontWeight: 800,
-  fontSize: 18,
-  marginBottom: 10,
-};
-
-const detailsLineStyle: React.CSSProperties = {
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  fontSize: 14,
-  marginBottom: 6,
-};

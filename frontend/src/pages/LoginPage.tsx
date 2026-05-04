@@ -118,8 +118,8 @@ export default function LoginPage() {
               />
             </div>
 
-            <button type="submit" style={authPrimaryButtonStyle} disabled={submitting}>
-              {submitting ? "Logging in..." : "Login"}
+            <button type="submit" style={authPrimaryButtonStyle}>
+              Login
             </button>
 
             <Link to="/register" style={{ textDecoration: "none" }}>

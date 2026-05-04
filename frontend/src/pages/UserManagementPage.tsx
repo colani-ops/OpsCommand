@@ -16,6 +16,21 @@ import ErrorBanner from "../components/ErrorBanner";
 import { useErrorHandler } from "../hooks/useErrorHandler";
 import IconButton from "../ui/IconButton";
 import LoadingScreen from "../components/LoadingScreen";
+import {
+  emptyPanelStyle,
+  filterGridStyle,
+  formFieldStyle,
+  iconActionButtonStyle,
+  labelStyle,
+  metaLineStyle,
+  pageContentScrollStyle,
+  pageTitleStyleShared,
+  panelStyle,
+  searchInputStyle,
+  sectionTitleStyle,
+  successMessageStyle,
+  toolbarButtonStyle,
+} from "../styles/uiStyles";
 
 type EditState = Record<
   string,
@@ -188,7 +203,9 @@ export default function UserManagementPage() {
     try {
       await updateUserByAdmin(id, {
         role: state.role,
-        assignedSquadId: state.assignedSquadId.trim() ? Number(state.assignedSquadId) : null,
+        assignedSquadId: state.assignedSquadId.trim()
+          ? Number(state.assignedSquadId)
+          : null,
       });
       setMsg("User updated.");
       await load();
@@ -231,60 +248,17 @@ export default function UserManagementPage() {
     <div>
       <ErrorBanner error={error} />
 
-      {msg && (
-        <div
-          style={{
-            marginBottom: 12,
-            color: "lightgreen",
-            fontFamily: "monospace",
-          }}
-        >
-          {msg}
-        </div>
-      )}
+      {msg && <div style={successMessageStyle}>{msg}</div>}
 
-      <div
-        style={{
-          border: "2px solid #c9a56a",
-          borderRadius: 14,
-          background: "rgba(0, 0, 0, 0.78)",
-          padding: 24,
-        }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "220px 1fr 180px 160px auto",
-            gap: 16,
-            alignItems: "center",
-            marginBottom: 18,
-          }}
-        >
-          <h2
-            style={{
-              margin: 0,
-              color: "#f3efe6",
-              fontFamily: "monospace",
-              fontSize: 28,
-            }}
-          >
-            User Management
-          </h2>
+      <div style={panelStyle}>
+        <div style={filterGridStyle}>
+          <h2 style={pageTitleStyleShared}>User Management</h2>
 
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search name, email, role, squad..."
-            style={{
-              height: 44,
-              borderRadius: 10,
-              border: "1px solid #9d8560",
-              background: "rgba(201,165,106,0.22)",
-              color: "#f3efe6",
-              padding: "0 14px",
-              fontFamily: "monospace",
-              fontSize: 16,
-            }}
+            style={searchInputStyle}
           />
 
           <select
@@ -319,7 +293,7 @@ export default function UserManagementPage() {
           />
         </div>
 
-        {loading && <LoadingScreen label="Loading Initiate..." />}
+        {loading && <LoadingScreen label="Loading users..." />}
 
         {isSuperAdmin && (
           <section style={{ marginTop: 24, marginBottom: 24 }}>
@@ -421,7 +395,11 @@ export default function UserManagementPage() {
                             padding: 14,
                           }}
                         >
-                          <button onClick={() => onApprove(u.id)} style={toolbarButtonStyle}>
+                          <button
+                            type="button"
+                            onClick={() => onApprove(u.id)}
+                            style={toolbarButtonStyle}
+                          >
                             Approve
                           </button>
                         </div>
@@ -437,290 +415,236 @@ export default function UserManagementPage() {
         <section style={{ marginTop: 24 }}>
           <div style={sectionTitleStyle}>All Users</div>
 
-          <div style={{ display: "grid", gap: 12 }}>
-            {visibleUsers.map((u) => {
-              const state = editState[u.id] ?? {
-                role: u.roles?.[0] ?? "Recruit",
-                assignedSquadId: u.assignedSquadId != null ? String(u.assignedSquadId) : "",
-              };
+          {!loading && (
+            <div style={pageContentScrollStyle}>
+              {visibleUsers.map((u) => {
+                const state = editState[u.id] ?? {
+                  role: u.roles?.[0] ?? "Recruit",
+                  assignedSquadId:
+                    u.assignedSquadId != null ? String(u.assignedSquadId) : "",
+                };
 
-              const primaryRole = getPrimaryRole(u);
-              const userIsActive = u.isActive ?? true;
-              const profileImageUrl = resolveUserImageUrl(u.profileImageUrl);
+                const primaryRole = getPrimaryRole(u);
+                const userIsActive = u.isActive ?? true;
+                const profileImageUrl = resolveUserImageUrl(u.profileImageUrl);
 
-              return (
-                <div
-                  key={u.id}
-                  style={{
-                    border: "1px solid #9d8560",
-                    borderRadius: 14,
-                    overflow: "hidden",
-                    backgroundImage: `linear-gradient(${getRoleOverlay(
-                      primaryRole,
-                      userIsActive
-                    )}, rgba(0,0,0,0.76)), url(${getRoleBanner(primaryRole, userIsActive)})`,
-                    backgroundSize: "contain",
-                    backgroundPosition: "right center",
-                    backgroundRepeat: "no-repeat",
-                    backgroundColor: "rgba(0,0,0,0.58)",
-                    opacity: userIsActive ? 1 : 0.84,
-                  }}
-                >
+                return (
                   <div
+                    key={u.id}
                     style={{
-                      minHeight: 180,
-                      display: "grid",
-                      gridTemplateColumns: "110px 1fr auto",
-                      gap: 18,
-                      alignItems: "center",
-                      padding: 14,
+                      border: "1px solid #9d8560",
+                      borderRadius: 14,
+                      overflow: "hidden",
+                      backgroundImage: `linear-gradient(${getRoleOverlay(
+                        primaryRole,
+                        userIsActive,
+                      )}, rgba(0,0,0,0.76)), url(${getRoleBanner(primaryRole, userIsActive)})`,
+                      backgroundSize: "contain",
+                      backgroundPosition: "right center",
+                      backgroundRepeat: "no-repeat",
+                      backgroundColor: "rgba(0,0,0,0.58)",
+                      opacity: userIsActive ? 1 : 0.84,
                     }}
                   >
                     <div
                       style={{
-                        width: 96,
-                        height: 96,
-                        borderRadius: "50%",
-                        border: "2px solid rgba(255,255,255,0.18)",
-                        background: "rgba(220,220,220,0.92)",
+                        minHeight: 180,
                         display: "grid",
-                        placeItems: "center",
-                        fontSize: 36,
-                        color: "#666",
-                        overflow: "hidden",
-                      }}
-                    >
-                      {profileImageUrl ? (
-                        <img
-                          src={profileImageUrl}
-                          alt={u.userName ?? u.email}
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                          }}
-                        />
-                      ) : (
-                        "◉"
-                      )}
-                    </div>
-
-                    <div
-                      style={{
-                        maxWidth: 760,
-                        border: "1px solid rgba(255,255,255,0.16)",
-                        borderRadius: 12,
-                        padding: 16,
-                        background: "rgba(20,20,20,0.62)",
-                        backdropFilter: "blur(2px)",
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: 24,
-                          fontWeight: 800,
-                          color: "#efb85f",
-                          fontFamily: "monospace",
-                          marginBottom: 8,
-                        }}
-                      >
-                        <Link
-                          to={`/users/${u.id}`}
-                          style={{ color: "inherit", textDecoration: "none" }}
-                          title="Open user profile"
-                        >
-                          {u.userName ?? u.email}
-                        </Link>
-                      </div>
-
-                      <div style={metaLineStyle}>Email: {u.email}</div>
-                      <div style={metaLineStyle}>Current Role: {u.roles.join(", ")}</div>
-                      <div style={metaLineStyle}>
-                        Current Squad:{" "}
-                        {u.assignedSquadId != null
-                          ? squadNameById.get(u.assignedSquadId) ?? `#${u.assignedSquadId}`
-                          : "—"}
-                      </div>
-                      <div style={metaLineStyle}>
-                        Status: {userIsActive ? "Active" : "Disabled"}
-                      </div>
-
-                      {!userIsActive && (
-                        <div
-                          style={{
-                            color: "#d0d0d0",
-                            fontFamily: "monospace",
-                            marginTop: 8,
-                          }}
-                        >
-                          Disabled account
-                        </div>
-                      )}
-
-                      <div
-                        style={{
-                          display: "grid",
-                          gap: 10,
-                          maxWidth: 360,
-                          marginTop: 14,
-                        }}
-                      >
-                        <div style={{ display: "grid", gap: 6 }}>
-                          <label style={labelStyle}>Role</label>
-                          <select
-                            value={state.role}
-                            onChange={(e) =>
-                              setEditState((prev) => ({
-                                ...prev,
-                                [u.id]: { ...state, role: e.target.value },
-                              }))
-                            }
-                            style={formFieldStyle}
-                          >
-                            {ROLES.map((r) => (
-                              <option key={r} value={r}>
-                                {r}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div style={{ display: "grid", gap: 6 }}>
-                          <label style={labelStyle}>Assigned Squad</label>
-                          <select
-                            value={state.assignedSquadId}
-                            onChange={(e) =>
-                              setEditState((prev) => ({
-                                ...prev,
-                                [u.id]: { ...state, assignedSquadId: e.target.value },
-                              }))
-                            }
-                            style={formFieldStyle}
-                          >
-                            <option value="">— No squad —</option>
-                            {squads.map((s) => (
-                              <option key={s.id} value={String(s.id)}>
-                                {s.name} (#{s.id})
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 10,
+                        gridTemplateColumns: "110px 1fr auto",
+                        gap: 18,
                         alignItems: "center",
-                        flexWrap: "wrap",
                         padding: 14,
                       }}
                     >
-                      <IconButton
-                        iconSrc="/icons/save.png"
-                        alt="Save"
-                        title="Save"
-                        variant="secondary"
-                        onClick={() => onSave(u.id)}
-                      />
-
-                      {isSuperAdmin && (
-                        <>
-                          <IconButton
-                            iconSrc="/icons/delete.png"
-                            alt="Disable"
-                            title="Disable"
-                            variant="danger"
-                            onClick={() => onDisable(u.id)}
-                            style={iconActionButtonStyle}
+                      <div
+                        style={{
+                          width: 96,
+                          height: 96,
+                          borderRadius: "50%",
+                          border: "2px solid rgba(255,255,255,0.18)",
+                          background: "rgba(220,220,220,0.92)",
+                          display: "grid",
+                          placeItems: "center",
+                          fontSize: 36,
+                          color: "#666",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {profileImageUrl ? (
+                          <img
+                            src={profileImageUrl}
+                            alt={u.userName ?? u.email}
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
                           />
+                        ) : (
+                          "◉"
+                        )}
+                      </div>
 
-                          <IconButton
-                            iconSrc="/icons/refresh.png"
-                            alt="Restore"
-                            title="Restore"
-                            variant="danger"
-                            onClick={() => onRestore(u.id)}
-                            style={iconActionButtonStyle}
-                          />
-                        </>
-                      )}
+                      <div
+                        style={{
+                          maxWidth: 760,
+                          border: "1px solid rgba(255,255,255,0.16)",
+                          borderRadius: 12,
+                          padding: 16,
+                          background: "rgba(20,20,20,0.62)",
+                          backdropFilter: "blur(2px)",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 24,
+                            fontWeight: 800,
+                            color: "#efb85f",
+                            fontFamily: "monospace",
+                            marginBottom: 8,
+                          }}
+                        >
+                          <Link
+                            to={`/users/${u.id}`}
+                            style={{ color: "inherit", textDecoration: "none" }}
+                            title="Open user profile"
+                          >
+                            {u.userName ?? u.email}
+                          </Link>
+                        </div>
+
+                        <div style={metaLineStyle}>Email: {u.email}</div>
+                        <div style={metaLineStyle}>
+                          Current Role: {u.roles.join(", ")}
+                        </div>
+                        <div style={metaLineStyle}>
+                          Current Squad:{" "}
+                          {u.assignedSquadId != null
+                            ? squadNameById.get(u.assignedSquadId) ??
+                              `#${u.assignedSquadId}`
+                            : "—"}
+                        </div>
+                        <div style={metaLineStyle}>
+                          Status: {userIsActive ? "Active" : "Disabled"}
+                        </div>
+
+                        {!userIsActive && (
+                          <div
+                            style={{
+                              color: "#d0d0d0",
+                              fontFamily: "monospace",
+                              marginTop: 8,
+                            }}
+                          >
+                            Disabled account
+                          </div>
+                        )}
+
+                        <div
+                          style={{
+                            display: "grid",
+                            gap: 10,
+                            maxWidth: 360,
+                            marginTop: 14,
+                          }}
+                        >
+                          <div style={{ display: "grid", gap: 6 }}>
+                            <label style={labelStyle}>Role</label>
+                            <select
+                              value={state.role}
+                              onChange={(e) =>
+                                setEditState((prev) => ({
+                                  ...prev,
+                                  [u.id]: { ...state, role: e.target.value },
+                                }))
+                              }
+                              style={formFieldStyle}
+                            >
+                              {ROLES.map((r) => (
+                                <option key={r} value={r}>
+                                  {r}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div style={{ display: "grid", gap: 6 }}>
+                            <label style={labelStyle}>Assigned Squad</label>
+                            <select
+                              value={state.assignedSquadId}
+                              onChange={(e) =>
+                                setEditState((prev) => ({
+                                  ...prev,
+                                  [u.id]: {
+                                    ...state,
+                                    assignedSquadId: e.target.value,
+                                  },
+                                }))
+                              }
+                              style={formFieldStyle}
+                            >
+                              <option value="">— No squad —</option>
+                              {squads.map((s) => (
+                                <option key={s.id} value={String(s.id)}>
+                                  {s.name} (#{s.id})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 10,
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                          padding: 14,
+                        }}
+                      >
+                        <IconButton
+                          iconSrc="/icons/save.png"
+                          alt="Save"
+                          title="Save"
+                          variant="secondary"
+                          onClick={() => onSave(u.id)}
+                        />
+
+                        {isSuperAdmin && (
+                          <>
+                            <IconButton
+                              iconSrc="/icons/delete.png"
+                              alt="Disable"
+                              title="Disable"
+                              variant="danger"
+                              onClick={() => onDisable(u.id)}
+                              style={iconActionButtonStyle}
+                            />
+
+                            <IconButton
+                              iconSrc="/icons/refresh.png"
+                              alt="Restore"
+                              title="Restore"
+                              variant="danger"
+                              onClick={() => onRestore(u.id)}
+                              style={iconActionButtonStyle}
+                            />
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
 
-            {!loading && !error && visibleUsers.length === 0 && (
-              <div style={emptyPanelStyle}>No users found.</div>
-            )}
-          </div>
+              {!loading && !error && visibleUsers.length === 0 && (
+                <div style={emptyPanelStyle}>No users found.</div>
+              )}
+            </div>
+          )}
         </section>
       </div>
     </div>
   );
 }
-
-const toolbarButtonStyle: React.CSSProperties = {
-  height: 44,
-  padding: "0 16px",
-  borderRadius: 10,
-  border: "1px solid #c9a56a",
-  background: "#c9a56a",
-  color: "#1d1812",
-  fontFamily: "monospace",
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const iconActionButtonStyle: React.CSSProperties = {
-  padding: "8px 12px",
-  borderRadius: 10,
-  border: "1px solid #9d8560",
-  background: "rgba(201,165,106,0.12)",
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const formFieldStyle: React.CSSProperties = {
-  padding: 10,
-  borderRadius: 8,
-  border: "1px solid #9d8560",
-  background: "rgba(0,0,0,0.55)",
-  color: "#f3efe6",
-  fontFamily: "monospace",
-};
-
-const labelStyle: React.CSSProperties = {
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  fontWeight: 700,
-  fontSize: 14,
-};
-
-const metaLineStyle: React.CSSProperties = {
-  color: "#d7b176",
-  fontFamily: "monospace",
-  fontSize: 16,
-  marginBottom: 4,
-};
-
-const sectionTitleStyle: React.CSSProperties = {
-  fontSize: 22,
-  fontWeight: 800,
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  marginBottom: 14,
-};
-
-const emptyPanelStyle: React.CSSProperties = {
-  border: "1px solid #9d8560",
-  borderRadius: 12,
-  padding: 16,
-  background: "rgba(0,0,0,0.55)",
-  color: "#f3efe6",
-  fontFamily: "monospace",
-};

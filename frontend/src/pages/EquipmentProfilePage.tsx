@@ -16,8 +16,21 @@ import { useErrorHandler } from "../hooks/useErrorHandler";
 import IconButton from "../ui/IconButton";
 import { getEquipmentBanner } from "../utils/bannerFallbacks";
 import LoadingScreen from "../components/LoadingScreen";
+import {
+  detailsLineStyle,
+  detailsTitleStyle,
+  formFieldStyle,
+  metaLineStyle,
+  pageTitleStyleShared,
+  panelStyle,
+} from "../styles/uiStyles";
 
-const CATEGORIES: EquipmentCategory[] = ["Primary", "Secondary", "Melee", "Utility"];
+const CATEGORIES: EquipmentCategory[] = [
+  "Primary",
+  "Secondary",
+  "Melee",
+  "Utility",
+];
 
 type EditForm = {
   category: EquipmentCategory;
@@ -84,12 +97,17 @@ export default function EquipmentProfilePage() {
   }
 
   function getEquipmentDisplayImage(currentItem: EquipmentDto) {
-    return resolveEquipmentImageUrl(currentItem.imageUrl) ?? getEquipmentBanner(currentItem.category);
+    return (
+      resolveEquipmentImageUrl(currentItem.imageUrl) ??
+      getEquipmentBanner(currentItem.category)
+    );
   }
 
   function getAllocationPercent(currentItem: EquipmentDto) {
     if (currentItem.quantity <= 0) return 0;
-    return Math.round((currentItem.allocatedQuantity / currentItem.quantity) * 100);
+    return Math.round(
+      (currentItem.allocatedQuantity / currentItem.quantity) * 100,
+    );
   }
 
   function startEdit() {
@@ -118,7 +136,9 @@ export default function EquipmentProfilePage() {
       await updateEquipment(item.id, {
         category: editForm.category,
         quantity: Number(editForm.quantity) || 0,
-        description: editForm.description.trim() ? editForm.description.trim() : null,
+        description: editForm.description.trim()
+          ? editForm.description.trim()
+          : null,
         effectiveness: Number(editForm.effectiveness) || 50,
       });
 
@@ -155,7 +175,9 @@ export default function EquipmentProfilePage() {
       await uploadEquipmentImage(item.id, file);
       await load();
     } catch (e: unknown) {
-      showError(e instanceof Error ? e.message : "Failed to upload equipment image");
+      showError(
+        e instanceof Error ? e.message : "Failed to upload equipment image",
+      );
     } finally {
       setUploadingImage(false);
       if (fileInputRef.current) {
@@ -175,7 +197,9 @@ export default function EquipmentProfilePage() {
       await removeEquipmentImage(item.id);
       await load();
     } catch (e: unknown) {
-      showError(e instanceof Error ? e.message : "Failed to remove equipment image");
+      showError(
+        e instanceof Error ? e.message : "Failed to remove equipment image",
+      );
     } finally {
       setUploadingImage(false);
     }
@@ -189,22 +213,8 @@ export default function EquipmentProfilePage() {
     <div>
       <ErrorBanner error={error} />
 
-      <div
-        style={{
-          border: "2px solid #c9a56a",
-          borderRadius: 14,
-          background: "rgba(0, 0, 0, 0.78)",
-          padding: 24,
-        }}
-      >
-        <h2
-          style={{
-            margin: "0 0 24px 0",
-            color: "#f3efe6",
-            fontFamily: "monospace",
-            fontSize: 28,
-          }}
-        >
+      <div style={panelStyle}>
+        <h2 style={{ ...pageTitleStyleShared, margin: "0 0 24px 0" }}>
           Equipment Profile
         </h2>
 
@@ -243,7 +253,7 @@ export default function EquipmentProfilePage() {
                   display: "grid",
                   gridTemplateRows: "auto 1fr",
                   backgroundImage: `linear-gradient(${getEquipmentOverlay(
-                    item.category
+                    item.category,
                   )}, rgba(0,0,0,0.78)), url(${getEquipmentDisplayImage(item)})`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
@@ -345,8 +355,12 @@ export default function EquipmentProfilePage() {
                       {item.name}
                     </div>
 
-                    <div style={metaLineStyle}>Category: {item.category ?? "—"}</div>
-                    <div style={metaLineStyle}>Total Stock: {item.quantity}</div>
+                    <div style={metaLineStyle}>
+                      Category: {item.category ?? "—"}
+                    </div>
+                    <div style={metaLineStyle}>
+                      Total Stock: {item.quantity}
+                    </div>
                     <div style={metaLineStyle}>
                       Available Stock: {item.availableQuantity}
                     </div>
@@ -407,7 +421,7 @@ export default function EquipmentProfilePage() {
                   alignItems: "start",
                   padding: 18,
                   backgroundImage: `linear-gradient(${getEquipmentOverlay(
-                    item.category
+                    item.category,
                   )}, rgba(0,0,0,0.74)), url(${getEquipmentDisplayImage(item)})`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
@@ -444,7 +458,8 @@ export default function EquipmentProfilePage() {
                       marginBottom: 16,
                     }}
                   >
-                    Name is currently fixed here to stay aligned with your existing equipment flow.
+                    Name is currently fixed here to stay aligned with your
+                    existing equipment flow.
                   </div>
 
                   <div style={{ display: "grid", gap: 12 }}>
@@ -452,7 +467,12 @@ export default function EquipmentProfilePage() {
                       value={editForm?.category ?? "Primary"}
                       onChange={(e) =>
                         setEditForm((f) =>
-                          f ? { ...f, category: e.target.value as EquipmentCategory } : f
+                          f
+                            ? {
+                                ...f,
+                                category: e.target.value as EquipmentCategory,
+                              }
+                            : f,
                         )
                       }
                       style={formFieldStyle}
@@ -470,7 +490,7 @@ export default function EquipmentProfilePage() {
                       value={editForm?.quantity ?? 0}
                       onChange={(e) =>
                         setEditForm((f) =>
-                          f ? { ...f, quantity: Number(e.target.value) } : f
+                          f ? { ...f, quantity: Number(e.target.value) } : f,
                         )
                       }
                       style={formFieldStyle}
@@ -484,7 +504,9 @@ export default function EquipmentProfilePage() {
                       value={editForm?.effectiveness ?? 50}
                       onChange={(e) =>
                         setEditForm((f) =>
-                          f ? { ...f, effectiveness: Number(e.target.value) } : f
+                          f
+                            ? { ...f, effectiveness: Number(e.target.value) }
+                            : f,
                         )
                       }
                       style={formFieldStyle}
@@ -496,7 +518,7 @@ export default function EquipmentProfilePage() {
                       value={editForm?.description ?? ""}
                       onChange={(e) =>
                         setEditForm((f) =>
-                          f ? { ...f, description: e.target.value } : f
+                          f ? { ...f, description: e.target.value } : f,
                         )
                       }
                       style={formFieldStyle}
@@ -535,34 +557,3 @@ export default function EquipmentProfilePage() {
     </div>
   );
 }
-
-const metaLineStyle: React.CSSProperties = {
-  color: "#d7b176",
-  fontFamily: "monospace",
-  fontSize: 16,
-  marginBottom: 6,
-};
-
-const detailsTitleStyle: React.CSSProperties = {
-  color: "#efb85f",
-  fontFamily: "monospace",
-  fontWeight: 800,
-  fontSize: 18,
-  marginBottom: 10,
-};
-
-const detailsLineStyle: React.CSSProperties = {
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  fontSize: 14,
-  marginBottom: 6,
-};
-
-const formFieldStyle: React.CSSProperties = {
-  padding: 10,
-  borderRadius: 8,
-  border: "1px solid #9d8560",
-  background: "rgba(0,0,0,0.55)",
-  color: "#f3efe6",
-  fontFamily: "monospace",
-};

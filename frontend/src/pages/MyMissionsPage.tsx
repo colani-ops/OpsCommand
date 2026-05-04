@@ -7,8 +7,25 @@ import ErrorBanner from "../components/ErrorBanner";
 import MissionStatusBadge from "../components/MissionStatusBadge";
 import MissionMetaBadge from "../components/MissionMetaBadge";
 import LoadingScreen from "../components/LoadingScreen";
+import {
+  detailsCardStyle,
+  detailsLineStyle,
+  detailsTitleStyle,
+  metaLineStyle,
+  pageContentScrollStyle,
+  pageTitleStyleShared,
+  panelStyle,
+  searchInputStyle,
+  sortButtonStyle,
+  statusPanelStyle,
+  statusPanelTitleStyle,
+  toolbarButtonStyle,
+} from "../styles/uiStyles";
 
-function formatRemainingTime(activatedAt: string | null, durationMinutes: number | null) {
+function formatRemainingTime(
+  activatedAt: string | null,
+  durationMinutes: number | null,
+) {
   if (!activatedAt || durationMinutes == null) return "—";
 
   const activated = new Date(activatedAt).getTime();
@@ -24,7 +41,10 @@ function formatRemainingTime(activatedAt: string | null, durationMinutes: number
   return `${minutes}m ${seconds}s remaining`;
 }
 
-function isMissionReadyForExecution(activatedAt: string | null, durationMinutes: number | null) {
+function isMissionReadyForExecution(
+  activatedAt: string | null,
+  durationMinutes: number | null,
+) {
   if (!activatedAt || durationMinutes == null) return false;
 
   const activated = new Date(activatedAt).getTime();
@@ -57,8 +77,12 @@ function getMissionOverlay(status: string, wasSuccessful: boolean | null) {
   if (status === "Planned") return "rgba(70,110,160,0.18)";
   if (status === "Active") return "rgba(185,145,45,0.16)";
   if (status === "Cancelled") return "rgba(120,70,70,0.20)";
-  if (status === "Completed" && wasSuccessful === true) return "rgba(60,135,70,0.16)";
-  if (status === "Completed" && wasSuccessful === false) return "rgba(150,65,65,0.18)";
+  if (status === "Completed" && wasSuccessful === true) {
+    return "rgba(60,135,70,0.16)";
+  }
+  if (status === "Completed" && wasSuccessful === false) {
+    return "rgba(150,65,65,0.18)";
+  }
   return "rgba(0,0,0,0.26)";
 }
 
@@ -229,7 +253,9 @@ export default function MyMissionsPage() {
           result = a.name.localeCompare(b.name);
           break;
         case "status":
-          result = formatMissionStatus(a.status).localeCompare(formatMissionStatus(b.status));
+          result = formatMissionStatus(a.status).localeCompare(
+            formatMissionStatus(b.status),
+          );
           break;
         case "difficulty":
           result = (a.difficulty ?? "").localeCompare(b.difficulty ?? "");
@@ -268,12 +294,10 @@ export default function MyMissionsPage() {
 
       <div
         style={{
+          ...panelStyle,
           width: "100%",
-          border: "2px solid #c9a56a",
-          borderRadius: 14,
-          background: "rgba(0, 0, 0, 0.78)",
-          padding: 28,
           boxSizing: "border-box",
+          padding: 28,
         }}
       >
         <div
@@ -285,34 +309,16 @@ export default function MyMissionsPage() {
             marginBottom: 18,
           }}
         >
-          <h2
-            style={{
-              margin: 0,
-              color: "#f3efe6",
-              fontFamily: "monospace",
-              fontSize: 28,
-            }}
-          >
-            My Missions
-          </h2>
+          <h2 style={pageTitleStyleShared}>My Missions</h2>
 
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search..."
-            style={{
-              height: 44,
-              borderRadius: 10,
-              border: "1px solid #9d8560",
-              background: "rgba(201,165,106,0.22)",
-              color: "#f3efe6",
-              padding: "0 14px",
-              fontFamily: "monospace",
-              fontSize: 16,
-            }}
+            style={searchInputStyle}
           />
 
-          <button onClick={load} style={toolbarButtonStyle}>
+          <button type="button" onClick={load} style={toolbarButtonStyle}>
             Refresh
           </button>
         </div>
@@ -325,32 +331,28 @@ export default function MyMissionsPage() {
             flexWrap: "wrap",
           }}
         >
-          <button onClick={() => toggleSort("name")} style={sortButtonStyle}>
+          <button type="button" onClick={() => toggleSort("name")} style={sortButtonStyle}>
             Name {sortBy === "name" ? (sortDir === "asc" ? "▲" : "▼") : ""}
           </button>
-          <button onClick={() => toggleSort("status")} style={sortButtonStyle}>
+          <button type="button" onClick={() => toggleSort("status")} style={sortButtonStyle}>
             Status {sortBy === "status" ? (sortDir === "asc" ? "▲" : "▼") : ""}
           </button>
-          <button onClick={() => toggleSort("difficulty")} style={sortButtonStyle}>
+          <button
+            type="button"
+            onClick={() => toggleSort("difficulty")}
+            style={sortButtonStyle}
+          >
             Difficulty {sortBy === "difficulty" ? (sortDir === "asc" ? "▲" : "▼") : ""}
           </button>
-          <button onClick={() => toggleSort("time")} style={sortButtonStyle}>
+          <button type="button" onClick={() => toggleSort("time")} style={sortButtonStyle}>
             Time {sortBy === "time" ? (sortDir === "asc" ? "▲" : "▼") : ""}
           </button>
         </div>
 
-        {loading && <LoadingScreen label="Loading Missions..." />}
+        {loading && <LoadingScreen label="Loading missions..." />}
 
         {!loading && (
-          <div
-            style={{
-              maxHeight: "68vh",
-              overflowY: "auto",
-              display: "grid",
-              gap: 16,
-              paddingRight: 6,
-            }}
-          >
+          <div style={pageContentScrollStyle}>
             {visibleMissions.map((m) => {
               const statusPanel = getStatusPanel(m);
 
@@ -373,9 +375,9 @@ export default function MyMissionsPage() {
                       alignItems: "stretch",
                       backgroundImage: `linear-gradient(${getMissionOverlay(
                         m.status,
-                        m.wasSuccessful
+                        m.wasSuccessful,
                       )}, ${getMissionOverlay(m.status, m.wasSuccessful)}), url(${getMissionTerrainBanner(
-                        m.terrain
+                        m.terrain,
                       )})`,
                       backgroundSize: "cover",
                       backgroundPosition: "center",
@@ -419,18 +421,32 @@ export default function MyMissionsPage() {
                           <MissionMetaBadge>{m.difficulty ?? "No difficulty"}</MissionMetaBadge>
                         </div>
 
-                        <div style={metaLineStyle}>Status: {formatMissionStatus(m.status)}</div>
                         <div style={metaLineStyle}>
-                          Activated At: {m.activatedAt ? new Date(m.activatedAt).toLocaleString() : "—"}
+                          Status: {formatMissionStatus(m.status)}
                         </div>
                         <div style={metaLineStyle}>
-                          Duration: {m.durationMinutes != null ? `${m.durationMinutes} min` : "—"}
+                          Activated At:{" "}
+                          {m.activatedAt
+                            ? new Date(m.activatedAt).toLocaleString()
+                            : "—"}
                         </div>
                         <div style={metaLineStyle}>
-                          Executed At: {m.executedAt ? new Date(m.executedAt).toLocaleString() : "—"}
+                          Duration:{" "}
+                          {m.durationMinutes != null
+                            ? `${m.durationMinutes} min`
+                            : "—"}
                         </div>
                         <div style={metaLineStyle}>
-                          Success Snapshot: {m.successChanceSnapshot != null ? `${m.successChanceSnapshot}%` : "—"}
+                          Executed At:{" "}
+                          {m.executedAt
+                            ? new Date(m.executedAt).toLocaleString()
+                            : "—"}
+                        </div>
+                        <div style={metaLineStyle}>
+                          Success Snapshot:{" "}
+                          {m.successChanceSnapshot != null
+                            ? `${m.successChanceSnapshot}%`
+                            : "—"}
                         </div>
                       </div>
 
@@ -471,12 +487,22 @@ export default function MyMissionsPage() {
                       >
                         <div style={detailsCardStyle}>
                           <div style={detailsTitleStyle}>Mission Overview</div>
-                          <div style={detailsLineStyle}>Terrain: {m.terrain ?? "—"}</div>
-                          <div style={detailsLineStyle}>Difficulty: {m.difficulty ?? "—"}</div>
-                          <div style={detailsLineStyle}>Current State: {formatMissionStatus(m.status)}</div>
+                          <div style={detailsLineStyle}>
+                            Terrain: {m.terrain ?? "—"}
+                          </div>
+                          <div style={detailsLineStyle}>
+                            Difficulty: {m.difficulty ?? "—"}
+                          </div>
+                          <div style={detailsLineStyle}>
+                            Current State: {formatMissionStatus(m.status)}
+                          </div>
                           {m.status === "Active" && (
                             <div style={detailsLineStyle}>
-                              Status Window: {formatRemainingTime(m.activatedAt, m.durationMinutes)}
+                              Status Window:{" "}
+                              {formatRemainingTime(
+                                m.activatedAt,
+                                m.durationMinutes,
+                              )}
                             </div>
                           )}
                         </div>
@@ -485,13 +511,23 @@ export default function MyMissionsPage() {
                           <div style={detailsTitleStyle}>Outcome</div>
                           <div style={detailsLineStyle}>
                             Result:{" "}
-                            {m.wasSuccessful == null ? "Pending / Unknown" : m.wasSuccessful ? "Success" : "Failure"}
+                            {m.wasSuccessful == null
+                              ? "Pending / Unknown"
+                              : m.wasSuccessful
+                                ? "Success"
+                                : "Failure"}
                           </div>
                           <div style={detailsLineStyle}>
-                            Snapshot: {m.successChanceSnapshot != null ? `${m.successChanceSnapshot}%` : "—"}
+                            Snapshot:{" "}
+                            {m.successChanceSnapshot != null
+                              ? `${m.successChanceSnapshot}%`
+                              : "—"}
                           </div>
                           <div style={detailsLineStyle}>
-                            Execution Time: {m.executedAt ? new Date(m.executedAt).toLocaleString() : "—"}
+                            Execution Time:{" "}
+                            {m.executedAt
+                              ? new Date(m.executedAt).toLocaleString()
+                              : "—"}
                           </div>
                         </div>
                       </div>
@@ -531,69 +567,3 @@ export default function MyMissionsPage() {
     </div>
   );
 }
-
-const toolbarButtonStyle: React.CSSProperties = {
-  height: 44,
-  padding: "0 16px",
-  borderRadius: 10,
-  border: "1px solid #c9a56a",
-  background: "#c9a56a",
-  color: "#1d1812",
-  fontFamily: "monospace",
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const sortButtonStyle: React.CSSProperties = {
-  padding: "8px 14px",
-  borderRadius: 10,
-  border: "1px solid #9d8560",
-  background: "rgba(201,165,106,0.16)",
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const metaLineStyle: React.CSSProperties = {
-  color: "#d7b176",
-  fontFamily: "monospace",
-  fontSize: 16,
-  marginBottom: 4,
-};
-
-const detailsCardStyle: React.CSSProperties = {
-  border: "1px solid rgba(201,165,106,0.35)",
-  borderRadius: 12,
-  padding: 14,
-  background: "rgba(20,20,20,0.58)",
-};
-
-const detailsTitleStyle: React.CSSProperties = {
-  color: "#efb85f",
-  fontFamily: "monospace",
-  fontWeight: 800,
-  fontSize: 18,
-  marginBottom: 10,
-};
-
-const detailsLineStyle: React.CSSProperties = {
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  fontSize: 14,
-  marginBottom: 6,
-};
-
-const statusPanelStyle: React.CSSProperties = {
-  borderRadius: 12,
-  padding: 14,
-  background: "rgba(0,0,0,0.42)",
-};
-
-const statusPanelTitleStyle: React.CSSProperties = {
-  color: "#efb85f",
-  fontFamily: "monospace",
-  fontWeight: 800,
-  fontSize: 18,
-  marginBottom: 8,
-};

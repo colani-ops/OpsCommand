@@ -49,6 +49,28 @@ export default function RegisterPage() {
     }
   }
 
+  if (submitting) {
+    return (
+      <div
+        style={{
+          ...authPageStyle,
+          backgroundImage: `url(${backgroundUrl})`,
+        }}
+      >
+        <div style={authOverlayStyle} />
+        <div style={authContentStyle}>
+          <div style={authTitleBoxStyle}>
+            <h1 style={authTitleStyle}>Command Access</h1>
+          </div>
+
+          <div style={authPanelStyle}>
+            <LoadingScreen label="Registering..." />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
@@ -114,8 +136,8 @@ export default function RegisterPage() {
               />
             </div>
 
-            <button type="submit" style={authPrimaryButtonStyle} disabled={submitting}>
-              {submitting ? "Registering..." : "Register"}
+            <button type="submit" style={authPrimaryButtonStyle}>
+              Register
             </button>
 
             <Link to="/login" style={{ textDecoration: "none" }}>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { hasRole, getUser } from "../api/auth";
+import { getUser, hasRole } from "../api/auth";
 import { getUsers, type UserDto } from "../api/users";
 import {
   createSquad,
@@ -15,6 +15,19 @@ import { useErrorHandler } from "../hooks/useErrorHandler";
 import ErrorBanner from "../components/ErrorBanner";
 import IconButton from "../ui/IconButton";
 import LoadingScreen from "../components/LoadingScreen";
+import {
+  formFieldStyle,
+  iconActionButtonStyle,
+  metaLineStyle,
+  pageContentScrollStyle,
+  pageTitleStyleShared,
+  panelStyle,
+  searchInputStyle,
+  secondaryButtonStyle,
+  sectionPanelStyle,
+  sortButtonStyle,
+  toolbarButtonStyle,
+} from "../styles/uiStyles";
 
 const TYPES: SquadType[] = ["Assault", "Tactical", "Recon"];
 
@@ -41,7 +54,9 @@ export default function SquadsPage() {
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<"name" | "type" | "wr" | "veterancy">("name");
+  const [sortBy, setSortBy] = useState<"name" | "type" | "wr" | "veterancy">(
+    "name",
+  );
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const [showCreate, setShowCreate] = useState(false);
@@ -65,7 +80,9 @@ export default function SquadsPage() {
       setItems(squadsData);
 
       const usersData = await getUsers();
-      const onlyCommanders = usersData.filter((u) => u.roles?.includes("Commander"));
+      const onlyCommanders = usersData.filter((u) =>
+        u.roles?.includes("Commander"),
+      );
       setCommanders(onlyCommanders);
     } catch (e: unknown) {
       showError(e, "Failed to load squads");
@@ -80,7 +97,7 @@ export default function SquadsPage() {
 
   const editingSquad = useMemo(
     () => items.find((x) => x.id === editingId) ?? null,
-    [items, editingId]
+    [items, editingId],
   );
 
   const squadNameById = useMemo(() => {
@@ -105,30 +122,37 @@ export default function SquadsPage() {
     return map;
   }, [commanders]);
 
-  function commanderDisplay(commanderId: string | null) {
-    if (!commanderId) return "—";
+  const commanderDisplay = useCallback(
+    (commanderId: string | null) => {
+      if (!commanderId) return "—";
 
-    const fromMap = commanderNameById.get(commanderId);
-    if (fromMap) return fromMap;
+      const fromMap = commanderNameById.get(commanderId);
+      if (fromMap) return fromMap;
 
-    if (currentUser && commanderId === currentUser.id) {
-      return `${currentUser.userName} (${currentUser.email})`;
-    }
+      if (currentUser && commanderId === currentUser.id) {
+        return `${currentUser.userName} (${currentUser.email})`;
+      }
 
-    return commanderId;
-  }
+      return commanderId;
+    },
+    [commanderNameById, currentUser],
+  );
 
-  function commanderLabel(u: UserDto) {
-    const base = `${u.userName} (${u.email})`;
-    const assignedSquadId = assignedSquadIdByCommanderId.get(u.id);
+  const commanderLabel = useCallback(
+    (u: UserDto) => {
+      const base = `${u.userName} (${u.email})`;
+      const assignedSquadId = assignedSquadIdByCommanderId.get(u.id);
 
-    if (assignedSquadId != null) {
-      const squadName = squadNameById.get(assignedSquadId) ?? `Squad #${assignedSquadId}`;
-      return `${base} — Assigned: ${squadName}`;
-    }
+      if (assignedSquadId != null) {
+        const squadName =
+          squadNameById.get(assignedSquadId) ?? `Squad #${assignedSquadId}`;
+        return `${base} — Assigned: ${squadName}`;
+      }
 
-    return `${base} — Free`;
-  }
+      return `${base} — Free`;
+    },
+    [assignedSquadIdByCommanderId, squadNameById],
+  );
 
   function getSquadSuccessRate(s: SquadDto) {
     if (s.missionsServed <= 0) return 0;
@@ -218,7 +242,7 @@ export default function SquadsPage() {
     });
 
     return sorted;
-  }, [items, search, sortBy, sortDir, commanders, currentUser]);
+  }, [items, search, sortBy, sortDir, commanderDisplay]);
 
   function startEdit(id: number) {
     const s = items.find((x) => x.id === id);
@@ -244,7 +268,9 @@ export default function SquadsPage() {
     const payload = {
       name: createForm.name.trim(),
       type: createForm.type,
-      commanderId: createForm.commanderId.trim() ? createForm.commanderId.trim() : null,
+      commanderId: createForm.commanderId.trim()
+        ? createForm.commanderId.trim()
+        : null,
     };
 
     try {
@@ -265,7 +291,9 @@ export default function SquadsPage() {
     const payload = {
       name: editForm.name.trim(),
       type: editForm.type,
-      commanderId: editForm.commanderId.trim() ? editForm.commanderId.trim() : null,
+      commanderId: editForm.commanderId.trim()
+        ? editForm.commanderId.trim()
+        : null,
     };
 
     try {
@@ -298,14 +326,7 @@ export default function SquadsPage() {
     <div>
       <ErrorBanner error={error} />
 
-      <div
-        style={{
-          border: "2px solid #c9a56a",
-          borderRadius: 14,
-          background: "rgba(0, 0, 0, 0.78)",
-          padding: 24,
-        }}
-      >
+      <div style={panelStyle}>
         <div
           style={{
             display: "grid",
@@ -315,37 +336,23 @@ export default function SquadsPage() {
             marginBottom: 18,
           }}
         >
-          <h2
-            style={{
-              margin: 0,
-              color: "#f3efe6",
-              fontFamily: "monospace",
-              fontSize: 28,
-            }}
-          >
-            Squads
-          </h2>
+          <h2 style={pageTitleStyleShared}>Squads</h2>
 
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search..."
-            style={{
-              height: 44,
-              borderRadius: 10,
-              border: "1px solid #9d8560",
-              background: "rgba(201,165,106,0.22)",
-              color: "#f3efe6",
-              padding: "0 14px",
-              fontFamily: "monospace",
-              fontSize: 16,
-            }}
+            style={searchInputStyle}
           />
 
           {canManage && (
             <IconButton
               iconSrc="/icons/add.png"
-              alt={showCreate ? "Close create squad form" : "Open create squad form"}
+              alt={
+                showCreate
+                  ? "Close create squad form"
+                  : "Open create squad form"
+              }
               title={showCreate ? "Close create squad form" : "New squad"}
               variant="transparent"
               onClick={() => setShowCreate((v) => !v)}
@@ -378,33 +385,37 @@ export default function SquadsPage() {
           <button onClick={() => toggleSort("wr")} style={sortButtonStyle}>
             WR {sortBy === "wr" ? (sortDir === "asc" ? "▲" : "▼") : ""}
           </button>
-          <button onClick={() => toggleSort("veterancy")} style={sortButtonStyle}>
-            Veterancy {sortBy === "veterancy" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+          <button
+            onClick={() => toggleSort("veterancy")}
+            style={sortButtonStyle}
+          >
+            Veterancy{" "}
+            {sortBy === "veterancy" ? (sortDir === "asc" ? "▲" : "▼") : ""}
           </button>
         </div>
 
-        {loading && <LoadingScreen label="Loading Squads..." />}
+        {loading && <LoadingScreen label="Loading squads..." />}
 
         {canManage && showCreate && (
           <form
             onSubmit={submitCreate}
-            style={{
-              marginBottom: 18,
-              border: "1px solid #9d8560",
-              borderRadius: 12,
-              padding: 14,
-              display: "grid",
-              gap: 10,
-              background: "rgba(0,0,0,0.45)",
-            }}
+            style={{ ...sectionPanelStyle, marginBottom: 18 }}
           >
-            <div style={{ fontWeight: 700, color: "#f3efe6", fontFamily: "monospace" }}>
+            <div
+              style={{
+                fontWeight: 700,
+                color: "#f3efe6",
+                fontFamily: "monospace",
+              }}
+            >
               Create Squad
             </div>
 
             <input
               value={createForm.name}
-              onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+              onChange={(e) =>
+                setCreateForm((f) => ({ ...f, name: e.target.value }))
+              }
               placeholder="Name"
               required
               style={formFieldStyle}
@@ -412,7 +423,12 @@ export default function SquadsPage() {
 
             <select
               value={createForm.type}
-              onChange={(e) => setCreateForm((f) => ({ ...f, type: e.target.value as SquadType }))}
+              onChange={(e) =>
+                setCreateForm((f) => ({
+                  ...f,
+                  type: e.target.value as SquadType,
+                }))
+              }
               style={formFieldStyle}
             >
               {TYPES.map((t) => (
@@ -424,12 +440,18 @@ export default function SquadsPage() {
 
             <select
               value={createForm.commanderId}
-              onChange={(e) => setCreateForm((f) => ({ ...f, commanderId: e.target.value }))}
+              onChange={(e) =>
+                setCreateForm((f) => ({ ...f, commanderId: e.target.value }))
+              }
               style={formFieldStyle}
             >
               <option value="">— Commander —</option>
               {commanders.map((c) => (
-                <option key={c.id} value={c.id} disabled={assignedSquadIdByCommanderId.has(c.id)}>
+                <option
+                  key={c.id}
+                  value={c.id}
+                  disabled={assignedSquadIdByCommanderId.has(c.id)}
+                >
                   {commanderLabel(c)}
                 </option>
               ))}
@@ -449,18 +471,12 @@ export default function SquadsPage() {
         )}
 
         {!loading && (
-          <div
-            style={{
-              maxHeight: "62vh",
-              overflowY: "auto",
-              display: "grid",
-              gap: 14,
-              paddingRight: 6,
-            }}
-          >
+          <div style={{ ...pageContentScrollStyle, maxHeight: "62vh", gap: 14 }}>
             {visibleItems.map((s) => {
               const isEditing = editingId === s.id;
-              const squadBannerUrl = s.bannerImageUrl ? resolveSquadBannerUrl(s.bannerImageUrl) : null;
+              const squadBannerUrl = s.bannerImageUrl
+                ? resolveSquadBannerUrl(s.bannerImageUrl)
+                : null;
 
               return (
                 <div
@@ -532,14 +548,27 @@ export default function SquadsPage() {
                           </div>
 
                           <div style={metaLineStyle}>Type: {s.type}</div>
-                          <div style={metaLineStyle}>Commander: {commanderDisplay(s.commanderId)}</div>
                           <div style={metaLineStyle}>
-                            Success Rate: {s.missionsServed > 0 ? `${getSquadSuccessRate(s)}%` : "N/A"}
+                            Commander: {commanderDisplay(s.commanderId)}
                           </div>
-                          <div style={metaLineStyle}>Veterancy: {getVeterancyLabel(s)}</div>
+                          <div style={metaLineStyle}>
+                            Success Rate:{" "}
+                            {s.missionsServed > 0
+                              ? `${getSquadSuccessRate(s)}%`
+                              : "N/A"}
+                          </div>
+                          <div style={metaLineStyle}>
+                            Veterancy: {getVeterancyLabel(s)}
+                          </div>
 
                           {s.deletedAt && (
-                            <div style={{ color: "#ffb347", fontFamily: "monospace", marginTop: 6 }}>
+                            <div
+                              style={{
+                                color: "#ffb347",
+                                fontFamily: "monospace",
+                                marginTop: 6,
+                              }}
+                            >
                               Soft-deleted
                             </div>
                           )}
@@ -561,7 +590,9 @@ export default function SquadsPage() {
                             <input
                               value={editForm?.name ?? ""}
                               onChange={(e) =>
-                                setEditForm((f) => (f ? { ...f, name: e.target.value } : f))
+                                setEditForm((f) =>
+                                  f ? { ...f, name: e.target.value } : f,
+                                )
                               }
                               placeholder="Name"
                               style={formFieldStyle}
@@ -570,7 +601,14 @@ export default function SquadsPage() {
                             <select
                               value={editForm?.type ?? "Assault"}
                               onChange={(e) =>
-                                setEditForm((f) => (f ? { ...f, type: e.target.value as SquadType } : f))
+                                setEditForm((f) =>
+                                  f
+                                    ? {
+                                        ...f,
+                                        type: e.target.value as SquadType,
+                                      }
+                                    : f,
+                                )
                               }
                               style={formFieldStyle}
                             >
@@ -584,17 +622,25 @@ export default function SquadsPage() {
                             <select
                               value={editForm?.commanderId ?? ""}
                               onChange={(e) =>
-                                setEditForm((f) => (f ? { ...f, commanderId: e.target.value } : f))
+                                setEditForm((f) =>
+                                  f ? { ...f, commanderId: e.target.value } : f,
+                                )
                               }
                               style={formFieldStyle}
                             >
                               <option value="">— None —</option>
                               {commanders.map((c) => {
-                                const assignedTo = assignedSquadIdByCommanderId.get(c.id);
-                                const assignedToOtherSquad = assignedTo != null && assignedTo !== s.id;
+                                const assignedTo =
+                                  assignedSquadIdByCommanderId.get(c.id);
+                                const assignedToOtherSquad =
+                                  assignedTo != null && assignedTo !== s.id;
 
                                 return (
-                                  <option key={c.id} value={c.id} disabled={assignedToOtherSquad}>
+                                  <option
+                                    key={c.id}
+                                    value={c.id}
+                                    disabled={assignedToOtherSquad}
+                                  >
                                     {commanderLabel(c)}
                                   </option>
                                 );
@@ -605,7 +651,14 @@ export default function SquadsPage() {
                       )}
                     </div>
 
-                    <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 10,
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                      }}
+                    >
                       {canManage ? (
                         !isEditing ? (
                           <>
@@ -626,16 +679,32 @@ export default function SquadsPage() {
                           </>
                         ) : (
                           <>
-                            <button onClick={submitEdit} style={iconActionButtonStyle}>
+                            <button
+                              type="button"
+                              onClick={submitEdit}
+                              style={iconActionButtonStyle}
+                            >
                               Save
                             </button>
-                            <button onClick={cancelEdit} style={iconActionButtonStyle}>
+                            <button
+                              type="button"
+                              onClick={cancelEdit}
+                              style={iconActionButtonStyle}
+                            >
                               Cancel
                             </button>
                           </>
                         )
                       ) : (
-                        <span style={{ opacity: 0.6, fontSize: 14, color: "#f3efe6" }}>Read-only</span>
+                        <span
+                          style={{
+                            opacity: 0.6,
+                            fontSize: 14,
+                            color: "#f3efe6",
+                          }}
+                        >
+                          Read-only
+                        </span>
                       )}
                     </div>
                   </div>
@@ -654,65 +723,3 @@ export default function SquadsPage() {
     </div>
   );
 }
-
-const toolbarButtonStyle: React.CSSProperties = {
-  height: 44,
-  padding: "0 16px",
-  borderRadius: 10,
-  border: "1px solid #c9a56a",
-  background: "#c9a56a",
-  color: "#1d1812",
-  fontFamily: "monospace",
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const secondaryButtonStyle: React.CSSProperties = {
-  height: 44,
-  padding: "0 16px",
-  borderRadius: 10,
-  border: "1px solid #9d8560",
-  background: "rgba(201,165,106,0.18)",
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const sortButtonStyle: React.CSSProperties = {
-  padding: "8px 14px",
-  borderRadius: 10,
-  border: "1px solid #9d8560",
-  background: "rgba(201,165,106,0.16)",
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const iconActionButtonStyle: React.CSSProperties = {
-  padding: "8px 12px",
-  borderRadius: 10,
-  border: "1px solid #9d8560",
-  background: "rgba(201,165,106,0.12)",
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const metaLineStyle: React.CSSProperties = {
-  color: "#d7b176",
-  fontFamily: "monospace",
-  fontSize: 16,
-  marginBottom: 4,
-};
-
-const formFieldStyle: React.CSSProperties = {
-  padding: 10,
-  borderRadius: 8,
-  border: "1px solid #9d8560",
-  background: "rgba(0,0,0,0.55)",
-  color: "#f3efe6",
-  fontFamily: "monospace",
-};

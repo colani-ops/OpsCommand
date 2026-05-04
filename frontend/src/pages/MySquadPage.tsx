@@ -23,6 +23,18 @@ import { useErrorHandler } from "../hooks/useErrorHandler";
 import ErrorBanner from "../components/ErrorBanner";
 import IconButton from "../ui/IconButton";
 import LoadingScreen from "../components/LoadingScreen";
+import {
+  detailsLineStyle,
+  emptyPanelStyle,
+  formFieldStyle,
+  iconActionButtonStyle,
+  metaLineStyle,
+  miniTitleStyle,
+  pageTitleStyleShared,
+  panelStyle,
+  sectionTitleStyle,
+  toolbarButtonStyle,
+} from "../styles/uiStyles";
 
 export default function MySquadPage() {
   const canAccess = hasRole("Member", "Commander");
@@ -31,12 +43,18 @@ export default function MySquadPage() {
 
   const [squad, setSquad] = useState<MySquadDto | null>(null);
   const [equipment, setEquipment] = useState<SquadEquipmentDto[]>([]);
-  const [availableEquipment, setAvailableEquipment] = useState<EquipmentDto[]>([]);
+  const [availableEquipment, setAvailableEquipment] = useState<EquipmentDto[]>(
+    [],
+  );
   const [loading, setLoading] = useState(true);
 
-  const [selectedEquipmentId, setSelectedEquipmentId] = useState<number | "">("");
+  const [selectedEquipmentId, setSelectedEquipmentId] = useState<number | "">(
+    "",
+  );
   const [newQuantity, setNewQuantity] = useState<number>(1);
-  const [editQuantities, setEditQuantities] = useState<Record<number, number>>({});
+  const [editQuantities, setEditQuantities] = useState<Record<number, number>>(
+    {},
+  );
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [uploadingBanner, setUploadingBanner] = useState(false);
@@ -95,7 +113,10 @@ export default function MySquadPage() {
 
   function getSquadBannerImage() {
     if (squad?.bannerImageUrl) {
-      return resolveSquadBannerUrl(squad.bannerImageUrl) ?? getSquadTypeImage(squad.type);
+      return (
+        resolveSquadBannerUrl(squad.bannerImageUrl) ??
+        getSquadTypeImage(squad.type)
+      );
     }
 
     return getSquadTypeImage(squad?.type ?? null);
@@ -116,8 +137,13 @@ export default function MySquadPage() {
     }
   }
 
-  function getEquipmentDisplayImage(item: SquadEquipmentDto & { imageUrl?: string | null }) {
-  return resolveEquipmentImageUrl(item.imageUrl) ?? getEquipmentBanner(item.category);
+  function getEquipmentDisplayImage(
+    item: SquadEquipmentDto & { imageUrl?: string | null },
+  ) {
+    return (
+      resolveEquipmentImageUrl(item.imageUrl) ??
+      getEquipmentBanner(item.category)
+    );
   }
 
   function getEquipmentOverlay(category: string | null) {
@@ -219,20 +245,14 @@ export default function MySquadPage() {
     }
   }
 
-  const canManageBanner = canManageEquipment && currentUser && squad?.commanderId === currentUser.id;
+  const canManageBanner =
+    canManageEquipment && currentUser && squad?.commanderId === currentUser.id;
 
   return (
     <div>
       <ErrorBanner error={error} />
 
-      <div
-        style={{
-          border: "2px solid #c9a56a",
-          borderRadius: 14,
-          background: "rgba(0, 0, 0, 0.78)",
-          padding: 24,
-        }}
-      >
+      <div style={panelStyle}>
         <div
           style={{
             display: "grid",
@@ -242,16 +262,7 @@ export default function MySquadPage() {
             marginBottom: 18,
           }}
         >
-          <h2
-            style={{
-              margin: 0,
-              color: "#f3efe6",
-              fontFamily: "monospace",
-              fontSize: 28,
-            }}
-          >
-            My Squad
-          </h2>
+          <h2 style={pageTitleStyleShared}>My Squad</h2>
 
           <IconButton
             iconSrc="/icons/refresh.png"
@@ -259,7 +270,7 @@ export default function MySquadPage() {
             title="Refresh squads"
             variant="transparent"
             onClick={load}
-            />
+          />
         </div>
 
         {loading && <LoadingScreen label="Loading squad..." />}
@@ -267,10 +278,7 @@ export default function MySquadPage() {
         {!loading && !error && !squad && (
           <div
             style={{
-              border: "1px solid #9d8560",
-              borderRadius: 12,
-              padding: 16,
-              background: "rgba(0,0,0,0.55)",
+              ...emptyPanelStyle,
               display: "grid",
               gap: 8,
             }}
@@ -286,7 +294,8 @@ export default function MySquadPage() {
               No squad assigned
             </div>
             <div style={detailsLineStyle}>
-              You're not assigned to a squad yet. Contact an Admin to be assigned to one.
+              You're not assigned to a squad yet. Contact an Admin to be
+              assigned to one.
             </div>
           </div>
         )}
@@ -357,16 +366,22 @@ export default function MySquadPage() {
                       marginBottom: 10,
                     }}
                   >
-                    {squad.name} <span style={{ opacity: 0.75 }}>· {squad.type}</span>
+                    {squad.name}{" "}
+                    <span style={{ opacity: 0.75 }}>· {squad.type}</span>
                   </div>
 
                   <div style={metaLineStyle}>
                     Commander: {squad.commanderName ?? squad.commanderId ?? "—"}
                   </div>
-                  <div style={metaLineStyle}>Missions Served: {squad.missionsServed}</div>
-                  <div style={metaLineStyle}>Successful Missions: {squad.missionsWon}</div>
                   <div style={metaLineStyle}>
-                    Success Rate: {squad.missionsServed > 0 ? `${squad.successRate}%` : "N/A"}
+                    Missions Served: {squad.missionsServed}
+                  </div>
+                  <div style={metaLineStyle}>
+                    Successful Missions: {squad.missionsWon}
+                  </div>
+                  <div style={metaLineStyle}>
+                    Success Rate:{" "}
+                    {squad.missionsServed > 0 ? `${squad.successRate}%` : "N/A"}
                   </div>
 
                   {canManageBanner && (
@@ -387,24 +402,28 @@ export default function MySquadPage() {
                           marginTop: 12,
                         }}
                       >
-                        <button
-                          type="button"
+                        <IconButton
+                          iconSrc="/icons/upload.png"
+                          label={
+                            uploadingBanner ? "Uploading..." : "Upload Banner"
+                          }
+                          alt="Upload banner"
+                          title="Upload banner"
+                          variant="secondary"
                           onClick={() => fileInputRef.current?.click()}
-                          style={iconActionButtonStyle}
                           disabled={uploadingBanner}
-                        >
-                          {uploadingBanner ? "Uploading..." : "Upload Banner"}
-                        </button>
+                        />
 
                         {squad.bannerImageUrl && (
-                          <button
-                            type="button"
+                          <IconButton
+                            iconSrc="/icons/delete.png"
+                            label="Remove Banner"
+                            alt="Remove banner"
+                            title="Remove banner"
+                            variant="danger"
                             onClick={onRemoveBanner}
-                            style={iconActionButtonStyle}
                             disabled={uploadingBanner}
-                          >
-                            Remove Banner
-                          </button>
+                          />
                         )}
                       </div>
                     </>
@@ -425,11 +444,15 @@ export default function MySquadPage() {
               <div style={sectionTitleStyle}>Squad Members</div>
 
               {squad.members.length === 0 ? (
-                <div style={detailsLineStyle}>No members assigned to this squad.</div>
+                <div style={detailsLineStyle}>
+                  No members assigned to this squad.
+                </div>
               ) : (
                 <div style={{ display: "grid", gap: 12 }}>
                   {squad.members.map((member) => {
-                    const memberImageUrl = resolveUserImageUrl(member.profileImageUrl);
+                    const memberImageUrl = resolveUserImageUrl(
+                      member.profileImageUrl,
+                    );
 
                     return (
                       <div
@@ -586,7 +609,9 @@ export default function MySquadPage() {
                   <select
                     value={selectedEquipmentId}
                     onChange={(e) =>
-                      setSelectedEquipmentId(e.target.value ? Number(e.target.value) : "")
+                      setSelectedEquipmentId(
+                        e.target.value ? Number(e.target.value) : "",
+                      )
                     }
                     style={formFieldStyle}
                   >
@@ -611,7 +636,9 @@ export default function MySquadPage() {
               )}
 
               {equipment.length === 0 ? (
-                <div style={detailsLineStyle}>No equipment assigned to this squad.</div>
+                <div style={detailsLineStyle}>
+                  No equipment assigned to this squad.
+                </div>
               ) : (
                 <div style={{ display: "grid", gap: 12 }}>
                   {equipment.map((item) => {
@@ -639,7 +666,7 @@ export default function MySquadPage() {
                             gap: 18,
                             alignItems: "stretch",
                             backgroundImage: `linear-gradient(${getEquipmentOverlay(
-                            item.category
+                              item.category,
                             )}, rgba(0,0,0,0.74)), url(${getEquipmentDisplayImage(item)})`,
                             backgroundSize: "cover",
                             backgroundPosition: "center",
@@ -668,25 +695,34 @@ export default function MySquadPage() {
                               >
                                 <Link
                                   to={`/equipment/${item.equipmentId}`}
-                                  style={{ color: "inherit", textDecoration: "none" }}
+                                  style={{
+                                    color: "inherit",
+                                    textDecoration: "none",
+                                  }}
                                   title="Open equipment profile"
                                 >
                                   {item.equipmentName}
                                 </Link>
                               </div>
 
-                              <div style={metaLineStyle}>Category: {item.category ?? "—"}</div>
-                              <div style={metaLineStyle}>Squad Quantity: {item.quantity}</div>
+                              <div style={metaLineStyle}>
+                                Category: {item.category ?? "—"}
+                              </div>
+                              <div style={metaLineStyle}>
+                                Squad Quantity: {item.quantity}
+                              </div>
 
                               {squadEquipmentItem.effectiveness != null && (
                                 <div style={metaLineStyle}>
-                                  Effectiveness: {squadEquipmentItem.effectiveness}/100
+                                  Effectiveness:{" "}
+                                  {squadEquipmentItem.effectiveness}/100
                                 </div>
                               )}
 
                               {squadEquipmentItem.availableQuantity != null && (
                                 <div style={metaLineStyle}>
-                                  Global Available: {squadEquipmentItem.availableQuantity}
+                                  Global Available:{" "}
+                                  {squadEquipmentItem.availableQuantity}
                                 </div>
                               )}
 
@@ -707,54 +743,66 @@ export default function MySquadPage() {
                             </div>
                           </div>
 
-                          {canManageEquipment && currentUser && squad.commanderId === currentUser.id && (
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 8,
-                                padding: 14,
-                                flexWrap: "wrap",
-                              }}
-                            >
-                              <input
-                                type="number"
-                                min={1}
-                                value={editQuantities[item.equipmentId] ?? item.quantity}
-                                onChange={(e) =>
-                                  setEditQuantities((prev) => ({
-                                    ...prev,
-                                    [item.equipmentId]: Number(e.target.value),
-                                  }))
-                                }
+                          {canManageEquipment &&
+                            currentUser &&
+                            squad.commanderId === currentUser.id && (
+                              <div
                                 style={{
-                                  width: 80,
-                                  ...formFieldStyle,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 8,
+                                  padding: 14,
+                                  flexWrap: "wrap",
                                 }}
-                              />
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  onUpdateQuantity(
-                                    item.equipmentId,
-                                    editQuantities[item.equipmentId] ?? item.quantity
-                                  )
-                                }
-                                style={iconActionButtonStyle}
                               >
-                                Save
-                              </button>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={
+                                    editQuantities[item.equipmentId] ??
+                                    item.quantity
+                                  }
+                                  onChange={(e) =>
+                                    setEditQuantities((prev) => ({
+                                      ...prev,
+                                      [item.equipmentId]: Number(
+                                        e.target.value,
+                                      ),
+                                    }))
+                                  }
+                                  style={{
+                                    width: 80,
+                                    ...formFieldStyle,
+                                  }}
+                                />
 
-                              <button
-                                type="button"
-                                onClick={() => onDeleteEquipment(item.equipmentId)}
-                                style={iconActionButtonStyle}
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          )}
+                                <IconButton
+                                  iconSrc="/icons/save.png"
+                                  alt="Save"
+                                  title="Save"
+                                  variant="secondary"
+                                  onClick={() =>
+                                    onUpdateQuantity(
+                                      item.equipmentId,
+                                      editQuantities[item.equipmentId] ??
+                                        item.quantity,
+                                    )
+                                  }
+                                  style={iconActionButtonStyle}
+                                />
+
+                                <IconButton
+                                  iconSrc="/icons/delete.png"
+                                  alt="Remove"
+                                  title="Remove"
+                                  variant="danger"
+                                  onClick={() =>
+                                    onDeleteEquipment(item.equipmentId)
+                                  }
+                                  style={iconActionButtonStyle}
+                                />
+                              </div>
+                            )}
                         </div>
                       </div>
                     );
@@ -768,65 +816,3 @@ export default function MySquadPage() {
     </div>
   );
 }
-
-const toolbarButtonStyle: React.CSSProperties = {
-  height: 44,
-  padding: "0 16px",
-  borderRadius: 10,
-  border: "1px solid #c9a56a",
-  background: "#c9a56a",
-  color: "#1d1812",
-  fontFamily: "monospace",
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const iconActionButtonStyle: React.CSSProperties = {
-  padding: "8px 12px",
-  borderRadius: 10,
-  border: "1px solid #9d8560",
-  background: "rgba(201,165,106,0.12)",
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const formFieldStyle: React.CSSProperties = {
-  padding: 10,
-  borderRadius: 8,
-  border: "1px solid #9d8560",
-  background: "rgba(0,0,0,0.55)",
-  color: "#f3efe6",
-  fontFamily: "monospace",
-};
-
-const metaLineStyle: React.CSSProperties = {
-  color: "#d7b176",
-  fontFamily: "monospace",
-  fontSize: 16,
-  marginBottom: 4,
-};
-
-const detailsLineStyle: React.CSSProperties = {
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  fontSize: 14,
-  marginBottom: 6,
-};
-
-const miniTitleStyle: React.CSSProperties = {
-  fontSize: 16,
-  fontWeight: 800,
-  color: "#efb85f",
-  fontFamily: "monospace",
-  marginBottom: 8,
-};
-
-const sectionTitleStyle: React.CSSProperties = {
-  fontSize: 22,
-  fontWeight: 800,
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  marginBottom: 14,
-};

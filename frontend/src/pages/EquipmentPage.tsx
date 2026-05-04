@@ -17,8 +17,22 @@ import ErrorBanner from "../components/ErrorBanner";
 import IconButton from "../ui/IconButton";
 import { getEquipmentBanner } from "../utils/bannerFallbacks";
 import LoadingScreen from "../components/LoadingScreen";
+import {
+  formFieldStyle,
+  iconActionButtonStyle,
+  metaLineStyle,
+  panelStyle,
+  pageTitleStyleShared,
+  searchInputStyle,
+  sortButtonStyle,
+} from "../styles/uiStyles";
 
-const CATEGORIES: EquipmentCategory[] = ["Primary", "Secondary", "Melee", "Utility"];
+const CATEGORIES: EquipmentCategory[] = [
+  "Primary",
+  "Secondary",
+  "Melee",
+  "Utility",
+];
 
 type CreateForm = {
   name: string;
@@ -43,7 +57,9 @@ export default function EquipmentPage() {
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<"name" | "type" | "effectiveness" | "quantity">("name");
+  const [sortBy, setSortBy] = useState<
+    "name" | "type" | "effectiveness" | "quantity"
+  >("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const [showCreate, setShowCreate] = useState(false);
@@ -82,7 +98,7 @@ export default function EquipmentPage() {
 
   const editingItem = useMemo(
     () => items.find((x) => x.id === editingId) ?? null,
-    [items, editingId]
+    [items, editingId],
   );
 
   function getEquipmentOverlay(category: string | null) {
@@ -101,7 +117,10 @@ export default function EquipmentPage() {
   }
 
   function getEquipmentDisplayImage(item: EquipmentDto) {
-    return resolveEquipmentImageUrl(item.imageUrl) ?? getEquipmentBanner(item.category);
+    return (
+      resolveEquipmentImageUrl(item.imageUrl) ??
+      getEquipmentBanner(item.category)
+    );
   }
 
   function getAllocationPercent(item: EquipmentDto) {
@@ -182,7 +201,9 @@ export default function EquipmentPage() {
       name: createForm.name.trim(),
       category: createForm.category,
       quantity: Number(createForm.quantity) || 0,
-      description: createForm.description.trim() ? createForm.description.trim() : null,
+      description: createForm.description.trim()
+        ? createForm.description.trim()
+        : null,
       effectiveness: Number(createForm.effectiveness) || 50,
     };
 
@@ -210,7 +231,9 @@ export default function EquipmentPage() {
       await updateEquipment(editingId, {
         category: editForm.category,
         quantity: Number(editForm.quantity) || 0,
-        description: editForm.description.trim() ? editForm.description.trim() : null,
+        description: editForm.description.trim()
+          ? editForm.description.trim()
+          : null,
         effectiveness: Number(editForm.effectiveness) || 50,
       });
       cancelEdit();
@@ -263,14 +286,7 @@ export default function EquipmentPage() {
     <div>
       <ErrorBanner error={error} />
 
-      <div
-        style={{
-          border: "2px solid #c9a56a",
-          borderRadius: 14,
-          background: "rgba(0, 0, 0, 0.78)",
-          padding: 24,
-        }}
-      >
+      <div style={panelStyle}>
         <div
           style={{
             display: "grid",
@@ -280,38 +296,26 @@ export default function EquipmentPage() {
             marginBottom: 18,
           }}
         >
-          <h2
-            style={{
-              margin: 0,
-              color: "#f3efe6",
-              fontFamily: "monospace",
-              fontSize: 28,
-            }}
-          >
-            Equipment
-          </h2>
+          <h2 style={pageTitleStyleShared}>Equipment</h2>
 
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search..."
-            style={{
-              height: 44,
-              borderRadius: 10,
-              border: "1px solid #9d8560",
-              background: "rgba(201,165,106,0.22)",
-              color: "#f3efe6",
-              padding: "0 14px",
-              fontFamily: "monospace",
-              fontSize: 16,
-            }}
+            style={searchInputStyle}
           />
 
           {canManage && (
             <IconButton
               iconSrc="/icons/add.png"
-              alt={showCreate ? "Close create equipment form" : "Open create equipment form"}
-              title={showCreate ? "Close create equipment form" : "New equipment"}
+              alt={
+                showCreate
+                  ? "Close create equipment form"
+                  : "Open create equipment form"
+              }
+              title={
+                showCreate ? "Close create equipment form" : "New equipment"
+              }
               variant="transparent"
               onClick={() => setShowCreate((v) => !v)}
             />
@@ -340,11 +344,19 @@ export default function EquipmentPage() {
           <button onClick={() => toggleSort("type")} style={sortButtonStyle}>
             Type {sortBy === "type" ? (sortDir === "asc" ? "▲" : "▼") : ""}
           </button>
-          <button onClick={() => toggleSort("effectiveness")} style={sortButtonStyle}>
-            Eff. {sortBy === "effectiveness" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+          <button
+            onClick={() => toggleSort("effectiveness")}
+            style={sortButtonStyle}
+          >
+            Eff.{" "}
+            {sortBy === "effectiveness" ? (sortDir === "asc" ? "▲" : "▼") : ""}
           </button>
-          <button onClick={() => toggleSort("quantity")} style={sortButtonStyle}>
-            Quantity {sortBy === "quantity" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+          <button
+            onClick={() => toggleSort("quantity")}
+            style={sortButtonStyle}
+          >
+            Quantity{" "}
+            {sortBy === "quantity" ? (sortDir === "asc" ? "▲" : "▼") : ""}
           </button>
         </div>
 
@@ -360,16 +372,24 @@ export default function EquipmentPage() {
               padding: 14,
               display: "grid",
               gap: 10,
-              background: "rgba(0,0,0,0.45)",
+              background: "rgba(66, 41, 41, 0.45)",
             }}
           >
-            <div style={{ fontWeight: 700, color: "#f3efe6", fontFamily: "monospace" }}>
+            <div
+              style={{
+                fontWeight: 700,
+                color: "#f3efe6",
+                fontFamily: "monospace",
+              }}
+            >
               Create / Add Stock
             </div>
 
             <input
               value={createForm.name}
-              onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+              onChange={(e) =>
+                setCreateForm((f) => ({ ...f, name: e.target.value }))
+              }
               placeholder="Name (unique)"
               required
               style={formFieldStyle}
@@ -378,7 +398,10 @@ export default function EquipmentPage() {
             <select
               value={createForm.category}
               onChange={(e) =>
-                setCreateForm((f) => ({ ...f, category: e.target.value as EquipmentCategory }))
+                setCreateForm((f) => ({
+                  ...f,
+                  category: e.target.value as EquipmentCategory,
+                }))
               }
               style={formFieldStyle}
             >
@@ -392,7 +415,12 @@ export default function EquipmentPage() {
             <input
               type="number"
               value={createForm.quantity}
-              onChange={(e) => setCreateForm((f) => ({ ...f, quantity: Number(e.target.value) }))}
+              onChange={(e) =>
+                setCreateForm((f) => ({
+                  ...f,
+                  quantity: Number(e.target.value),
+                }))
+              }
               placeholder="Quantity to add"
               min={0}
               style={formFieldStyle}
@@ -400,7 +428,9 @@ export default function EquipmentPage() {
 
             <textarea
               value={createForm.description}
-              onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
+              onChange={(e) =>
+                setCreateForm((f) => ({ ...f, description: e.target.value }))
+              }
               placeholder="Description"
               rows={3}
               style={formFieldStyle}
@@ -410,7 +440,10 @@ export default function EquipmentPage() {
               type="number"
               value={createForm.effectiveness}
               onChange={(e) =>
-                setCreateForm((f) => ({ ...f, effectiveness: Number(e.target.value) }))
+                setCreateForm((f) => ({
+                  ...f,
+                  effectiveness: Number(e.target.value),
+                }))
               }
               placeholder="Effectiveness (1-100)"
               min={1}
@@ -418,15 +451,26 @@ export default function EquipmentPage() {
               style={formFieldStyle}
             />
 
-            <div style={{ display: "flex", gap: 10 }}>
-              <button style={toolbarButtonStyle}>Save</button>
-              <button
-                type="button"
-                onClick={() => setShowCreate(false)}
-                style={secondaryButtonStyle}
-              >
-                Cancel
-              </button>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                alignItems: "center",
+                flexWrap: "wrap",
+              }}
+            >
+              <IconButton
+                label="Save"
+                title="Save"
+                variant="primary"
+                onClick={submitEdit}
+              />
+              <IconButton
+                label="Cancel"
+                title="Cancel"
+                variant="secondary"
+                onClick={cancelEdit}
+              />
             </div>
           </form>
         )}
@@ -466,7 +510,7 @@ export default function EquipmentPage() {
                         gap: 18,
                         alignItems: "stretch",
                         backgroundImage: `linear-gradient(${getEquipmentOverlay(
-                          item.category
+                          item.category,
                         )}, rgba(0,0,0,0.74)), url(${displayImage})`,
                         backgroundSize: "cover",
                         backgroundPosition: "center",
@@ -495,19 +539,28 @@ export default function EquipmentPage() {
                           >
                             <Link
                               to={`/equipment/${item.id}`}
-                              style={{ color: "inherit", textDecoration: "none" }}
+                              style={{
+                                color: "inherit",
+                                textDecoration: "none",
+                              }}
                             >
                               {item.name}
                             </Link>
                           </div>
 
-                          <div style={metaLineStyle}>Category: {item.category ?? "—"}</div>
-                          <div style={metaLineStyle}>Effectiveness: {item.effectiveness}/100</div>
                           <div style={metaLineStyle}>
-                            Stock: {item.availableQuantity} available / {item.quantity} total
+                            Category: {item.category ?? "—"}
                           </div>
                           <div style={metaLineStyle}>
-                            Allocation: {item.allocatedQuantity} allocated ({getAllocationPercent(item)}%)
+                            Effectiveness: {item.effectiveness}/100
+                          </div>
+                          <div style={metaLineStyle}>
+                            Stock: {item.availableQuantity} available /{" "}
+                            {item.quantity} total
+                          </div>
+                          <div style={metaLineStyle}>
+                            Allocation: {item.allocatedQuantity} allocated (
+                            {getAllocationPercent(item)}%)
                           </div>
 
                           {item.description && (
@@ -581,7 +634,9 @@ export default function EquipmentPage() {
                               alt="Upload image"
                               title="Upload image"
                               variant="secondary"
-                              onClick={() => fileInputRefs.current[item.id]?.click()}
+                              onClick={() =>
+                                fileInputRefs.current[item.id]?.click()
+                              }
                               style={iconActionButtonStyle}
                               disabled={!!item.deletedAt}
                             />
@@ -609,7 +664,13 @@ export default function EquipmentPage() {
                             />
                           </>
                         ) : (
-                          <span style={{ opacity: 0.6, fontSize: 14, color: "#f3efe6" }}>
+                          <span
+                            style={{
+                              opacity: 0.6,
+                              fontSize: 14,
+                              color: "#f3efe6",
+                            }}
+                          >
                             Read-only
                           </span>
                         )}
@@ -634,7 +695,8 @@ export default function EquipmentPage() {
                             fontFamily: "monospace",
                           }}
                         >
-                          Editing: {editingItem?.name ?? `Equipment #${item.id}`}
+                          Editing:{" "}
+                          {editingItem?.name ?? `Equipment #${item.id}`}
                         </div>
 
                         <div style={{ display: "grid", gap: 10 }}>
@@ -642,7 +704,13 @@ export default function EquipmentPage() {
                             value={editForm?.category ?? "Primary"}
                             onChange={(ev) =>
                               setEditForm((f) =>
-                                f ? { ...f, category: ev.target.value as EquipmentCategory } : f
+                                f
+                                  ? {
+                                      ...f,
+                                      category: ev.target
+                                        .value as EquipmentCategory,
+                                    }
+                                  : f,
                               )
                             }
                             style={formFieldStyle}
@@ -658,7 +726,11 @@ export default function EquipmentPage() {
                             type="number"
                             value={editForm?.quantity ?? 0}
                             onChange={(ev) =>
-                              setEditForm((f) => (f ? { ...f, quantity: Number(ev.target.value) } : f))
+                              setEditForm((f) =>
+                                f
+                                  ? { ...f, quantity: Number(ev.target.value) }
+                                  : f,
+                              )
                             }
                             min={0}
                             style={formFieldStyle}
@@ -667,7 +739,9 @@ export default function EquipmentPage() {
                           <textarea
                             value={editForm?.description ?? ""}
                             onChange={(ev) =>
-                              setEditForm((f) => (f ? { ...f, description: ev.target.value } : f))
+                              setEditForm((f) =>
+                                f ? { ...f, description: ev.target.value } : f,
+                              )
                             }
                             rows={3}
                             placeholder="Description"
@@ -679,7 +753,12 @@ export default function EquipmentPage() {
                             value={editForm?.effectiveness ?? 50}
                             onChange={(ev) =>
                               setEditForm((f) =>
-                                f ? { ...f, effectiveness: Number(ev.target.value) } : f
+                                f
+                                  ? {
+                                      ...f,
+                                      effectiveness: Number(ev.target.value),
+                                    }
+                                  : f,
                               )
                             }
                             min={1}
@@ -689,11 +768,24 @@ export default function EquipmentPage() {
                         </div>
                       </div>
 
-                      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                        <button onClick={submitEdit} style={iconActionButtonStyle}>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 10,
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <button
+                          onClick={submitEdit}
+                          style={iconActionButtonStyle}
+                        >
                           Save
                         </button>
-                        <button onClick={cancelEdit} style={iconActionButtonStyle}>
+                        <button
+                          onClick={cancelEdit}
+                          style={iconActionButtonStyle}
+                        >
                           Cancel
                         </button>
                       </div>
@@ -714,65 +806,3 @@ export default function EquipmentPage() {
     </div>
   );
 }
-
-const toolbarButtonStyle: React.CSSProperties = {
-  height: 44,
-  padding: "0 16px",
-  borderRadius: 10,
-  border: "1px solid #c9a56a",
-  background: "#c9a56a",
-  color: "#1d1812",
-  fontFamily: "monospace",
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const secondaryButtonStyle: React.CSSProperties = {
-  height: 44,
-  padding: "0 16px",
-  borderRadius: 10,
-  border: "1px solid #9d8560",
-  background: "rgba(201,165,106,0.18)",
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const sortButtonStyle: React.CSSProperties = {
-  padding: "8px 14px",
-  borderRadius: 10,
-  border: "1px solid #9d8560",
-  background: "rgba(201,165,106,0.16)",
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const iconActionButtonStyle: React.CSSProperties = {
-  padding: "8px 12px",
-  borderRadius: 10,
-  border: "1px solid #9d8560",
-  background: "rgba(201,165,106,0.12)",
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const metaLineStyle: React.CSSProperties = {
-  color: "#d7b176",
-  fontFamily: "monospace",
-  fontSize: 16,
-  marginBottom: 4,
-};
-
-const formFieldStyle: React.CSSProperties = {
-  padding: 10,
-  borderRadius: 8,
-  border: "1px solid #9d8560",
-  background: "rgba(0,0,0,0.55)",
-  color: "#f3efe6",
-  fontFamily: "monospace",
-};

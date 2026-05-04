@@ -296,10 +296,6 @@ const heroTitleStyle: React.CSSProperties = {
   fontSize: 24,
 };
 
-const infoTextStyle: React.CSSProperties = {
-  color: "#f3efe6",
-  fontFamily: "monospace",
-};
 
 const metaLineStyle: React.CSSProperties = {
   color: "#d7b176",

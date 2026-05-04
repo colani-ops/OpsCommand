@@ -23,6 +23,23 @@ import { useErrorHandler } from "../hooks/useErrorHandler";
 import { resolveEquipmentImageUrl } from "../api/equipment";
 import ErrorBanner from "../components/ErrorBanner";
 import LoadingScreen from "../components/LoadingScreen";
+import {
+  detailsLineStyle,
+  detailsTitleStyle,
+  emptyPanelStyle,
+  formFieldStyle,
+  heroTitleStyle,
+  iconActionButtonStyle,
+  metaLineStyle,
+  pageTitleStyleShared,
+  panelStyle,
+  sectionBoxStyle,
+  sectionTitleStyle,
+  smallActionButtonStyle,
+  smallDangerButtonStyle,
+  softSectionBoxStyle,
+  toolbarButtonStyle,
+} from "../styles/uiStyles";
 
 function getPrimaryRoleLabel(roles: string[]) {
   const order = ["SuperAdmin", "Admin", "Commander", "Member", "Recruit"];
@@ -320,38 +337,28 @@ export default function MyProfilePage() {
   }
 
   if (!authUser) {
-    return <div style={{ color: "#f3efe6", fontFamily: "monospace" }}>No user loaded.</div>;
+    return (
+      <div style={{ color: "#f3efe6", fontFamily: "monospace" }}>
+        No user loaded.
+      </div>
+    );
   }
 
   if (loadingProfile) {
-  return (
-    <div>
-      <ErrorBanner error={error} />
+    return (
+      <div>
+        <ErrorBanner error={error} />
 
-      <div
-        style={{
-          border: "2px solid #c9a56a",
-          borderRadius: 14,
-          background: "rgba(0, 0, 0, 0.78)",
-          padding: 24,
-        }}
-      >
-        <h2
-          style={{
-            margin: "0 0 24px 0",
-            color: "#f3efe6",
-            fontFamily: "monospace",
-            fontSize: 28,
-          }}
-        >
-          My Profile
-        </h2>
+        <div style={panelStyle}>
+          <h2 style={{ ...pageTitleStyleShared, marginBottom: 24 }}>
+            My Profile
+          </h2>
 
-        <LoadingScreen label="Loading Initate Data..." />
+          <LoadingScreen label="Loading initial data..." />
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   const roleLabel = getPrimaryRoleLabel(me?.roles ?? authUser.roles);
   const displayName = me?.userName ?? authUser.userName;
@@ -381,30 +388,14 @@ export default function MyProfilePage() {
         </div>
       )}
 
-      <div
-        style={{
-          border: "2px solid #c9a56a",
-          borderRadius: 14,
-          background: "rgba(0, 0, 0, 0.78)",
-          padding: 24,
-        }}
-      >
-        <h2
-          style={{
-            margin: "0 0 24px 0",
-            color: "#f3efe6",
-            fontFamily: "monospace",
-            fontSize: 28,
-          }}
-        >
+      <div style={panelStyle}>
+        <h2 style={{ ...pageTitleStyleShared, marginBottom: 24 }}>
           My Profile
         </h2>
 
         <div
           style={{
-            border: "1px solid #9d8560",
-            borderRadius: 14,
-            background: "rgba(0,0,0,0.55)",
+            ...sectionBoxStyle,
             padding: 18,
             display: "grid",
             gap: 18,
@@ -519,10 +510,7 @@ export default function MyProfilePage() {
             <form
               onSubmit={onSaveProfile}
               style={{
-                border: "1px solid rgba(201,165,106,0.35)",
-                borderRadius: 12,
-                padding: 16,
-                background: "rgba(20,20,20,0.52)",
+                ...softSectionBoxStyle,
                 display: "grid",
                 gap: 12,
               }}
@@ -558,10 +546,7 @@ export default function MyProfilePage() {
             <form
               onSubmit={onChangePassword}
               style={{
-                border: "1px solid rgba(201,165,106,0.35)",
-                borderRadius: 12,
-                padding: 16,
-                background: "rgba(20,20,20,0.52)",
+                ...softSectionBoxStyle,
                 display: "grid",
                 gap: 12,
               }}
@@ -609,10 +594,7 @@ export default function MyProfilePage() {
 
           <div
             style={{
-              border: "1px solid rgba(201,165,106,0.35)",
-              borderRadius: 12,
-              padding: 16,
-              background: "rgba(20,20,20,0.52)",
+              ...softSectionBoxStyle,
               display: "grid",
               gridTemplateColumns: "180px 1fr",
               gap: 22,
@@ -670,13 +652,11 @@ export default function MyProfilePage() {
           </div>
         </div>
 
-        {!loadingProfile && assignedSquadId && (
+        {assignedSquadId && (
           <>
             <div
               style={{
-                border: "1px solid #9d8560",
-                borderRadius: 14,
-                background: "rgba(0,0,0,0.55)",
+                ...sectionBoxStyle,
                 padding: 18,
                 marginBottom: 18,
               }}
@@ -726,9 +706,7 @@ export default function MyProfilePage() {
 
             <div
               style={{
-                border: "1px solid #9d8560",
-                borderRadius: 14,
-                background: "rgba(0,0,0,0.55)",
+                ...sectionBoxStyle,
                 padding: 18,
               }}
             >
@@ -756,7 +734,7 @@ export default function MyProfilePage() {
                           gap: 18,
                           alignItems: "stretch",
                           backgroundImage: `linear-gradient(rgba(10,10,10,0.38), rgba(10,10,10,0.38)), url(${getEquipmentDisplayImage(
-                          item
+                            item
                           )})`,
                           backgroundSize: "cover",
                           backgroundPosition: "center",
@@ -833,12 +811,11 @@ export default function MyProfilePage() {
           </>
         )}
 
-        {!loadingProfile && !assignedSquadId && (
+        {!assignedSquadId && (
           <div
             style={{
-              border: "1px solid #9d8560",
+              ...emptyPanelStyle,
               borderRadius: 14,
-              background: "rgba(0,0,0,0.55)",
               padding: 18,
             }}
           >
@@ -852,93 +829,3 @@ export default function MyProfilePage() {
     </div>
   );
 }
-
-const heroTitleStyle: React.CSSProperties = {
-  color: "#efb85f",
-  fontFamily: "monospace",
-  fontWeight: 800,
-  fontSize: 24,
-};
-
-const sectionTitleStyle: React.CSSProperties = {
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  fontWeight: 800,
-  fontSize: 22,
-  marginBottom: 14,
-};
-
-const toolbarButtonStyle: React.CSSProperties = {
-  height: 44,
-  padding: "0 16px",
-  borderRadius: 10,
-  border: "1px solid #c9a56a",
-  background: "#c9a56a",
-  color: "#1d1812",
-  fontFamily: "monospace",
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const iconActionButtonStyle: React.CSSProperties = {
-  padding: "8px 12px",
-  borderRadius: 10,
-  border: "1px solid #9d8560",
-  background: "rgba(201,165,106,0.12)",
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const smallActionButtonStyle: React.CSSProperties = {
-  padding: "8px 12px",
-  borderRadius: 10,
-  border: "1px solid #9d8560",
-  background: "rgba(201,165,106,0.16)",
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const smallDangerButtonStyle: React.CSSProperties = {
-  padding: "8px 12px",
-  borderRadius: 10,
-  border: "1px solid #9d8560",
-  background: "rgba(150,55,55,0.28)",
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const formFieldStyle: React.CSSProperties = {
-  padding: 10,
-  borderRadius: 8,
-  border: "1px solid #9d8560",
-  background: "rgba(0,0,0,0.55)",
-  color: "#f3efe6",
-  fontFamily: "monospace",
-};
-
-const metaLineStyle: React.CSSProperties = {
-  color: "#d7b176",
-  fontFamily: "monospace",
-  fontSize: 16,
-};
-
-const detailsTitleStyle: React.CSSProperties = {
-  color: "#efb85f",
-  fontFamily: "monospace",
-  fontWeight: 800,
-  fontSize: 18,
-  marginBottom: 10,
-};
-
-const detailsLineStyle: React.CSSProperties = {
-  color: "#f3efe6",
-  fontFamily: "monospace",
-  fontSize: 14,
-  marginBottom: 6,
-};
