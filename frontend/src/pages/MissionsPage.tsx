@@ -23,6 +23,7 @@ import ErrorBanner from "../components/ErrorBanner";
 import MissionStatusBadge from "../components/MissionStatusBadge";
 import MissionMetaBadge from "../components/MissionMetaBadge";
 import IconButton from "../ui/IconButton";
+import LoadingScreen from "../components/LoadingScreen";
 
 type CreateForm = {
   name: string;
@@ -559,7 +560,7 @@ export default function MissionsPage() {
           </button>
         </div>
 
-        {loading && <div style={{ marginTop: 10, color: "#f3efe6" }}>Loading...</div>}
+        {loading && <LoadingScreen label="Loading Command Display..." />}
 
         {canManage && showCreate && (
           <form

@@ -16,6 +16,7 @@ import {
   authTitleBoxStyle,
   authTitleStyle,
 } from "../styles/authStyles";
+import LoadingScreen from "../components/LoadingScreen";
 
 const backgroundUrl = "/mainBG.png";
 
@@ -44,6 +45,28 @@ export default function LoginPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (submitting) {
+    return (
+      <div
+        style={{
+          ...authPageStyle,
+          backgroundImage: `url(${backgroundUrl})`,
+        }}
+      >
+        <div style={authOverlayStyle} />
+        <div style={authContentStyle}>
+          <div style={authTitleBoxStyle}>
+            <h1 style={authTitleStyle}>Command Access</h1>
+          </div>
+
+          <div style={authPanelStyle}>
+            <LoadingScreen label="Logging in..." />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

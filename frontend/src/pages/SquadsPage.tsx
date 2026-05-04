@@ -14,6 +14,7 @@ import {
 import { useErrorHandler } from "../hooks/useErrorHandler";
 import ErrorBanner from "../components/ErrorBanner";
 import IconButton from "../ui/IconButton";
+import LoadingScreen from "../components/LoadingScreen";
 
 const TYPES: SquadType[] = ["Assault", "Tactical", "Recon"];
 
@@ -382,7 +383,7 @@ export default function SquadsPage() {
           </button>
         </div>
 
-        {loading && <div style={{ marginTop: 10, color: "#f3efe6" }}>Loading...</div>}
+        {loading && <LoadingScreen label="Loading Squads..." />}
 
         {canManage && showCreate && (
           <form

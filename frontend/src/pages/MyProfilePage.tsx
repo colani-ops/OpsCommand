@@ -22,6 +22,7 @@ import {
 import { useErrorHandler } from "../hooks/useErrorHandler";
 import { resolveEquipmentImageUrl } from "../api/equipment";
 import ErrorBanner from "../components/ErrorBanner";
+import LoadingScreen from "../components/LoadingScreen";
 
 function getPrimaryRoleLabel(roles: string[]) {
   const order = ["SuperAdmin", "Admin", "Commander", "Member", "Recruit"];
@@ -322,6 +323,36 @@ export default function MyProfilePage() {
     return <div style={{ color: "#f3efe6", fontFamily: "monospace" }}>No user loaded.</div>;
   }
 
+  if (loadingProfile) {
+  return (
+    <div>
+      <ErrorBanner error={error} />
+
+      <div
+        style={{
+          border: "2px solid #c9a56a",
+          borderRadius: 14,
+          background: "rgba(0, 0, 0, 0.78)",
+          padding: 24,
+        }}
+      >
+        <h2
+          style={{
+            margin: "0 0 24px 0",
+            color: "#f3efe6",
+            fontFamily: "monospace",
+            fontSize: 28,
+          }}
+        >
+          My Profile
+        </h2>
+
+        <LoadingScreen label="Loading Initate Data..." />
+      </div>
+    </div>
+  );
+}
+
   const roleLabel = getPrimaryRoleLabel(me?.roles ?? authUser.roles);
   const displayName = me?.userName ?? authUser.userName;
   const displayEmail = me?.email ?? authUser.email;
@@ -613,14 +644,6 @@ export default function MyProfilePage() {
             </div>
 
             <div style={{ display: "grid", gap: 10 }}>
-              <div style={detailsTitleStyle}>
-                {loadingProfile
-                  ? "Checking squad..."
-                  : assignedSquadId
-                    ? squad?.name ?? "Unknown squad"
-                    : "No squad assigned"}
-              </div>
-
               <div style={detailsLineStyle}>Squad Type: {squad?.type ?? "—"}</div>
               <div style={detailsLineStyle}>Commander: {squad?.commanderId ?? "—"}</div>
               <div style={detailsLineStyle}>Success Rate: {squad ? squadSuccessRate : "—"}</div>

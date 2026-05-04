@@ -22,6 +22,7 @@ import {
 } from "../api/squads";
 import ErrorBanner from "../components/ErrorBanner";
 import IconButton from "../ui/IconButton";
+import LoadingScreen from "../components/LoadingScreen";
 
 export default function SquadProfilePage() {
   const { id } = useParams();
@@ -311,7 +312,7 @@ export default function SquadProfilePage() {
           )}
         </div>
 
-        {loading && <div style={{ marginTop: 10, color: "#f3efe6" }}>Loading...</div>}
+        {loading && <LoadingScreen label="Loading squad..." />}
 
         {!loading && !err && !squad && (
           <div style={emptyPanelStyle}>Squad not found.</div>

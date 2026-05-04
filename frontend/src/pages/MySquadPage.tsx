@@ -22,6 +22,7 @@ import {
 import { useErrorHandler } from "../hooks/useErrorHandler";
 import ErrorBanner from "../components/ErrorBanner";
 import IconButton from "../ui/IconButton";
+import LoadingScreen from "../components/LoadingScreen";
 
 export default function MySquadPage() {
   const canAccess = hasRole("Member", "Commander");
@@ -261,7 +262,7 @@ export default function MySquadPage() {
             />
         </div>
 
-        {loading && <div style={{ marginTop: 10, color: "#f3efe6" }}>Loading...</div>}
+        {loading && <LoadingScreen label="Loading squad..." />}
 
         {!loading && !error && !squad && (
           <div

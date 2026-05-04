@@ -15,6 +15,7 @@ import ErrorBanner from "../components/ErrorBanner";
 import { useErrorHandler } from "../hooks/useErrorHandler";
 import IconButton from "../ui/IconButton";
 import { getEquipmentBanner } from "../utils/bannerFallbacks";
+import LoadingScreen from "../components/LoadingScreen";
 
 const CATEGORIES: EquipmentCategory[] = ["Primary", "Secondary", "Melee", "Utility"];
 
@@ -207,7 +208,7 @@ export default function EquipmentProfilePage() {
           Equipment Profile
         </h2>
 
-        {loading && <div style={infoTextStyle}>Loading...</div>}
+        {loading && <LoadingScreen label="Loading wargear display..." />}
 
         {!loading && !error && !item && (
           <div
@@ -534,11 +535,6 @@ export default function EquipmentProfilePage() {
     </div>
   );
 }
-
-const infoTextStyle: React.CSSProperties = {
-  color: "#f3efe6",
-  fontFamily: "monospace",
-};
 
 const metaLineStyle: React.CSSProperties = {
   color: "#d7b176",

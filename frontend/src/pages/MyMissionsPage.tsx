@@ -6,6 +6,7 @@ import { useErrorHandler } from "../hooks/useErrorHandler";
 import ErrorBanner from "../components/ErrorBanner";
 import MissionStatusBadge from "../components/MissionStatusBadge";
 import MissionMetaBadge from "../components/MissionMetaBadge";
+import LoadingScreen from "../components/LoadingScreen";
 
 function formatRemainingTime(activatedAt: string | null, durationMinutes: number | null) {
   if (!activatedAt || durationMinutes == null) return "—";
@@ -338,7 +339,7 @@ export default function MyMissionsPage() {
           </button>
         </div>
 
-        {loading && <div style={{ marginTop: 10, color: "#f3efe6" }}>Loading...</div>}
+        {loading && <LoadingScreen label="Loading Missions..." />}
 
         {!loading && (
           <div

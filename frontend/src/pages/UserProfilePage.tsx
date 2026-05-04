@@ -8,6 +8,7 @@ import {
   type UserProfileDto,
 } from "../api/users";
 import ErrorBanner from "../components/ErrorBanner";
+import LoadingScreen from "../components/LoadingScreen";
 
 function getVeterancyLabel(missionsServed: number) {
   if (missionsServed >= 20) return "Elite";
@@ -112,7 +113,7 @@ export default function UserProfilePage() {
           User Profile
         </h2>
 
-        {loading && <div style={infoTextStyle}>Loading...</div>}
+        {loading && <LoadingScreen label="Loading Initiate..." />}
 
         {!loading && !err && !user && (
           <div

@@ -15,6 +15,7 @@ import { getSquads, type SquadDto } from "../api/squads";
 import ErrorBanner from "../components/ErrorBanner";
 import { useErrorHandler } from "../hooks/useErrorHandler";
 import IconButton from "../ui/IconButton";
+import LoadingScreen from "../components/LoadingScreen";
 
 type EditState = Record<
   string,
@@ -318,7 +319,7 @@ export default function UserManagementPage() {
           />
         </div>
 
-        {loading && <div style={{ marginTop: 10, color: "#f3efe6" }}>Loading...</div>}
+        {loading && <LoadingScreen label="Loading Initiate..." />}
 
         {isSuperAdmin && (
           <section style={{ marginTop: 24, marginBottom: 24 }}>

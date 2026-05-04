@@ -16,6 +16,7 @@ import {
   authTitleBoxStyle,
   authTitleStyle,
 } from "../styles/authStyles";
+import LoadingScreen from "../components/LoadingScreen";
 
 const backgroundUrl = "/mainBG.png";
 

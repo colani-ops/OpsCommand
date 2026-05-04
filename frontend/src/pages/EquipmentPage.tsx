@@ -16,6 +16,7 @@ import { useErrorHandler } from "../hooks/useErrorHandler";
 import ErrorBanner from "../components/ErrorBanner";
 import IconButton from "../ui/IconButton";
 import { getEquipmentBanner } from "../utils/bannerFallbacks";
+import LoadingScreen from "../components/LoadingScreen";
 
 const CATEGORIES: EquipmentCategory[] = ["Primary", "Secondary", "Melee", "Utility"];
 
@@ -347,7 +348,7 @@ export default function EquipmentPage() {
           </button>
         </div>
 
-        {loading && <div style={{ marginTop: 10, color: "#f3efe6" }}>Loading...</div>}
+        {loading && <LoadingScreen label="Loading Wargear..." />}
 
         {canManage && showCreate && (
           <form
