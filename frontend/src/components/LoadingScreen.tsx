@@ -1,20 +1,21 @@
+import type { CSSProperties } from "react";
+
 type LoadingScreenProps = {
   label?: string;
-  fullscreen?: boolean;
+  minHeight?: number;
 };
 
 export default function LoadingScreen({
   label = "Loading...",
-  fullscreen = false,
+  minHeight = 180,
 }: LoadingScreenProps) {
   return (
     <div
       style={{
-        minHeight: fullscreen ? "100vh" : 220,
-        width: "100%",
+        minHeight,
         display: "grid",
         placeItems: "center",
-        padding: 24,
+        width: "100%",
       }}
     >
       <div
@@ -22,51 +23,37 @@ export default function LoadingScreen({
           display: "grid",
           justifyItems: "center",
           gap: 14,
+          padding: "20px 24px",
         }}
       >
         <img
           src="/icons/loading.png"
           alt="Loading"
-          style={{
-            width: 82,
-            height: 82,
-            objectFit: "contain",
-            animation: "opscommand-spin 1.8s linear infinite",
-            filter: "drop-shadow(0 0 10px rgba(201,165,106,0.18))",
-          }}
+          style={spinnerStyle}
         />
 
         <div
           style={{
             color: "#f3efe6",
             fontFamily: "monospace",
-            fontSize: 18,
-            fontWeight: 700,
+            fontSize: 16,
             letterSpacing: 0.4,
+            textAlign: "center",
+            opacity: 0.94,
           }}
         >
           {label}
         </div>
-
-        <div
-          style={{
-            color: "rgba(215,177,118,0.88)",
-            fontFamily: "monospace",
-            fontSize: 13,
-          }}
-        >
-          Synchronizing command data...
-        </div>
       </div>
-
-      <style>
-        {`
-          @keyframes opscommand-spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-        `}
-      </style>
     </div>
   );
 }
+
+const spinnerStyle: CSSProperties = {
+  width: 52,
+  height: 52,
+  objectFit: "contain",
+  display: "block",
+  animation: "opscommand-spin 1.15s linear infinite",
+  filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.28))",
+};

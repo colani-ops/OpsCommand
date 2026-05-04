@@ -1,6 +1,11 @@
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 
-type IconButtonVariant = "primary" | "secondary" | "danger" | "ghost" | "transparent";
+type IconButtonVariant =
+  | "primary"
+  | "secondary"
+  | "danger"
+  | "ghost"
+  | "transparent";
 
 type IconButtonProps = {
   iconSrc?: string;
@@ -27,6 +32,9 @@ export default function IconButton({
   title,
   style,
 }: IconButtonProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
+
   const computedAlt = alt ?? label ?? title ?? "button";
 
   return (
@@ -35,8 +43,16 @@ export default function IconButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPressed(false);
+      }}
+      onMouseDown={() => setIsPressed(true)}
+      onMouseUp={() => setIsPressed(false)}
+      onBlur={() => setIsPressed(false)}
       style={{
-        ...getButtonStyle(variant, disabled, !!label),
+        ...getButtonStyle(variant, disabled, !!label, isHovered, isPressed),
         ...style,
       }}
     >
@@ -50,6 +66,15 @@ export default function IconButton({
             objectFit: "contain",
             display: "block",
             flexShrink: 0,
+            transition: "transform 0.16s ease, opacity 0.16s ease",
+            transform: disabled
+              ? "none"
+              : isPressed
+                ? "scale(0.94)"
+                : isHovered
+                  ? "scale(1.05)"
+                  : "scale(1)",
+            opacity: disabled ? 0.75 : 1,
           }}
         />
       )}
@@ -75,7 +100,9 @@ export default function IconButton({
 function getButtonStyle(
   variant: IconButtonVariant,
   disabled: boolean,
-  hasLabel: boolean
+  hasLabel: boolean,
+  isHovered: boolean,
+  isPressed: boolean,
 ): CSSProperties {
   const base: CSSProperties = {
     minWidth: hasLabel ? 96 : 46,
@@ -89,7 +116,24 @@ function getButtonStyle(
     cursor: disabled ? "not-allowed" : "pointer",
     opacity: disabled ? 0.6 : 1,
     padding: hasLabel ? "0 16px" : 0,
-    transition: "all 0.15s ease",
+    transition:
+      "transform 0.14s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease, opacity 0.18s ease",
+    transform: disabled
+      ? "none"
+      : isPressed
+        ? "translateY(1px) scale(0.985)"
+        : isHovered
+          ? "translateY(-1px)"
+          : "translateY(0)",
+    boxShadow: disabled
+      ? "none"
+      : variant === "transparent"
+        ? "none"
+        : isPressed
+          ? "0 3px 10px rgba(0,0,0,0.20)"
+          : isHovered
+            ? "0 8px 18px rgba(0,0,0,0.22)"
+            : "0 2px 6px rgba(0,0,0,0.10)",
   };
 
   switch (variant) {
@@ -97,35 +141,41 @@ function getButtonStyle(
       return {
         ...base,
         border: "1px solid #c9a56a",
-        background: "#c9a56a",
+        background: isHovered ? "#d7b57a" : "#c9a56a",
       };
 
     case "secondary":
       return {
         ...base,
         border: "1px solid #9d8560",
-        background: "rgba(201,165,106,0.18)",
+        background: isHovered
+          ? "rgba(201,165,106,0.26)"
+          : "rgba(201,165,106,0.18)",
       };
 
     case "danger":
       return {
         ...base,
         border: "1px solid rgba(195,95,95,0.45)",
-        background: "rgba(120,30,30,0.22)",
+        background: isHovered
+          ? "rgba(140,35,35,0.30)"
+          : "rgba(120,30,30,0.22)",
       };
 
     case "transparent":
       return {
         ...base,
         border: "1px solid rgba(255,255,255,0)",
-        background: "rgba(255,255,255,0)",
+        background: isHovered ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0)",
       };
 
     default:
       return {
         ...base,
         border: "1px solid #9d8560",
-        background: "rgba(201,165,106,0.12)",
+        background: isHovered
+          ? "rgba(201,165,106,0.18)"
+          : "rgba(201,165,106,0.12)",
       };
   }
 }
