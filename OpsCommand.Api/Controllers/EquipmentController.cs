@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpsCommand.Api.Models.Equipment;
 using OpsCommand.Api.Services.Equipments;
@@ -50,6 +44,38 @@ namespace OpsCommand.Api.Controllers
         public async Task<IActionResult> Update(int id, [FromBody] UpdateEquipmentRequest request)
         {
             var updated = await _service.UpdateAsync(id, request);
+            return Ok(updated);
+        }
+
+        [HttpPut("{id}/image")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
+        public async Task<IActionResult> UploadImage(int id, IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { message = "No file uploaded." });
+
+            try
+            {
+                var updated = await _service.UploadImageAsync(id, file);
+                if (updated == null)
+                    return NotFound();
+
+                return Ok(updated);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpDelete("{id}/image")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
+        public async Task<IActionResult> RemoveImage(int id)
+        {
+            var updated = await _service.RemoveImageAsync(id);
+            if (updated == null)
+                return NotFound();
+
             return Ok(updated);
         }
 

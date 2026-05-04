@@ -20,6 +20,7 @@ import {
   type UserEquipmentDto,
 } from "../api/userEquipment";
 import { useErrorHandler } from "../hooks/useErrorHandler";
+import { resolveEquipmentImageUrl } from "../api/equipment";
 import ErrorBanner from "../components/ErrorBanner";
 
 function getPrimaryRoleLabel(roles: string[]) {
@@ -54,16 +55,20 @@ function getSquadTypeImage(type?: string | null) {
 function getEquipmentBanner(category?: string | null) {
   switch (category) {
     case "Primary":
-      return "/equipment-primary.png";
+      return "/banners/equipment-primary.png";
     case "Secondary":
-      return "/equipment-secondary.png";
+      return "/banners/equipment-secondary.png";
     case "Melee":
-      return "/equipment-melee.png";
+      return "/banners/equipment-melee.png";
     case "Utility":
-      return "/equipment-utility.png";
+      return "/banners/equipment-utility.png";
     default:
-      return "/equipment-default.png";
+      return "/banners/equipment-default.png";
   }
+}
+
+function getEquipmentDisplayImage(item: UserEquipmentDto) {
+  return resolveEquipmentImageUrl(item.imageUrl) ?? getEquipmentBanner(item.category);
 }
 
 export default function MyProfilePage() {
@@ -727,8 +732,8 @@ export default function MyProfilePage() {
                           gridTemplateColumns: "1fr auto",
                           gap: 18,
                           alignItems: "stretch",
-                          backgroundImage: `linear-gradient(rgba(10,10,10,0.38), rgba(10,10,10,0.38)), url(${getEquipmentBanner(
-                            item.category
+                          backgroundImage: `linear-gradient(rgba(10,10,10,0.38), rgba(10,10,10,0.38)), url(${getEquipmentDisplayImage(
+                          item
                           )})`,
                           backgroundSize: "cover",
                           backgroundPosition: "center",

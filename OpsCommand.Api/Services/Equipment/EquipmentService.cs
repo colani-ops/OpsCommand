@@ -1,22 +1,21 @@
-﻿using OpsCommand.Api.Domain.Entities;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
+using OpsCommand.Api.Domain.Entities;
+using OpsCommand.Api.Infrastructure.Data;
 using OpsCommand.Api.Models.Equipment;
 using OpsCommand.Api.Repositories.Equipments;
 using OpsCommand.Api.Services.Equipments;
-using Microsoft.EntityFrameworkCore;
-using OpsCommand.Api.Infrastructure.Data;
+using System.IO;
 
 public class EquipmentService : IEquipmentService
 {
     private readonly IEquipmentRepository _repository;
-
     private readonly ApplicationDbContext _context;
-
-
 
     private static readonly HashSet<string> AllowedCategories =
         new(StringComparer.OrdinalIgnoreCase) { "Primary", "Secondary", "Melee", "Utility" };
 
-
+    private static readonly string[] AllowedImageExtensions = [".jpg", ".jpeg", ".png", ".webp"];
 
     public EquipmentService(IEquipmentRepository repository, ApplicationDbContext context)
     {
@@ -24,11 +23,7 @@ public class EquipmentService : IEquipmentService
         _context = context;
     }
 
-
-
     private static string NormalizeName(string name) => (name ?? "").Trim();
-
-
 
     private static string? NormalizeCategory(string? category)
     {
@@ -39,9 +34,36 @@ public class EquipmentService : IEquipmentService
         return c;
     }
 
+    private static int NormalizeEffectiveness(int effectiveness)
+    {
+        if (effectiveness < 1 || effectiveness > 100)
+            throw new ArgumentException("Effectiveness must be between 1 and 100.");
+        return effectiveness;
+    }
 
+    private static void ValidateImageFile(IFormFile file)
+    {
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
 
-    //Helper for Allocation
+        if (!AllowedImageExtensions.Contains(ext))
+            throw new ArgumentException("Allowed image formats: .jpg, .jpeg, .png, .webp");
+
+        if (file.Length > 5 * 1024 * 1024)
+            throw new ArgumentException("Image is too large. Maximum size is 5 MB.");
+    }
+
+    private static string EnsureUploadsRoot()
+    {
+        var uploadsRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "equipment");
+        Directory.CreateDirectory(uploadsRoot);
+        return uploadsRoot;
+    }
+
+    private static string BuildPublicImagePath(string fileName)
+    {
+        return $"/uploads/equipment/{fileName}";
+    }
+
     private async Task<(int allocated, int available)> GetAllocationAsync(int equipmentId, int totalQuantity)
     {
         var allocated = await _context.SquadEquipments
@@ -53,8 +75,6 @@ public class EquipmentService : IEquipmentService
 
         return (allocated, available);
     }
-
-
 
     private async Task<EquipmentResponse> ToDtoWithAllocationAsync(Equipment e)
     {
@@ -69,17 +89,15 @@ public class EquipmentService : IEquipmentService
             DeletedAt = e.DeletedAt,
             Description = e.Description,
             Effectiveness = e.Effectiveness,
+            ImageUrl = e.ImageUrl,
             AllocatedQuantity = allocated,
             AvailableQuantity = available
         };
     }
 
-
-
     public async Task<List<EquipmentResponse>> GetAllAsync(bool includeDeleted = false)
     {
         var items = await _repository.GetAllAsync(includeDeleted);
-
         var result = new List<EquipmentResponse>();
 
         foreach (var e in items)
@@ -94,6 +112,7 @@ public class EquipmentService : IEquipmentService
                 Quantity = e.Quantity,
                 Description = e.Description,
                 Effectiveness = e.Effectiveness,
+                ImageUrl = e.ImageUrl,
                 DeletedAt = e.DeletedAt,
                 AllocatedQuantity = allocated,
                 AvailableQuantity = available
@@ -103,8 +122,6 @@ public class EquipmentService : IEquipmentService
         return result;
     }
 
-
-
     public async Task<EquipmentResponse> GetByIdAsync(int id, bool includeDeleted = false)
     {
         var equipment = await _repository.GetByIdAsync(id, includeDeleted)
@@ -113,9 +130,6 @@ public class EquipmentService : IEquipmentService
         return await ToDtoWithAllocationAsync(equipment);
     }
 
-
-
-    // CREATE = add-stock; if exists restore + increment
     public async Task<EquipmentResponse> CreateAsync(CreateEquipmentRequest request)
     {
         var name = NormalizeName(request.Name);
@@ -140,13 +154,11 @@ public class EquipmentService : IEquipmentService
             if (category != null)
                 existing.Category = category;
 
-            existing.Quantity += request.Quantity; // request.Quantity je int
-
+            existing.Quantity += request.Quantity;
             existing.Description = description;
             existing.Effectiveness = effectiveness;
 
             await _repository.UpdateAsync(existing);
-            
             return await ToDtoWithAllocationAsync(existing);
         }
 
@@ -161,13 +173,9 @@ public class EquipmentService : IEquipmentService
         };
 
         await _repository.AddAsync(equipment);
-
         return await ToDtoWithAllocationAsync(equipment);
     }
 
-
-
-    // UPDATE = set quantity (optional) + update category (optional)
     public async Task<EquipmentResponse> UpdateAsync(int id, UpdateEquipmentRequest request)
     {
         var equipment = await _repository.GetByIdAsync(id, includeDeleted: true)
@@ -197,7 +205,59 @@ public class EquipmentService : IEquipmentService
         return await ToDtoWithAllocationAsync(equipment);
     }
 
+    public async Task<EquipmentResponse?> UploadImageAsync(int id, IFormFile file)
+    {
+        var equipment = await _repository.GetByIdAsync(id, includeDeleted: true);
+        if (equipment == null)
+            return null;
 
+        ValidateImageFile(file);
+
+        var uploadsRoot = EnsureUploadsRoot();
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        var fileName = $"equipment_{id}_{Guid.NewGuid():N}{ext}";
+        var fullPath = Path.Combine(uploadsRoot, fileName);
+
+        await using (var stream = new FileStream(fullPath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        if (!string.IsNullOrWhiteSpace(equipment.ImageUrl))
+        {
+            var oldRelative = equipment.ImageUrl.TrimStart('/').Replace("/", Path.DirectorySeparatorChar.ToString());
+            var oldFullPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", oldRelative);
+
+            if (File.Exists(oldFullPath))
+                File.Delete(oldFullPath);
+        }
+
+        equipment.ImageUrl = BuildPublicImagePath(fileName);
+        await _repository.UpdateAsync(equipment);
+
+        return await ToDtoWithAllocationAsync(equipment);
+    }
+
+    public async Task<EquipmentResponse?> RemoveImageAsync(int id)
+    {
+        var equipment = await _repository.GetByIdAsync(id, includeDeleted: true);
+        if (equipment == null)
+            return null;
+
+        if (!string.IsNullOrWhiteSpace(equipment.ImageUrl))
+        {
+            var oldRelative = equipment.ImageUrl.TrimStart('/').Replace("/", Path.DirectorySeparatorChar.ToString());
+            var oldFullPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", oldRelative);
+
+            if (File.Exists(oldFullPath))
+                File.Delete(oldFullPath);
+        }
+
+        equipment.ImageUrl = null;
+        await _repository.UpdateAsync(equipment);
+
+        return await ToDtoWithAllocationAsync(equipment);
+    }
 
     public async Task DeleteAsync(int id)
     {
@@ -209,14 +269,5 @@ public class EquipmentService : IEquipmentService
             equipment.DeletedAt = DateTime.UtcNow;
             await _repository.UpdateAsync(equipment);
         }
-    }
-
-
-
-    private static int NormalizeEffectiveness(int effectiveness)
-    {
-        if (effectiveness < 1 || effectiveness > 100)
-            throw new ArgumentException("Effectiveness must be between 1 and 100.");
-        return effectiveness;
     }
 }

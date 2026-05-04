@@ -9,5 +9,7 @@
         public Equipment Equipment { get; set; } = null!;
 
         public int Quantity { get; set; }
+
+        public string? ImageUrl { get; set; }
     }
 }

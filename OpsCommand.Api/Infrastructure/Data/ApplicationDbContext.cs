@@ -4,25 +4,19 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace OpsCommand.Api.Infrastructure.Data
 {
-	public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
-	{
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options)
+        {
+        }
 
-		public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-
-			: base(options)
-
-		{
-		}
-
-		//public DbSet<UserRole> UserRoles { get; set; } //Using built-in AspNetRoles!
-		public DbSet<Squad> Squads { get; set; }
-		public DbSet<Mission> Missions { get; set; }
-		public DbSet<Equipment> Equipments { get; set; }
-		public DbSet<MissionSquad> MissionSquads { get; set; }
-		public DbSet<SquadEquipment> SquadEquipments { get; set; }
-		public DbSet<UserEquipment> UserEquipments { get; set; }
-
-        //OnModelCreating - Later
+        public DbSet<Squad> Squads { get; set; }
+        public DbSet<Mission> Missions { get; set; }
+        public DbSet<Equipment> Equipments { get; set; }
+        public DbSet<MissionSquad> MissionSquads { get; set; }
+        public DbSet<SquadEquipment> SquadEquipments { get; set; }
+        public DbSet<UserEquipment> UserEquipments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -37,7 +31,6 @@ namespace OpsCommand.Api.Infrastructure.Data
             modelBuilder.Entity<UserEquipment>()
                 .HasKey(ue => new { ue.UserId, ue.EquipmentId });
 
-            // Equipment config
             modelBuilder.Entity<Equipment>(entity =>
             {
                 entity.ToTable("Equipments");
@@ -52,13 +45,15 @@ namespace OpsCommand.Api.Infrastructure.Data
                 entity.Property(e => e.Description)
                     .HasMaxLength(1000);
 
+                entity.Property(e => e.ImageUrl)
+                    .HasMaxLength(500);
+
                 entity.Property(e => e.Effectiveness)
                     .IsRequired();
 
                 entity.HasIndex(e => e.Name).IsUnique();
             });
 
-            //SquadEquipment relationships
             modelBuilder.Entity<SquadEquipment>(entity =>
             {
                 entity.ToTable("SquadEquipments");
@@ -67,7 +62,7 @@ namespace OpsCommand.Api.Infrastructure.Data
                     .IsRequired();
 
                 entity.HasOne(se => se.Squad)
-                    .WithMany(s => s.SquadEquipments) //navigation u Squad entitetu
+                    .WithMany(s => s.SquadEquipments)
                     .HasForeignKey(se => se.SquadId)
                     .OnDelete(DeleteBehavior.Cascade);
 
@@ -77,7 +72,6 @@ namespace OpsCommand.Api.Infrastructure.Data
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
-            //UserEquipment relationships
             modelBuilder.Entity<UserEquipment>(entity =>
             {
                 entity.ToTable("UserEquipments");
@@ -95,7 +89,6 @@ namespace OpsCommand.Api.Infrastructure.Data
                     .HasForeignKey(ue => ue.EquipmentId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
-
         }
     }
 }

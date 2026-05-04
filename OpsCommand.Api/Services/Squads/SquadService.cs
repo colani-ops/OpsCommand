@@ -1,15 +1,12 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using OpsCommand.Api.Domain.Entities;
+using OpsCommand.Api.Infrastructure.Data;
 using OpsCommand.Api.Models.SquadEquipment;
 using OpsCommand.Api.Models.Squads;
 using OpsCommand.Api.Repositories.Missions;
 using OpsCommand.Api.Repositories.SquadEquipments;
 using OpsCommand.Api.Repositories.Squads;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using System.IO;
 
@@ -21,17 +18,20 @@ namespace OpsCommand.Api.Services.Squads
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IMissionRepository _missionRepository;
         private readonly ISquadEquipmentRepository _squadEquipmentRepository;
+        private readonly ApplicationDbContext _context;
 
         public SquadService(
             ISquadRepository squadRepository,
             UserManager<ApplicationUser> userManager,
             IMissionRepository missionRepository,
-            ISquadEquipmentRepository squadEquipmentRepository)
+            ISquadEquipmentRepository squadEquipmentRepository,
+            ApplicationDbContext context)
         {
             _squadRepository = squadRepository;
             _userManager = userManager;
             _missionRepository = missionRepository;
             _squadEquipmentRepository = squadEquipmentRepository;
+            _context = context;
         }
 
         private static readonly string[] AllowedTypes =
@@ -58,8 +58,6 @@ namespace OpsCommand.Api.Services.Squads
             };
         }
 
-
-
         private static readonly string[] AllowedImageExtensions = [".jpg", ".jpeg", ".png", ".webp"];
 
         private static void ValidateImageFile(IFormFile file)
@@ -85,9 +83,6 @@ namespace OpsCommand.Api.Services.Squads
             return $"/uploads/squads/{fileName}";
         }
 
-
-
-
         private async Task<string?> GetCommanderDisplayNameAsync(string? commanderId)
         {
             if (string.IsNullOrWhiteSpace(commanderId))
@@ -98,6 +93,40 @@ namespace OpsCommand.Api.Services.Squads
                 return null;
 
             return $"{commander.UserName} ({commander.Email})";
+        }
+
+        private async Task<SquadMemberEquipmentSummaryDto> GetEquipmentSummaryForUserAsync(string userId)
+        {
+            var userEquipment = await _context.UserEquipments
+                .Include(ue => ue.Equipment)
+                .Where(ue => ue.UserId == userId)
+                .Where(ue => ue.Equipment.DeletedAt == null)
+                .ToListAsync();
+
+            var summary = new SquadMemberEquipmentSummaryDto();
+
+            foreach (var ue in userEquipment)
+            {
+                var label = $"{ue.Equipment.Name} x{ue.Quantity}";
+
+                switch (ue.Equipment.Category)
+                {
+                    case "Primary":
+                        summary.Primary.Add(label);
+                        break;
+                    case "Secondary":
+                        summary.Secondary.Add(label);
+                        break;
+                    case "Melee":
+                        summary.Melee.Add(label);
+                        break;
+                    case "Utility":
+                        summary.Utility.Add(label);
+                        break;
+                }
+            }
+
+            return summary;
         }
 
         private async Task<SquadMemberDto> MapToSquadMemberDtoAsync(ApplicationUser user)
@@ -112,7 +141,8 @@ namespace OpsCommand.Api.Services.Squads
                 UserName = user.UserName,
                 Role = primaryRole,
                 IsActive = !await _userManager.IsLockedOutAsync(user),
-                ProfileImageUrl = user.ProfileImageUrl
+                ProfileImageUrl = user.ProfileImageUrl,
+                EquipmentSummary = await GetEquipmentSummaryForUserAsync(user.Id)
             };
         }
 
@@ -151,7 +181,8 @@ namespace OpsCommand.Api.Services.Squads
                 EquipmentId = se.EquipmentId,
                 EquipmentName = se.Equipment.Name,
                 Category = se.Equipment.Category,
-                Quantity = se.Quantity
+                Quantity = se.Quantity,
+                ImageUrl = se.Equipment.ImageUrl
             }).ToList();
 
             var squadUsers = await _userManager.Users
@@ -389,8 +420,6 @@ namespace OpsCommand.Api.Services.Squads
             await _squadRepository.DeleteAsync(squad);
             return true;
         }
-
-
 
         public async Task<SquadResponseDto?> UploadBannerAsync(int id, IFormFile file)
         {

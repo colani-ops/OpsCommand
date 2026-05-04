@@ -28,7 +28,8 @@ namespace OpsCommand.Api.Services.UserEquipments
             EquipmentId = ue.EquipmentId,
             EquipmentName = ue.Equipment.Name,
             Category = ue.Equipment.Category,
-            Quantity = ue.Quantity
+            Quantity = ue.Quantity,
+            ImageUrl = ue.ImageUrl,
         };
 
         public async Task<List<UserEquipmentResponseDto>> GetAvailableForMeAsync(string userId)
@@ -70,7 +71,8 @@ namespace OpsCommand.Api.Services.UserEquipments
                     EquipmentId = se.EquipmentId,
                     EquipmentName = se.Equipment.Name,
                     Category = se.Equipment.Category,
-                    Quantity = availableToMe
+                    Quantity = availableToMe,
+                    ImageUrl = se.Equipment.ImageUrl
                 };
             }).ToList();
         }

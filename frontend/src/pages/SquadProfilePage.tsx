@@ -2,7 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { getUser, hasRole } from "../api/auth";
 import { resolveUserImageUrl } from "../api/users";
-import { getEquipment, type EquipmentDto } from "../api/equipment";
+import {
+  getEquipment,
+  resolveEquipmentImageUrl,
+  type EquipmentDto,
+} from "../api/equipment";
 import {
   addSquadEquipment,
   deleteSquadEquipment,
@@ -111,6 +115,10 @@ export default function SquadProfilePage() {
       default:
         return "/banners/equipment-default.png";
     }
+  }
+
+  function getEquipmentDisplayImage(item: { category: string | null; imageUrl?: string | null }) {
+    return resolveEquipmentImageUrl(item.imageUrl) ?? getEquipmentBanner(item.category);
   }
 
   function getEquipmentOverlay(category: string | null) {
@@ -509,15 +517,26 @@ export default function SquadProfilePage() {
                             }}
                           >
                             <Link
-                              to={member.id === currentUser?.id ? "/my-profile" : `/users/${member.id}`}
-                              style={{ color: "inherit", textDecoration: "none" }}
+                              to={
+                                member.id === currentUser?.id
+                                  ? "/my-profile"
+                                  : `/users/${member.id}`
+                              }
+                              style={{
+                                color: "inherit",
+                                textDecoration: "none",
+                              }}
                             >
                               {member.userName ?? member.email}
                             </Link>
                           </div>
 
-                          <div style={detailsLineStyle}>Email: {member.email}</div>
-                          <div style={detailsLineStyle}>Role: {member.role}</div>
+                          <div style={detailsLineStyle}>
+                            Email: {member.email}
+                          </div>
+                          <div style={detailsLineStyle}>
+                            Role: {member.role}
+                          </div>
                           <div style={detailsLineStyle}>
                             Status: {member.isActive ? "Active" : "Disabled"}
                           </div>
@@ -532,10 +551,34 @@ export default function SquadProfilePage() {
                           }}
                         >
                           <div style={miniTitleStyle}>Equipped Summary</div>
-                          <div style={detailsLineStyle}>Primary: pending backend</div>
-                          <div style={detailsLineStyle}>Secondary: pending backend</div>
-                          <div style={detailsLineStyle}>Melee: pending backend</div>
-                          <div style={detailsLineStyle}>Utility: pending backend</div>
+
+                          <div style={detailsLineStyle}>
+                            Primary:{" "}
+                            {member.equipmentSummary?.primary?.length
+                              ? member.equipmentSummary.primary.join(", ")
+                              : "—"}
+                          </div>
+
+                          <div style={detailsLineStyle}>
+                            Secondary:{" "}
+                            {member.equipmentSummary?.secondary?.length
+                              ? member.equipmentSummary.secondary.join(", ")
+                              : "—"}
+                          </div>
+
+                          <div style={detailsLineStyle}>
+                            Melee:{" "}
+                            {member.equipmentSummary?.melee?.length
+                              ? member.equipmentSummary.melee.join(", ")
+                              : "—"}
+                          </div>
+
+                          <div style={detailsLineStyle}>
+                            Utility:{" "}
+                            {member.equipmentSummary?.utility?.length
+                              ? member.equipmentSummary.utility.join(", ")
+                              : "—"}
+                          </div>
                         </div>
                       </div>
                     );
@@ -617,7 +660,7 @@ export default function SquadProfilePage() {
                           alignItems: "stretch",
                           backgroundImage: `linear-gradient(${getEquipmentOverlay(
                             item.category
-                          )}, rgba(0,0,0,0.74)), url(${getEquipmentBanner(item.category)})`,
+                          )}, rgba(0,0,0,0.74)), url(${getEquipmentDisplayImage(item)})`,
                           backgroundSize: "cover",
                           backgroundPosition: "center",
                           backgroundRepeat: "no-repeat",

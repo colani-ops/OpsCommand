@@ -8,5 +8,7 @@
         public string Role { get; set; } = default!;
         public bool IsActive { get; set; }
         public string? ProfileImageUrl { get; set; }
+
+        public SquadMemberEquipmentSummaryDto EquipmentSummary { get; set; } = new();
     }
 }

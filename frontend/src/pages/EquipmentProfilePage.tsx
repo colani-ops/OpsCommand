@@ -1,16 +1,20 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { hasRole } from "../api/auth";
 import {
   deleteEquipment,
   getEquipmentById,
+  removeEquipmentImage,
+  resolveEquipmentImageUrl,
   updateEquipment,
+  uploadEquipmentImage,
   type EquipmentCategory,
   type EquipmentDto,
 } from "../api/equipment";
 import ErrorBanner from "../components/ErrorBanner";
 import { useErrorHandler } from "../hooks/useErrorHandler";
 import IconButton from "../ui/IconButton";
+import { getEquipmentBanner } from "../utils/bannerFallbacks";
 
 const CATEGORIES: EquipmentCategory[] = ["Primary", "Secondary", "Melee", "Utility"];
 
@@ -31,6 +35,9 @@ export default function EquipmentProfilePage() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const { error, showError, clearError } = useErrorHandler();
 
@@ -60,21 +67,6 @@ export default function EquipmentProfilePage() {
     load();
   }, [load]);
 
-  function getEquipmentBanner(category: string | null) {
-    switch (category) {
-      case "Primary":
-        return "/banners/equipment-primary.png";
-      case "Secondary":
-        return "/banners/equipment-secondary.png";
-      case "Melee":
-        return "/banners/equipment-melee.png";
-      case "Utility":
-        return "/banners/equipment-utility.png";
-      default:
-        return "/banners/equipment-default.png";
-    }
-  }
-
   function getEquipmentOverlay(category: string | null) {
     switch (category) {
       case "Primary":
@@ -88,6 +80,10 @@ export default function EquipmentProfilePage() {
       default:
         return "rgba(0, 0, 0, 0.62)";
     }
+  }
+
+  function getEquipmentDisplayImage(currentItem: EquipmentDto) {
+    return resolveEquipmentImageUrl(currentItem.imageUrl) ?? getEquipmentBanner(currentItem.category);
   }
 
   function getAllocationPercent(currentItem: EquipmentDto) {
@@ -144,6 +140,43 @@ export default function EquipmentProfilePage() {
       await load();
     } catch (e: unknown) {
       showError(e instanceof Error ? e.message : "Failed to delete equipment");
+    }
+  }
+
+  async function onUploadImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !item) return;
+
+    clearError();
+
+    try {
+      setUploadingImage(true);
+      await uploadEquipmentImage(item.id, file);
+      await load();
+    } catch (e: unknown) {
+      showError(e instanceof Error ? e.message : "Failed to upload equipment image");
+    } finally {
+      setUploadingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }
+
+  async function onRemoveImage() {
+    if (!item) return;
+    if (!confirm("Remove equipment image and revert to default?")) return;
+
+    clearError();
+
+    try {
+      setUploadingImage(true);
+      await removeEquipmentImage(item.id);
+      await load();
+    } catch (e: unknown) {
+      showError(e instanceof Error ? e.message : "Failed to remove equipment image");
+    } finally {
+      setUploadingImage(false);
     }
   }
 
@@ -210,7 +243,7 @@ export default function EquipmentProfilePage() {
                   gridTemplateRows: "auto 1fr",
                   backgroundImage: `linear-gradient(${getEquipmentOverlay(
                     item.category
-                  )}, rgba(0,0,0,0.78)), url(${getEquipmentBanner(item.category)})`,
+                  )}, rgba(0,0,0,0.78)), url(${getEquipmentDisplayImage(item)})`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                   backgroundRepeat: "no-repeat",
@@ -230,6 +263,14 @@ export default function EquipmentProfilePage() {
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                     {canManage && (
                       <>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept=".jpg,.jpeg,.png,.webp"
+                          onChange={onUploadImage}
+                          style={{ display: "none" }}
+                        />
+
                         <IconButton
                           iconSrc="/icons/edit.png"
                           alt="Edit equipment"
@@ -238,6 +279,26 @@ export default function EquipmentProfilePage() {
                           onClick={startEdit}
                           disabled={!!item.deletedAt}
                         />
+
+                        <IconButton
+                          iconSrc="/icons/upload.png"
+                          alt="Upload equipment image"
+                          title="Upload equipment image"
+                          variant="secondary"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={!!item.deletedAt || uploadingImage}
+                        />
+
+                        {!!item.imageUrl && (
+                          <IconButton
+                            iconSrc="/icons/delete.png"
+                            alt="Remove equipment image"
+                            title="Remove equipment image"
+                            variant="danger"
+                            onClick={onRemoveImage}
+                            disabled={!!item.deletedAt || uploadingImage}
+                          />
+                        )}
 
                         <IconButton
                           iconSrc="/icons/delete.png"
@@ -346,7 +407,7 @@ export default function EquipmentProfilePage() {
                   padding: 18,
                   backgroundImage: `linear-gradient(${getEquipmentOverlay(
                     item.category
-                  )}, rgba(0,0,0,0.74)), url(${getEquipmentBanner(item.category)})`,
+                  )}, rgba(0,0,0,0.74)), url(${getEquipmentDisplayImage(item)})`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                   backgroundRepeat: "no-repeat",

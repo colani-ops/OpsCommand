@@ -39,7 +39,8 @@ namespace OpsCommand.Api.Services.SquadEquipments
             EquipmentId = se.EquipmentId,
             EquipmentName = se.Equipment.Name,
             Category = se.Equipment.Category,
-            Quantity = se.Quantity
+            Quantity = se.Quantity,
+            ImageUrl = se.ImageUrl,
         };
 
 

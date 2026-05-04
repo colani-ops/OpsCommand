@@ -5,6 +5,7 @@ export type UserEquipmentDto = {
   equipmentName: string;
   category: string | null;
   quantity: number;
+  imageUrl?: string | null;
 };
 
 export type AddUserEquipmentRequest = {

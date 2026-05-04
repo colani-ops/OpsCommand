@@ -2,7 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { getUser, hasRole } from "../api/auth";
 import { resolveUserImageUrl } from "../api/users";
-import { getEquipment, type EquipmentDto } from "../api/equipment";
+import {
+  getEquipment,
+  resolveEquipmentImageUrl,
+  type EquipmentDto,
+} from "../api/equipment";
 import {
   addSquadEquipment,
   deleteSquadEquipment,
@@ -109,6 +113,10 @@ export default function MySquadPage() {
       default:
         return "/banners/equipment-default.png";
     }
+  }
+
+  function getEquipmentDisplayImage(item: SquadEquipmentDto & { imageUrl?: string | null }) {
+  return resolveEquipmentImageUrl(item.imageUrl) ?? getEquipmentBanner(item.category);
   }
 
   function getEquipmentOverlay(category: string | null) {
@@ -476,16 +484,31 @@ export default function MySquadPage() {
                             }}
                           >
                             <Link
-                              to={member.id === currentUser?.id ? "/my-profile" : `/users/${member.id}`}
-                              style={{ color: "inherit", textDecoration: "none" }}
-                              title={member.id === currentUser?.id ? "Open my profile" : "Open user profile"}
+                              to={
+                                member.id === currentUser?.id
+                                  ? "/my-profile"
+                                  : `/users/${member.id}`
+                              }
+                              style={{
+                                color: "inherit",
+                                textDecoration: "none",
+                              }}
+                              title={
+                                member.id === currentUser?.id
+                                  ? "Open my profile"
+                                  : "Open user profile"
+                              }
                             >
                               {member.userName ?? member.email}
                             </Link>
                           </div>
 
-                          <div style={detailsLineStyle}>Email: {member.email}</div>
-                          <div style={detailsLineStyle}>Role: {member.role}</div>
+                          <div style={detailsLineStyle}>
+                            Email: {member.email}
+                          </div>
+                          <div style={detailsLineStyle}>
+                            Role: {member.role}
+                          </div>
                           <div style={detailsLineStyle}>
                             Status: {member.isActive ? "Active" : "Disabled"}
                           </div>
@@ -500,10 +523,34 @@ export default function MySquadPage() {
                           }}
                         >
                           <div style={miniTitleStyle}>Equipped Summary</div>
-                          <div style={detailsLineStyle}>Primary: pending backend</div>
-                          <div style={detailsLineStyle}>Secondary: pending backend</div>
-                          <div style={detailsLineStyle}>Melee: pending backend</div>
-                          <div style={detailsLineStyle}>Utility: pending backend</div>
+
+                          <div style={detailsLineStyle}>
+                            Primary:{" "}
+                            {member.equipmentSummary.primary.length > 0
+                              ? member.equipmentSummary.primary.join(", ")
+                              : "—"}
+                          </div>
+
+                          <div style={detailsLineStyle}>
+                            Secondary:{" "}
+                            {member.equipmentSummary.secondary.length > 0
+                              ? member.equipmentSummary.secondary.join(", ")
+                              : "—"}
+                          </div>
+
+                          <div style={detailsLineStyle}>
+                            Melee:{" "}
+                            {member.equipmentSummary.melee.length > 0
+                              ? member.equipmentSummary.melee.join(", ")
+                              : "—"}
+                          </div>
+
+                          <div style={detailsLineStyle}>
+                            Utility:{" "}
+                            {member.equipmentSummary.utility.length > 0
+                              ? member.equipmentSummary.utility.join(", ")
+                              : "—"}
+                          </div>
                         </div>
                       </div>
                     );
@@ -591,8 +638,8 @@ export default function MySquadPage() {
                             gap: 18,
                             alignItems: "stretch",
                             backgroundImage: `linear-gradient(${getEquipmentOverlay(
-                              item.category
-                            )}, rgba(0,0,0,0.74)), url(${getEquipmentBanner(item.category)})`,
+                            item.category
+                            )}, rgba(0,0,0,0.74)), url(${getEquipmentDisplayImage(item)})`,
                             backgroundSize: "cover",
                             backgroundPosition: "center",
                             backgroundRepeat: "no-repeat",

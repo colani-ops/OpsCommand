@@ -6,6 +6,7 @@ export type SquadEquipmentDto = {
   equipmentName: string;
   category: string | null;
   quantity: number;
+  imageUrl?: string | null;
 };
 
 export type AddSquadEquipmentRequest = {

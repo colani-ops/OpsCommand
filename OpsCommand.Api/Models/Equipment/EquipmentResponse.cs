@@ -14,10 +14,10 @@ namespace OpsCommand.Api.Models.Equipment
         public int Quantity { get; set; }
         public string? Description { get; set; }
         public int Effectiveness { get; set; }
+        public string? ImageUrl { get; set; }
         public DateTime? DeletedAt { get; set; }
 
         public int AllocatedQuantity { get; set; }
         public int AvailableQuantity { get; set; }
     }
 }
-

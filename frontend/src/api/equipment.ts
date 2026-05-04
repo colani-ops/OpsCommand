@@ -1,5 +1,7 @@
 import { apiFetch } from "./api";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
+
 export type EquipmentCategory = "Primary" | "Secondary" | "Melee" | "Utility";
 
 export type EquipmentDto = {
@@ -9,6 +11,7 @@ export type EquipmentDto = {
   quantity: number;
   description: string | null;
   effectiveness: number;
+  imageUrl?: string | null;
   deletedAt: string | null;
   allocatedQuantity: number;
   availableQuantity: number;
@@ -55,4 +58,26 @@ export function deleteEquipment(id: number) {
   return apiFetch<void>(`/api/equipment/${id}`, {
     method: "DELETE",
   });
+}
+
+export function uploadEquipmentImage(id: number, file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return apiFetch<EquipmentDto>(`/api/equipment/${id}/image`, {
+    method: "PUT",
+    body: formData,
+  });
+}
+
+export function removeEquipmentImage(id: number) {
+  return apiFetch<EquipmentDto>(`/api/equipment/${id}/image`, {
+    method: "DELETE",
+  });
+}
+
+export function resolveEquipmentImageUrl(path?: string | null) {
+  if (!path) return null;
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  return `${API_BASE_URL}${path}`;
 }

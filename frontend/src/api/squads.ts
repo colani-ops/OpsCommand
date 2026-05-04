@@ -16,6 +16,13 @@ export type SquadDto = {
   bannerImageUrl?: string | null;
 };
 
+export type SquadMemberEquipmentSummaryDto = {
+  primary: string[];
+  secondary: string[];
+  melee: string[];
+  utility: string[];
+};
+
 export type SquadMemberDto = {
   id: string;
   email: string;
@@ -23,6 +30,7 @@ export type SquadMemberDto = {
   role: string;
   isActive: boolean;
   profileImageUrl?: string | null;
+  equipmentSummary: SquadMemberEquipmentSummaryDto;
 };
 
 export type MySquadDto = {
@@ -61,6 +69,7 @@ export type SquadEquipmentDto = {
   equipmentName: string;
   category: string | null;
   quantity: number;
+  imageUrl?: string | null;
 };
 
 export type AddSquadEquipmentRequest = {
