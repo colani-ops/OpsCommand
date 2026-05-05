@@ -9,6 +9,16 @@ import {
 } from "../api/users";
 import ErrorBanner from "../components/ErrorBanner";
 import LoadingScreen from "../components/LoadingScreen";
+import {
+  detailsLineStyle,
+  detailsTitleStyle,
+  emptyPanelStyle,
+  heroTitleStyle,
+  metaLineStyle,
+  panelStyle,
+  pageTitleStyleShared,
+  softSectionBoxStyle,
+} from "../styles/uiStyles";
 
 function getVeterancyLabel(missionsServed: number) {
   if (missionsServed >= 20) return "Elite";
@@ -29,6 +39,10 @@ function getSquadTypeImage(type?: string | null) {
     default:
       return "/squad-default.png";
   }
+}
+
+function renderSummaryValue(items?: string[]) {
+  return items && items.length > 0 ? items.join(", ") : "—";
 }
 
 export default function UserProfilePage() {
@@ -87,43 +101,21 @@ export default function UserProfilePage() {
       : "N/A";
 
   const squadVeterancy = squad ? getVeterancyLabel(squad.missionsServed) : "—";
-
   const profileImageUrl = resolveUserImageUrl(user?.profileImageUrl);
 
   return (
     <div>
       <ErrorBanner error={err} />
 
-      <div
-        style={{
-          border: "2px solid #c9a56a",
-          borderRadius: 14,
-          background: "rgba(0, 0, 0, 0.78)",
-          padding: 24,
-        }}
-      >
-        <h2
-          style={{
-            margin: "0 0 24px 0",
-            color: "#f3efe6",
-            fontFamily: "monospace",
-            fontSize: 28,
-          }}
-        >
+      <div style={panelStyle}>
+        <h2 style={{ ...pageTitleStyleShared, marginBottom: 24 }}>
           User Profile
         </h2>
 
         {loading && <LoadingScreen label="Loading Initiate..." />}
 
         {!loading && !err && !user && (
-          <div
-            style={{
-              border: "1px solid #9d8560",
-              borderRadius: 14,
-              background: "rgba(0,0,0,0.55)",
-              padding: 18,
-            }}
-          >
+          <div style={emptyPanelStyle}>
             <div style={detailsTitleStyle}>User not found</div>
             <div style={detailsLineStyle}>
               The requested user profile could not be loaded.
@@ -132,49 +124,14 @@ export default function UserProfilePage() {
         )}
 
         {!loading && !err && user && (
-          <div
-            style={{
-              border: "1px solid #9d8560",
-              borderRadius: 14,
-              background: "rgba(0,0,0,0.55)",
-              padding: 18,
-              display: "grid",
-              gap: 18,
-              marginBottom: 18,
-            }}
-          >
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "140px 1fr",
-                gap: 22,
-                alignItems: "center",
-              }}
-            >
-              <div
-                style={{
-                  width: 140,
-                  height: 140,
-                  borderRadius: "50%",
-                  border: "3px solid rgba(255,255,255,0.22)",
-                  background: "rgba(220,220,220,0.82)",
-                  overflow: "hidden",
-                  display: "grid",
-                  placeItems: "center",
-                  fontSize: 64,
-                  color: "#666",
-                  margin: "0 auto",
-                }}
-              >
+          <div style={profileShellStyle}>
+            <div style={profileHeaderStyle}>
+              <div style={profileImageFrameStyle}>
                 {profileImageUrl ? (
                   <img
                     src={profileImageUrl}
                     alt={user.userName ?? user.email}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
+                    style={imageCoverStyle}
                   />
                 ) : (
                   "◉"
@@ -197,91 +154,81 @@ export default function UserProfilePage() {
               </div>
             </div>
 
-            <div
-              style={{
-                border: "1px solid rgba(201,165,106,0.35)",
-                borderRadius: 12,
-                padding: 16,
-                background: "rgba(20,20,20,0.52)",
-                display: "grid",
-                gridTemplateColumns: "180px 1fr",
-                gap: 22,
-                alignItems: "center",
-              }}
-            >
-              <div
-                style={{
-                  width: 180,
-                  height: 180,
-                  borderRadius: 12,
-                  overflow: "hidden",
-                  border: "2px solid #b8945c",
-                  background: "rgba(255,255,255,0.06)",
-                  display: "grid",
-                  placeItems: "center",
-                  margin: "0 auto",
-                }}
-              >
-                <img
-                  src={getSquadTypeImage(squad?.type)}
-                  alt={squad?.type ?? "Squad"}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                  }}
-                />
-              </div>
-
-              <div style={{ display: "grid", gap: 10 }}>
-                <div style={detailsTitleStyle}>
-                  {user.assignedSquadId ? squad?.name ?? "Unknown squad" : "No squad assigned"}
-                </div>
-
-                <div style={detailsLineStyle}>Squad Type: {squad?.type ?? "—"}</div>
-                <div style={detailsLineStyle}>
-                  Commander: {squad?.commanderId ?? "—"}
-                </div>
-                <div style={detailsLineStyle}>
-                  Success Rate: {squad ? squadSuccessRate : "—"}
-                </div>
-                <div style={detailsLineStyle}>
-                  Veterancy Status: {squad ? squadVeterancy : "—"}
-                </div>
-
-                {user.assignedSquadId && (
-                  <div style={{ marginTop: 4 }}>
-                    <Link
-                      to={`/squads/${user.assignedSquadId}`}
-                      style={{
-                        color: "#efb85f",
-                        textDecoration: "none",
-                        fontFamily: "monospace",
-                        fontWeight: 700,
-                      }}
-                    >
-                      Open Squad
-                    </Link>
+            {user.assignedSquadId ? (
+              <div style={profileDetailsGridStyle}>
+                <div style={squadCardStyle}>
+                  <div style={squadImageFrameStyle}>
+                    <img
+                      src={getSquadTypeImage(squad?.type)}
+                      alt={squad?.type ?? "Squad"}
+                      style={imageCoverStyle}
+                    />
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
-        {!loading && !err && user && !user.assignedSquadId && (
-          <div
-            style={{
-              border: "1px solid #9d8560",
-              borderRadius: 14,
-              background: "rgba(0,0,0,0.55)",
-              padding: 18,
-            }}
-          >
-            <div style={detailsTitleStyle}>No squad assigned</div>
-            <div style={detailsLineStyle}>
-              This user is not currently assigned to a squad.
-            </div>
+                  <div style={{ display: "grid", gap: 10 }}>
+                    <div style={detailsTitleStyle}>
+                      {squad?.name ?? "Unknown squad"}
+                    </div>
+
+                    <div style={detailsLineStyle}>
+                      Squad Type: {squad?.type ?? "—"}
+                    </div>
+                    <div style={detailsLineStyle}>
+                      Commander: {squad?.commanderId ?? "—"}
+                    </div>
+                    <div style={detailsLineStyle}>
+                      Success Rate: {squad ? squadSuccessRate : "—"}
+                    </div>
+                    <div style={detailsLineStyle}>
+                      Veterancy Status: {squad ? squadVeterancy : "—"}
+                    </div>
+
+                    <div style={{ marginTop: 4 }}>
+                      <Link
+                        to={`/squads/${user.assignedSquadId}`}
+                        style={profileLinkStyle}
+                      >
+                        Open Squad
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={equipmentSummaryCardStyle}>
+                  <div style={detailsTitleStyle}>Equipped Summary</div>
+
+                  <div style={summaryGridStyle}>
+                    <div style={summaryLabelStyle}>Primary:</div>
+                    <div style={detailsLineStyle}>
+                      {renderSummaryValue(user.equipmentSummary?.primary)}
+                    </div>
+
+                    <div style={summaryLabelStyle}>Secondary:</div>
+                    <div style={detailsLineStyle}>
+                      {renderSummaryValue(user.equipmentSummary?.secondary)}
+                    </div>
+
+                    <div style={summaryLabelStyle}>Melee:</div>
+                    <div style={detailsLineStyle}>
+                      {renderSummaryValue(user.equipmentSummary?.melee)}
+                    </div>
+
+                    <div style={summaryLabelStyle}>Utility:</div>
+                    <div style={detailsLineStyle}>
+                      {renderSummaryValue(user.equipmentSummary?.utility)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={emptyPanelStyle}>
+                <div style={detailsTitleStyle}>No squad assigned</div>
+                <div style={detailsLineStyle}>
+                  This user is not currently assigned to a squad, so there is no
+                  squad-based equipment loadout available.
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -289,31 +236,94 @@ export default function UserProfilePage() {
   );
 }
 
-const heroTitleStyle: React.CSSProperties = {
-  color: "#efb85f",
-  fontFamily: "monospace",
-  fontWeight: 800,
-  fontSize: 24,
+const profileShellStyle: React.CSSProperties = {
+  border: "1px solid #9d8560",
+  borderRadius: 14,
+  background: "rgba(0,0,0,0.55)",
+  padding: 18,
+  display: "grid",
+  gap: 18,
+  marginBottom: 18,
 };
 
+const profileHeaderStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "140px 1fr",
+  gap: 22,
+  alignItems: "center",
+};
 
-const metaLineStyle: React.CSSProperties = {
+const profileImageFrameStyle: React.CSSProperties = {
+  width: 140,
+  height: 140,
+  borderRadius: "50%",
+  border: "3px solid rgba(255,255,255,0.22)",
+  background: "rgba(220,220,220,0.82)",
+  overflow: "hidden",
+  display: "grid",
+  placeItems: "center",
+  fontSize: 64,
+  color: "#666",
+  margin: "0 auto",
+};
+
+const profileDetailsGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(520px, 2fr) minmax(320px, 1fr)",
+  gap: 18,
+  alignItems: "stretch",
+};
+
+const squadCardStyle: React.CSSProperties = {
+  ...softSectionBoxStyle,
+  display: "grid",
+  gridTemplateColumns: "180px 1fr",
+  gap: 22,
+  alignItems: "center",
+};
+
+const squadImageFrameStyle: React.CSSProperties = {
+  width: 180,
+  height: 180,
+  borderRadius: 12,
+  overflow: "hidden",
+  border: "2px solid #b8945c",
+  background: "rgba(255,255,255,0.06)",
+  display: "grid",
+  placeItems: "center",
+  margin: "0 auto",
+};
+
+const equipmentSummaryCardStyle: React.CSSProperties = {
+  ...softSectionBoxStyle,
+  minHeight: "100%",
+};
+
+const summaryGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "110px 1fr",
+  columnGap: 10,
+  rowGap: 8,
+  alignItems: "start",
+};
+
+const summaryLabelStyle: React.CSSProperties = {
   color: "#d7b176",
   fontFamily: "monospace",
-  fontSize: 16,
-};
-
-const detailsTitleStyle: React.CSSProperties = {
-  color: "#efb85f",
-  fontFamily: "monospace",
-  fontWeight: 800,
-  fontSize: 18,
-  marginBottom: 10,
-};
-
-const detailsLineStyle: React.CSSProperties = {
-  color: "#f3efe6",
-  fontFamily: "monospace",
   fontSize: 14,
+  fontWeight: 800,
   marginBottom: 6,
+};
+
+const imageCoverStyle: React.CSSProperties = {
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+};
+
+const profileLinkStyle: React.CSSProperties = {
+  color: "#efb85f",
+  textDecoration: "none",
+  fontFamily: "monospace",
+  fontWeight: 700,
 };

@@ -25,6 +25,7 @@ import {
   pageTitleStyleShared,
   searchInputStyle,
   sortButtonStyle,
+  smallDangerButtonStyle,
 } from "../styles/uiStyles";
 
 const CATEGORIES: EquipmentCategory[] = [
@@ -460,16 +461,26 @@ export default function EquipmentPage() {
               }}
             >
               <IconButton
-                label="Save"
+                iconSrc="/icons/save.png"
                 title="Save"
-                variant="primary"
-                onClick={submitEdit}
+                variant="secondary"
+                type="submit"
               />
+
               <IconButton
-                label="Cancel"
+                iconSrc="/icons/cancel.png"
                 title="Cancel"
                 variant="secondary"
-                onClick={cancelEdit}
+                onClick={() => {
+                  setShowCreate(false);
+                  setCreateForm({
+                    name: "",
+                    category: "Primary",
+                    quantity: 0,
+                    description: "",
+                    effectiveness: 50,
+                  });
+                }}
               />
             </div>
           </form>
@@ -643,12 +654,12 @@ export default function EquipmentPage() {
 
                             {!!item.imageUrl && (
                               <IconButton
-                                iconSrc="/icons/delete.png"
+                                iconSrc="/icons/cancel.png"
                                 alt="Remove image"
                                 title="Remove image"
                                 variant="danger"
                                 onClick={() => onRemoveImage(item.id)}
-                                style={iconActionButtonStyle}
+                                style={smallDangerButtonStyle}
                                 disabled={!!item.deletedAt}
                               />
                             )}
@@ -659,7 +670,6 @@ export default function EquipmentPage() {
                               title="Delete Equipment"
                               variant="danger"
                               onClick={() => onDelete(item.id)}
-                              style={iconActionButtonStyle}
                               disabled={!!item.deletedAt}
                             />
                           </>
@@ -776,18 +786,16 @@ export default function EquipmentPage() {
                           flexWrap: "wrap",
                         }}
                       >
-                        <button
+                        <IconButton
+                          iconSrc="/icons/save.png"
                           onClick={submitEdit}
                           style={iconActionButtonStyle}
-                        >
-                          Save
-                        </button>
-                        <button
+                        />
+                        <IconButton
+                          iconSrc="/icons/cancel.png"
                           onClick={cancelEdit}
                           style={iconActionButtonStyle}
-                        >
-                          Cancel
-                        </button>
+                        />
                       </div>
                     </div>
                   )}

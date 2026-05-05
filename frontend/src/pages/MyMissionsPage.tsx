@@ -19,8 +19,8 @@ import {
   sortButtonStyle,
   statusPanelStyle,
   statusPanelTitleStyle,
-  toolbarButtonStyle,
 } from "../styles/uiStyles";
+import IconButton from "../ui/IconButton";
 
 function formatRemainingTime(
   activatedAt: string | null,
@@ -318,9 +318,13 @@ export default function MyMissionsPage() {
             style={searchInputStyle}
           />
 
-          <button type="button" onClick={load} style={toolbarButtonStyle}>
-            Refresh
-          </button>
+          <IconButton
+            iconSrc="/icons/refresh.png"
+            alt="Refresh"
+            title="Refresh"
+            variant="transparent"
+            onClick={load}
+          />
         </div>
 
         <div

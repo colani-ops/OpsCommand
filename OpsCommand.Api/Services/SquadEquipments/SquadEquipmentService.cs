@@ -40,7 +40,7 @@ namespace OpsCommand.Api.Services.SquadEquipments
             EquipmentName = se.Equipment.Name,
             Category = se.Equipment.Category,
             Quantity = se.Quantity,
-            ImageUrl = se.ImageUrl,
+            ImageUrl = se.Equipment.ImageUrl,
         };
 
 

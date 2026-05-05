@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using OpsCommand.Api.Domain.Entities;
+using OpsCommand.Api.Infrastructure.Data;
 using OpsCommand.Api.Models.Users;
 using OpsCommand.Api.Repositories.Users;
 using OpsCommand.Api.Repositories.Squads;
@@ -12,15 +13,18 @@ namespace OpsCommand.Api.Services.Users
         private readonly IUserRepository _userRepository;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ISquadRepository _squadRepository;
+        private readonly ApplicationDbContext _context;
 
         public UserService(
             IUserRepository userRepository,
             UserManager<ApplicationUser> userManager,
-            ISquadRepository squadRepository)
+            ISquadRepository squadRepository,
+            ApplicationDbContext context)
         {
             _userRepository = userRepository;
             _userManager = userManager;
             _squadRepository = squadRepository;
+            _context = context;
         }
 
         private async Task<bool> GetIsActiveAsync(ApplicationUser user)
@@ -197,6 +201,43 @@ namespace OpsCommand.Api.Services.Users
             };
         }
 
+        private async Task<UserProfileEquipmentSummaryDto> BuildEquipmentSummaryAsync(string userId)
+        {
+            var items = await _context.UserEquipments
+                .Include(ue => ue.Equipment)
+                .Where(ue => ue.UserId == userId)
+                .Where(ue => ue.Equipment.DeletedAt == null)
+                .ToListAsync();
+
+            var summary = new UserProfileEquipmentSummaryDto();
+
+            foreach (var item in items)
+            {
+                var label = $"{item.Equipment.Name} x{item.Quantity}";
+
+                switch (item.Equipment.Category)
+                {
+                    case "Primary":
+                        summary.Primary.Add(label);
+                        break;
+
+                    case "Secondary":
+                        summary.Secondary.Add(label);
+                        break;
+
+                    case "Melee":
+                        summary.Melee.Add(label);
+                        break;
+
+                    case "Utility":
+                        summary.Utility.Add(label);
+                        break;
+                }
+            }
+
+            return summary;
+        }
+
         public async Task<UserProfileResponseDto?> GetProfileByIdAsync(string targetUserId, string callerUserId, bool isAdmin)
         {
             var targetUser = await _userManager.FindByIdAsync(targetUserId);
@@ -225,6 +266,8 @@ namespace OpsCommand.Api.Services.Users
             var roles = await _userManager.GetRolesAsync(targetUser);
             string? primaryRole = roles.FirstOrDefault();
 
+            var equipmentSummary = await BuildEquipmentSummaryAsync(targetUser.Id);
+
             return new UserProfileResponseDto
             {
                 Id = targetUser.Id,
@@ -233,7 +276,8 @@ namespace OpsCommand.Api.Services.Users
                 AssignedSquadId = targetUser.AssignedSquadId,
                 PrimaryRole = primaryRole,
                 IsActive = await GetIsActiveAsync(targetUser),
-                ProfileImageUrl = targetUser.ProfileImageUrl
+                ProfileImageUrl = targetUser.ProfileImageUrl,
+                EquipmentSummary = equipmentSummary
             };
         }
 

@@ -33,6 +33,7 @@ import {
   pageTitleStyleShared,
   panelStyle,
   sectionTitleStyle,
+  smallDangerButtonStyle,
   toolbarButtonStyle,
 } from "../styles/uiStyles";
 
@@ -799,7 +800,7 @@ export default function MySquadPage() {
                                   onClick={() =>
                                     onDeleteEquipment(item.equipmentId)
                                   }
-                                  style={iconActionButtonStyle}
+                                  style={smallDangerButtonStyle}
                                 />
                               </div>
                             )}

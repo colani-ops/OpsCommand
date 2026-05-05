@@ -29,7 +29,7 @@ namespace OpsCommand.Api.Services.UserEquipments
             EquipmentName = ue.Equipment.Name,
             Category = ue.Equipment.Category,
             Quantity = ue.Quantity,
-            ImageUrl = ue.ImageUrl,
+            ImageUrl = ue.Equipment.ImageUrl,
         };
 
         public async Task<List<UserEquipmentResponseDto>> GetAvailableForMeAsync(string userId)

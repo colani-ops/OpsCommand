@@ -20,7 +20,6 @@ import {
   emptyPanelStyle,
   filterGridStyle,
   formFieldStyle,
-  iconActionButtonStyle,
   labelStyle,
   metaLineStyle,
   pageContentScrollStyle,
@@ -30,6 +29,7 @@ import {
   sectionTitleStyle,
   successMessageStyle,
   toolbarButtonStyle,
+  smallDangerButtonStyle,
 } from "../styles/uiStyles";
 
 type EditState = Record<
@@ -613,22 +613,21 @@ export default function UserManagementPage() {
 
                         {isSuperAdmin && (
                           <>
+                          <IconButton
+                              iconSrc="/icons/refresh.png"
+                              alt="Restore"
+                              title="Restore"
+                              variant="danger"
+                              style={smallDangerButtonStyle}
+                              onClick={() => onRestore(u.id)}
+                            />
+
                             <IconButton
                               iconSrc="/icons/delete.png"
                               alt="Disable"
                               title="Disable"
                               variant="danger"
                               onClick={() => onDisable(u.id)}
-                              style={iconActionButtonStyle}
-                            />
-
-                            <IconButton
-                              iconSrc="/icons/refresh.png"
-                              alt="Restore"
-                              title="Restore"
-                              variant="danger"
-                              onClick={() => onRestore(u.id)}
-                              style={iconActionButtonStyle}
                             />
                           </>
                         )}

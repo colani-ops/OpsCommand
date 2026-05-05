@@ -666,7 +666,6 @@ export default function SquadsPage() {
                               iconSrc="/icons/edit.png"
                               alt="Edit squad"
                               title="Edit"
-                              variant="transparent"
                               onClick={() => startEdit(s.id)}
                             />
                             <IconButton
@@ -679,20 +678,16 @@ export default function SquadsPage() {
                           </>
                         ) : (
                           <>
-                            <button
-                              type="button"
+                            <IconButton
+                              iconSrc="/icons/save.png"
                               onClick={submitEdit}
                               style={iconActionButtonStyle}
-                            >
-                              Save
-                            </button>
-                            <button
-                              type="button"
+                            />
+                            <IconButton
+                              iconSrc="/icons/cancel.png"
                               onClick={cancelEdit}
                               style={iconActionButtonStyle}
-                            >
-                              Cancel
-                            </button>
+                            />
                           </>
                         )
                       ) : (

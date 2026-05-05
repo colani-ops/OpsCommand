@@ -40,6 +40,7 @@ import {
   softSectionBoxStyle,
   toolbarButtonStyle,
 } from "../styles/uiStyles";
+import IconButton from "../ui/IconButton";
 
 function getPrimaryRoleLabel(roles: string[]) {
   const order = ["SuperAdmin", "Admin", "Commander", "Member", "Recruit"];
@@ -86,7 +87,9 @@ function getEquipmentBanner(category?: string | null) {
 }
 
 function getEquipmentDisplayImage(item: UserEquipmentDto) {
-  return resolveEquipmentImageUrl(item.imageUrl) ?? getEquipmentBanner(item.category);
+  return (
+    resolveEquipmentImageUrl(item.imageUrl) ?? getEquipmentBanner(item.category)
+  );
 }
 
 export default function MyProfilePage() {
@@ -104,12 +107,18 @@ export default function MyProfilePage() {
   const [changingPassword, setChangingPassword] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const [availableEquipment, setAvailableEquipment] = useState<UserEquipmentDto[]>([]);
+  const [availableEquipment, setAvailableEquipment] = useState<
+    UserEquipmentDto[]
+  >([]);
   const [myEquipment, setMyEquipment] = useState<UserEquipmentDto[]>([]);
 
-  const [selectedEquipmentId, setSelectedEquipmentId] = useState<number | "">("");
+  const [selectedEquipmentId, setSelectedEquipmentId] = useState<number | "">(
+    "",
+  );
   const [newQuantity, setNewQuantity] = useState<number>(1);
-  const [editQuantities, setEditQuantities] = useState<Record<number, number>>({});
+  const [editQuantities, setEditQuantities] = useState<Record<number, number>>(
+    {},
+  );
 
   const [profileForm, setProfileForm] = useState({
     userName: "",
@@ -130,7 +139,9 @@ export default function MyProfilePage() {
 
     setAvailableEquipment(available);
     setMyEquipment(mine);
-    setEditQuantities(Object.fromEntries(mine.map((item) => [item.equipmentId, item.quantity])));
+    setEditQuantities(
+      Object.fromEntries(mine.map((item) => [item.equipmentId, item.quantity])),
+    );
   }, []);
 
   const loadProfileData = useCallback(async () => {
@@ -372,6 +383,27 @@ export default function MyProfilePage() {
 
   const squadVeterancy = squad ? getVeterancyLabel(squad.missionsServed) : "—";
 
+  const totalEquipmentQuantity = myEquipment.reduce(
+    (sum, item) => sum + item.quantity,
+    0,
+  );
+
+  const equipmentCategorySummary = myEquipment.reduce<Record<string, number>>(
+    (acc, item) => {
+      const key = item.category ?? "Uncategorized";
+      acc[key] = (acc[key] ?? 0) + item.quantity;
+      return acc;
+    },
+    {},
+  );
+
+  const equipmentSummaryText =
+    myEquipment.length === 0
+      ? "No equipment selected"
+      : Object.entries(equipmentCategorySummary)
+          .map(([category, quantity]) => `${category}: ${quantity}`)
+          .join(" · ");
+
   return (
     <div>
       <ErrorBanner error={error} />
@@ -462,9 +494,18 @@ export default function MyProfilePage() {
                   <div style={heroTitleStyle}>{displayName}</div>
                   <div style={metaLineStyle}>Email: {displayEmail}</div>
                   <div style={metaLineStyle}>Role: {roleLabel}</div>
-                  <div style={metaLineStyle}>Missions Served: {squad?.missionsServed ?? 0}</div>
+                  <div style={metaLineStyle}>
+                    Missions Served: {squad?.missionsServed ?? 0}
+                  </div>
                   <div style={metaLineStyle}>
                     Veterancy: {squad ? squadVeterancy : "No squad history"}
+                  </div>
+                  <div style={metaLineStyle}>
+                    Equipment Units: {totalEquipmentQuantity} item(s)
+                  </div>
+
+                  <div style={metaLineStyle}>
+                    Loadout Units: {equipmentSummaryText}
                   </div>
                 </div>
 
@@ -476,24 +517,22 @@ export default function MyProfilePage() {
                     justifyContent: "flex-end",
                   }}
                 >
-                  <button
-                    type="button"
+                  <IconButton
+                    iconSrc="/icons/upload.png"
+                    title="Upload Profile Image"
                     onClick={() => fileInputRef.current?.click()}
                     style={smallActionButtonStyle}
                     disabled={uploadingImage}
-                  >
-                    {uploadingImage ? "Uploading..." : "Upload"}
-                  </button>
+                  />
 
                   {profileImageUrl && (
-                    <button
-                      type="button"
+                    <IconButton
+                      iconSrc="/icons/delete.png"
+                      title="Delete Profile Image"
                       onClick={onRemoveProfileImage}
                       style={smallDangerButtonStyle}
                       disabled={uploadingImage}
-                    >
-                      Remove
-                    </button>
+                      />
                   )}
                 </div>
               </div>
@@ -520,7 +559,10 @@ export default function MyProfilePage() {
               <input
                 value={profileForm.userName}
                 onChange={(e) =>
-                  setProfileForm((prev) => ({ ...prev, userName: e.target.value }))
+                  setProfileForm((prev) => ({
+                    ...prev,
+                    userName: e.target.value,
+                  }))
                 }
                 placeholder="Username"
                 style={formFieldStyle}
@@ -538,7 +580,11 @@ export default function MyProfilePage() {
                 disabled={savingProfile}
               />
 
-              <button type="submit" style={toolbarButtonStyle} disabled={savingProfile}>
+              <button
+                type="submit"
+                style={toolbarButtonStyle}
+                disabled={savingProfile}
+              >
                 {savingProfile ? "Saving..." : "Save Profile"}
               </button>
             </form>
@@ -556,7 +602,10 @@ export default function MyProfilePage() {
               <input
                 value={passwordForm.currentPassword}
                 onChange={(e) =>
-                  setPasswordForm((prev) => ({ ...prev, currentPassword: e.target.value }))
+                  setPasswordForm((prev) => ({
+                    ...prev,
+                    currentPassword: e.target.value,
+                  }))
                 }
                 placeholder="Current password"
                 type="password"
@@ -567,7 +616,10 @@ export default function MyProfilePage() {
               <input
                 value={passwordForm.newPassword}
                 onChange={(e) =>
-                  setPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))
+                  setPasswordForm((prev) => ({
+                    ...prev,
+                    newPassword: e.target.value,
+                  }))
                 }
                 placeholder="New password"
                 type="password"
@@ -578,7 +630,10 @@ export default function MyProfilePage() {
               <input
                 value={passwordForm.confirmPassword}
                 onChange={(e) =>
-                  setPasswordForm((prev) => ({ ...prev, confirmPassword: e.target.value }))
+                  setPasswordForm((prev) => ({
+                    ...prev,
+                    confirmPassword: e.target.value,
+                  }))
                 }
                 placeholder="Confirm new password"
                 type="password"
@@ -586,7 +641,11 @@ export default function MyProfilePage() {
                 disabled={changingPassword}
               />
 
-              <button type="submit" style={toolbarButtonStyle} disabled={changingPassword}>
+              <button
+                type="submit"
+                style={toolbarButtonStyle}
+                disabled={changingPassword}
+              >
                 {changingPassword ? "Changing..." : "Change Password"}
               </button>
             </form>
@@ -626,9 +685,15 @@ export default function MyProfilePage() {
             </div>
 
             <div style={{ display: "grid", gap: 10 }}>
-              <div style={detailsLineStyle}>Squad Type: {squad?.type ?? "—"}</div>
-              <div style={detailsLineStyle}>Commander: {squad?.commanderId ?? "—"}</div>
-              <div style={detailsLineStyle}>Success Rate: {squad ? squadSuccessRate : "—"}</div>
+              <div style={detailsLineStyle}>
+                Squad Type: {squad?.type ?? "—"}
+              </div>
+              <div style={detailsLineStyle}>
+                Commander: {squad?.commanderId ?? "—"}
+              </div>
+              <div style={detailsLineStyle}>
+                Success Rate: {squad ? squadSuccessRate : "—"}
+              </div>
               <div style={detailsLineStyle}>
                 Veterancy Status: {squad ? squadVeterancy : "—"}
               </div>
@@ -675,7 +740,9 @@ export default function MyProfilePage() {
                 <select
                   value={selectedEquipmentId}
                   onChange={(e) =>
-                    setSelectedEquipmentId(e.target.value ? Number(e.target.value) : "")
+                    setSelectedEquipmentId(
+                      e.target.value ? Number(e.target.value) : "",
+                    )
                   }
                   style={formFieldStyle}
                   disabled={savingEquipment}
@@ -683,8 +750,8 @@ export default function MyProfilePage() {
                   <option value="">— Select equipment —</option>
                   {availableEquipment.map((eq) => (
                     <option key={eq.equipmentId} value={eq.equipmentId}>
-                      {eq.equipmentName} {eq.category ? `(${eq.category})` : ""} · Available:{" "}
-                      {eq.quantity}
+                      {eq.equipmentName} {eq.category ? `(${eq.category})` : ""}{" "}
+                      · Available: {eq.quantity}
                     </option>
                   ))}
                 </select>
@@ -698,9 +765,11 @@ export default function MyProfilePage() {
                   disabled={savingEquipment}
                 />
 
-                <button style={toolbarButtonStyle} disabled={savingEquipment}>
-                  {savingEquipment ? "Saving..." : "Add To Loadout"}
-                </button>
+                <IconButton
+                  iconSrc="/icons/add.png"
+                  style={iconActionButtonStyle} 
+                  disabled={savingEquipment}
+                />
               </form>
             </div>
 
@@ -734,7 +803,7 @@ export default function MyProfilePage() {
                           gap: 18,
                           alignItems: "stretch",
                           backgroundImage: `linear-gradient(rgba(10,10,10,0.38), rgba(10,10,10,0.38)), url(${getEquipmentDisplayImage(
-                            item
+                            item,
                           )})`,
                           backgroundSize: "cover",
                           backgroundPosition: "center",
@@ -750,9 +819,15 @@ export default function MyProfilePage() {
                               background: "rgba(20,20,20,0.70)",
                             }}
                           >
-                            <div style={detailsTitleStyle}>{item.equipmentName}</div>
-                            <div style={detailsLineStyle}>Category: {item.category ?? "—"}</div>
-                            <div style={detailsLineStyle}>Quantity: {item.quantity}</div>
+                            <div style={detailsTitleStyle}>
+                              {item.equipmentName}
+                            </div>
+                            <div style={detailsLineStyle}>
+                              Category: {item.category ?? "—"}
+                            </div>
+                            <div style={detailsLineStyle}>
+                              Quantity: {item.quantity}
+                            </div>
                           </div>
                         </div>
 
@@ -768,7 +843,9 @@ export default function MyProfilePage() {
                           <input
                             type="number"
                             min={1}
-                            value={editQuantities[item.equipmentId] ?? item.quantity}
+                            value={
+                              editQuantities[item.equipmentId] ?? item.quantity
+                            }
                             onChange={(e) =>
                               setEditQuantities((prev) => ({
                                 ...prev,
@@ -779,28 +856,29 @@ export default function MyProfilePage() {
                             disabled={savingEquipment}
                           />
 
-                          <button
-                            type="button"
+                          <IconButton
+                            iconSrc="/icons/save.png"
+                            title="Save Equipment"
                             onClick={() =>
                               onUpdateMyEquipment(
                                 item.equipmentId,
-                                editQuantities[item.equipmentId] ?? item.quantity
+                                editQuantities[item.equipmentId] ??
+                                  item.quantity,
                               )
                             }
                             style={iconActionButtonStyle}
                             disabled={savingEquipment}
-                          >
-                            {savingEquipment ? "Saving..." : "Save"}
-                          </button>
+                          />
 
-                          <button
-                            type="button"
-                            onClick={() => onDeleteMyEquipment(item.equipmentId)}
+                          <IconButton
+                            iconSrc="/icons/delete.png"
+                            title="Remove Equipment"
+                            onClick={() =>
+                              onDeleteMyEquipment(item.equipmentId)
+                            }
                             style={iconActionButtonStyle}
                             disabled={savingEquipment}
-                          >
-                            {savingEquipment ? "Working..." : "Remove"}
-                          </button>
+                          />
                         </div>
                       </div>
                     </div>
@@ -821,7 +899,8 @@ export default function MyProfilePage() {
           >
             <div style={detailsTitleStyle}>No squad assigned</div>
             <div style={detailsLineStyle}>
-              You are not assigned to a squad yet, so there is no personal loadout available.
+              You are not assigned to a squad yet, so there is no personal
+              loadout available.
             </div>
           </div>
         )}

@@ -12,6 +12,13 @@ export type UserDto = {
   profileImageUrl?: string | null;
 };
 
+export type UserProfileEquipmentSummaryDto = {
+  primary: string[];
+  secondary: string[];
+  melee: string[];
+  utility: string[];
+};
+
 export type UserProfileDto = {
   id: string;
   email: string;
@@ -20,6 +27,7 @@ export type UserProfileDto = {
   primaryRole: string | null;
   isActive: boolean;
   profileImageUrl?: string | null;
+  equipmentSummary?: UserProfileEquipmentSummaryDto;
 };
 
 export type AdminUpdateUserRequest = {
